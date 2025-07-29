@@ -1,7 +1,5 @@
-
-
 import React from 'react';
-import { LayoutDashboard, Upload } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 import Button from './Button';
 import { ViewType } from '../types';
 

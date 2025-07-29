@@ -1,5 +1,3 @@
-
-
 import * as XLSX from 'xlsx';
 import { MemberRecordA } from '../types';
 

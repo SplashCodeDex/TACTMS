@@ -1,5 +1,3 @@
-
-
 export interface MemberRecordA {
   [key: string]: any; // Allows dynamic keys from Excel
   'No.'?: number | string;

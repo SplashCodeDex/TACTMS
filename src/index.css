@@ -175,7 +175,7 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
 }
 .card-glow-on-hover:hover {
-  box-shadow: 0 0 15px 0 var(--primary-accent-start)/20;
+  box-shadow: 0 0 15px 0 hsl(var(--primary-hue), var(--primary-saturation), var(--primary-lightness), 0.2);
   border-color: var(--border-color-light);
 }
 
@@ -428,7 +428,7 @@ body {
     display: flex; flex-direction: column;
 }
 .command-palette-item[data-selected="true"] {
-    background-color: var(--primary-accent-start)/20;
+    background-color: hsla(var(--primary-hue), var(--primary-saturation), var(--primary-lightness), 0.1);
 }
 .kbd-hint {
     background-color: var(--border-color);

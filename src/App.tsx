@@ -1,7 +1,6 @@
-
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry, MasterListData, GoogleUserProfile } from './types';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry } from './types';
 import Button from './components/Button';
 import { ToastContainer, ToastMessage, ToastAction } from './components/Toast';
 import Modal from './components/Modal';
@@ -17,7 +16,7 @@ import FullTithePreviewModal from './components/FullTithePreviewModal';
 import AddNewMemberModal from './components/AddNewMemberModal';
 import CreateTitheListModal from './components/CreateTitheListModal';
 
-import { Save, AlertTriangle, Trash2, BotMessageSquare } from 'lucide-react';
+import { Save, Trash2, BotMessageSquare } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
 import Sidebar from './components/Sidebar';
@@ -341,25 +340,6 @@ const App: React.FC = () => {
     handleResize(); 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
-  const restoreDraft = useCallback((draft: AutoSaveDraft) => {
-    setTitheListData(draft.titheListData || []);
-    setSelectedDate(new Date(draft.selectedDate));
-    setDescriptionText(draft.descriptionText);
-    setConcatenationConfig(draft.concatenationConfig);
-    setAgeRangeMin(draft.ageRangeMin);
-    setAgeRangeMax(draft.ageRangeMax);
-    setFileNameToSave(draft.fileNameToSave);
-    setAmountMappingColumn(draft.amountMappingColumn);
-    setCurrentAssembly(draft.assemblyName);
-    setSoulsWonCount(draft.soulsWonCount);
-    addToast("Restored your auto-saved draft.", "info");
-    
-    // Attempt to find original file name from a favorite if draft doesn't have it
-    const matchingFavorite = favorites.find(f => f.assemblyName === draft.assemblyName);
-    const fileName = draft.uploadedFileName || matchingFavorite?.originalFileName || "Previously Uploaded File";
-    setUploadedFile(new File([], fileName));
-  }, [addToast, favorites]);
 
   const saveDraft = useCallback(() => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -977,7 +957,7 @@ ${JSON.stringify(sampleData, null, 2)}
 \`\`\`
 `;
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        setValidationReportContent(response.text);
+        setValidationReportContent(response.text ?? 'No content was returned from the AI.');
 
     } catch (error) {
         console.error("Error generating validation report:", error);
@@ -1094,13 +1074,13 @@ ${JSON.stringify(sampleData, null, 2)}
       case 'database':
         return <MemberDatabaseSection 
                  memberDatabase={memberDatabase} 
-                 onUploadMasterList={(file, isMasterList, assemblyName) => handleFileAccepted(file, isMasterList, assemblyName)}
-                 onCreateTitheList={(selectedMembers, assemblyName) => {
+                 onUploadMasterList={(file: File | null, isMasterList: boolean, assemblyName?: string) => handleFileAccepted(file, isMasterList, assemblyName)}
+                 onCreateTitheList={(selectedMembers: MemberRecordA[], assemblyName: string) => {
                      setPendingTitheListMembers(selectedMembers);
                      setPendingTitheListAssembly(assemblyName);
                      setIsCreateTitheListModalOpen(true);
                  }}
-                 onEditMember={(member, assemblyName) => {
+                 onEditMember={(member: MemberRecordA, assemblyName: string) => {
                     setMemberToEdit({ member, assemblyName });
                     setIsEditMemberModalOpen(true);
                  }}
@@ -1177,7 +1157,7 @@ ${JSON.stringify(sampleData, null, 2)}
                 isOpen={isDataEntryModalOpen}
                 onClose={() => setIsDataEntryModalOpen(false)}
                 titheListData={titheListData}
-                onSave={(updatedList) => {
+                onSave={(updatedList: TitheRecordB[]) => {
                     setTitheListData(updatedList);
                     setHasUnsavedChanges(true);
                     setIsDataEntryModalOpen(false);

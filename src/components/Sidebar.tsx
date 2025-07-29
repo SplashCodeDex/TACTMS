@@ -1,11 +1,5 @@
-
-
-
-
-
-
 import React from 'react';
-import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, LogOut, Cloud, User, Loader2, CloudCheck, AlertCircle, CloudOff, PieChart, Palette, Check, Database, LayoutDashboard } from 'lucide-react';
+import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, LogOut, Cloud, Loader2, CloudCheck, AlertCircle, CloudOff, PieChart, Check, Database, LayoutDashboard } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from './Button';
 import { GoogleUserProfile, ViewType } from '../types';
@@ -153,8 +147,8 @@ const GoogleSyncControl: React.FC<Pick<SidebarProps, 'isLoggedIn' | 'userProfile
     );
 };
 
-const ThemeControl: React.FC<Pick<SidebarProps, 'theme' | 'setTheme' | 'accentColor' | 'setAccentColor' | 'isCollapsed' | 'openCommandPalette'>> = 
-({ theme, setTheme, accentColor, setAccentColor, isCollapsed, openCommandPalette }) => {
+const ThemeControl: React.FC<Pick<SidebarProps, 'theme' | 'setTheme' | 'accentColor' | 'setAccentColor' | 'isCollapsed'>> = 
+({ theme, setTheme, accentColor, setAccentColor, isCollapsed }) => {
     if (isCollapsed) {
         return (
              <div className="flex flex-col items-center space-y-2 p-2 bg-[var(--bg-card)] rounded-xl shadow-inner">
@@ -307,7 +301,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 theme={theme} setTheme={setTheme}
                 accentColor={accentColor} setAccentColor={setAccentColor}
                 isCollapsed={isCollapsed}
-                openCommandPalette={openCommandPalette}
             />
         </div>
         

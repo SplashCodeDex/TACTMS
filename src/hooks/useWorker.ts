@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useRef } from 'react';
 
 // A generic hook for web workers

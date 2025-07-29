@@ -1,5 +1,3 @@
-
-
 import { ConcatenationConfig } from './types';
 
 export const DEFAULT_CONCAT_CONFIG: ConcatenationConfig = {

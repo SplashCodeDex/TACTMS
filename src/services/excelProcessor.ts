@@ -1,6 +1,3 @@
-
-
-
 import * as XLSX from 'xlsx';
 import { MemberRecordA, TitheRecordB, ConcatenationConfig, MembershipReconciliationReport } from '../types';
 

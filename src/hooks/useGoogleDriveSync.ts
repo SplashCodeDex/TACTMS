@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FavoriteConfig, GoogleUserProfile, TransactionLogEntry } from '../types';
 import { ToastMessage } from '../components/Toast';
@@ -164,7 +162,7 @@ export const useGoogleDriveSync = (
         }
     }, [isLoggedIn, driveFileIds, addToast, setFavorites, setTransactionLog]);
 
-    const findOrCreateDriveFile = async (fileName: string) => {
+    const findOrCreateDriveFile = async (fileName: string): Promise<string | null> => {
         const res = await window.gapi.client.drive.files.list({
             q: `name='${fileName}' and trashed=false`, spaces: 'drive', fields: 'files(id, name)',
         });
