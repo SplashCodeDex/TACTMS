@@ -1,0 +1,26 @@
+{
+  "name": "TACTMS - The Apostolic Church Tithe Made Simple",
+  "description": "An intelligent data processing tool that uses AI to analyze, segment, and provide insights on uploaded data through an interactive chat interface with an advanced analytics database.",
+  "requestFramePermissions": [],
+  "prompt": "",
+  "packaging": {
+    "tool": "PWABuilder",
+    "targets": [
+      {
+        "platform": "android",
+        "store": "google-play",
+        "method": "Trusted Web Activity (TWA)"
+      },
+      {
+        "platform": "windows",
+        "store": "microsoft-store",
+        "method": "PWA Package"
+      }
+    ],
+    "storeListing": {
+      "category": "Business",
+      "shortDescription": "An AI-powered tool for church tithe and membership management.",
+      "longDescription": "TACTMS is an intelligent, offline-first Progressive Web App (PWA) designed to streamline the management of tithe records and church membership data for The Apostolic Church. It uses AI to analyze, segment, and provide insights on uploaded data through an interactive chat interface, all while syncing key information to a secure Google Drive account."
+    }
+  }
+}

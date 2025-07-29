@@ -1,0 +1,450 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-hue: 262;
+  --primary-saturation: 83%;
+  --primary-lightness: 58%;
+
+  /* Dark Theme Colors */
+  --bg-main-dark: #0D0E1B;
+  --bg-card-dark: #1A1B29;
+  --bg-elevated-dark: #202236;
+  --bg-card-subtle-accent-dark: rgba(72, 79, 130, 0.15);
+  --border-color-dark: rgba(135, 142, 192, 0.2);
+  --border-color-light-dark: rgba(135, 142, 192, 0.4);
+  --text-primary-dark: #F0F2FF;
+  --text-secondary-dark: #A9B2D3;
+  --text-muted-dark: #6C759B;
+  --text-placeholder-dark: #6C759B;
+  --text-on-accent-dark: #FFFFFF;
+  --input-bg-dark: #121321;
+  
+  /* Light Theme Colors */
+  --bg-main-light: #F0F2F5;
+  --bg-card-light: #FFFFFF;
+  --bg-elevated-light: #FFFFFF;
+  --bg-card-subtle-accent-light: rgba(72, 79, 130, 0.05);
+  --border-color-light: #D9DEE8;
+  --border-color-light-light: #C8CDD8;
+  --text-primary-light: #1C274C;
+  --text-secondary-light: #5A648A;
+  --text-muted-light: #8F9BB3;
+  --text-placeholder-light: #AAB0C2;
+  --text-on-accent-light: #FFFFFF;
+  --input-bg-light: #F7F9FC;
+
+  /* Universal Accent Colors (HSL) */
+  --primary-accent-start: hsl(var(--primary-hue), var(--primary-saturation), var(--primary-lightness));
+  --primary-accent-end: hsl(calc(var(--primary-hue) + 20), var(--primary-saturation), calc(var(--primary-lightness) + 5%));
+  --primary-accent-hover-start: hsl(var(--primary-hue), calc(var(--primary-saturation) - 5%), calc(var(--primary-lightness) - 5%));
+  --primary-accent-hover-end: hsl(calc(var(--primary-hue) + 20), calc(var(--primary-saturation) - 5%), var(--primary-lightness));
+  
+  --secondary-accent-start: #3b82f6;
+  --secondary-accent-end: #60a5fa;
+
+  --success-start: #10B981;
+  --success-border: #10B981;
+  --success-text: #34D399;
+
+  --danger-start: #EF4444;
+  --danger-end: #F87171;
+  --danger-border: #EF4444;
+  --danger-text: #F87171;
+
+  --warning-start: #F59E0B;
+  --warning-border: #F59E0B;
+  --warning-text: #FBBF24;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow: hidden;
+}
+
+/* Theme variables setup */
+.dark-theme {
+  --bg-main: var(--bg-main-dark);
+  --bg-card: var(--bg-card-dark);
+  --bg-elevated: var(--bg-elevated-dark);
+  --bg-card-subtle-accent: var(--bg-card-subtle-accent-dark);
+  --border-color: var(--border-color-dark);
+  --border-color-light: var(--border-color-light-dark);
+  --text-primary: var(--text-primary-dark);
+  --text-secondary: var(--text-secondary-dark);
+  --text-muted: var(--text-muted-dark);
+  --text-placeholder: var(--text-placeholder-dark);
+  --text-on-accent: var(--text-on-accent-dark);
+  --input-bg: var(--input-bg-dark);
+}
+
+.light-theme {
+  --bg-main: var(--bg-main-light);
+  --bg-card: var(--bg-card-light);
+  --bg-elevated: var(--bg-elevated-light);
+  --bg-card-subtle-accent: var(--bg-card-subtle-accent-light);
+  --border-color: var(--border-color-light);
+  --border-color-light: var(--border-color-light-light);
+  --text-primary: var(--text-primary-light);
+  --text-secondary: var(--text-secondary-light);
+  --text-muted: var(--text-muted-light);
+  --text-placeholder: var(--text-placeholder-light);
+  --text-on-accent: var(--text-on-accent-light);
+  --input-bg: var(--input-bg-light);
+}
+
+/* Core Layout */
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  width: 17rem;
+  border-right: 1px solid var(--border-color);
+  transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+.sidebar.collapsed {
+  width: 6rem;
+  padding: 1rem;
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 2rem;
+  margin-left: 17rem;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease-in-out;
+  height: 100vh;
+}
+.sidebar.collapsed + .app-container-overlay + .main-content {
+  margin-left: 6rem;
+}
+.app-container-overlay { display: none; }
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .app-container.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+  .app-container-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background-color: rgba(0,0,0,0.5);
+    display: none;
+  }
+  .app-container.sidebar-open .app-container-overlay {
+    display: block;
+  }
+  .main-content {
+    margin-left: 0;
+    padding-top: 5rem;
+  }
+}
+
+/* Utility & Components */
+.text-gradient-primary {
+  background-image: linear-gradient(to right, var(--primary-accent-start), var(--primary-accent-end));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.icon-primary { color: var(--primary-accent-start); }
+
+.content-card {
+  background-color: var(--bg-card);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+}
+.card-glow-on-hover:hover {
+  box-shadow: 0 0 15px 0 var(--primary-accent-start)/20;
+  border-color: var(--border-color-light);
+}
+
+.section-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Forms */
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+.form-input-light, .form-checkbox {
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-input-light:focus {
+  outline: none;
+  border-color: var(--primary-accent-start);
+  box-shadow: 0 0 0 2px hsla(var(--primary-hue), var(--primary-saturation), var(--primary-lightness), 0.2);
+}
+.form-input-light.input-error {
+  border-color: var(--danger-border);
+}
+.form-error-text {
+  color: var(--danger-text);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+.form-checkbox {
+    height: 1rem;
+    width: 1rem;
+    padding: 0;
+}
+.form-checkbox:checked {
+    background-color: var(--primary-accent-start);
+    border-color: var(--primary-accent-start);
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 10, 25, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+.modal-content {
+  width: 100%;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  animation: slideInUp 0.4s ease;
+}
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.modal-close-button {
+  padding: 0.5rem;
+  border-radius: 9999px;
+  color: var(--text-muted);
+  transition: background-color 0.2s, color 0.2s;
+}
+.modal-close-button:hover {
+  background-color: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+}
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideInUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-fadeIn { animation: fadeIn 0.5s ease-out; }
+
+/* Table styles */
+.modern-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.modern-table th, .modern-table td {
+  padding: 0.75rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-color);
+}
+.modern-table th {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+.modern-table tr.selected-row {
+  background-color: hsla(var(--primary-hue), var(--primary-saturation), var(--primary-lightness), 0.1);
+}
+.modern-table tr.selected-row:hover {
+    background-color: hsla(var(--primary-hue), var(--primary-saturation), var(--primary-lightness), 0.15);
+}
+
+/* Tooltip styles */
+.info-tooltip-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.info-tooltip-content {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-0.5rem);
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  width: max-content;
+  max-width: 250px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+  z-index: 20;
+  border: 1px solid var(--border-color);
+}
+.info-tooltip-container:hover .info-tooltip-content,
+.info-tooltip-container:focus .info-tooltip-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-0.75rem);
+}
+.info-tooltip-content::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--bg-elevated) transparent transparent transparent;
+}
+.glassmorphism-bg {
+    background: rgba(26, 27, 41, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.light-theme .glassmorphism-bg {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+/* Prose for markdown rendering */
+.prose {
+    color: var(--text-secondary);
+}
+.dark .prose-invert {
+    color: var(--text-secondary);
+}
+
+/* Chat styles */
+.chat-message.user .chat-bubble {
+    background-color: var(--primary-accent-start);
+    color: var(--text-on-accent);
+    border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
+    align-self: flex-end;
+}
+.chat-message.model .chat-bubble {
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
+    align-self: flex-start;
+}
+.chat-message { display: flex; flex-direction: column; }
+.chat-bubble { max-width: 80%; padding: 0.75rem 1.25rem; }
+.typing-indicator span {
+    height: 8px; width: 8px;
+    background-color: var(--text-muted);
+    border-radius: 50%;
+    display: inline-block;
+    animation: wave 1.4s infinite ease-in-out both;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes wave {
+    0%, 40%, 100% { transform: scale(0); }
+    20% { transform: scale(1.0); }
+}
+
+/* Command Palette */
+.command-palette-overlay {
+    position: fixed; inset: 0;
+    z-index: 100;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: flex; justify-content: center;
+    padding-top: 15vh;
+}
+.command-palette-container {
+    width: 100%; max-width: 640px;
+    height: fit-content; max-height: 70vh;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+}
+.command-palette-item[data-selected="true"] {
+    background-color: var(--primary-accent-start)/20;
+}
+.kbd-hint {
+    background-color: var(--border-color);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: monospace;
+    font-size: 0.8em;
+}
+
+/* Bar Chart */
+.bar-chart-container .bar-value {
+  font-size: 12px;
+  font-weight: bold;
+  fill: var(--text-on-accent);
+}
+.bar-chart-container .axis-text {
+  font-size: 12px;
+  fill: var(--text-secondary);
+}
