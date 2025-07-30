@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vitejs.dev/config/
 export default defineConfig({
   // IMPORTANT: Replace 'REPONAME' with your actual GitHub repository name
-  base: '/TACTMS/',
+  base: '/REPONAME/',
   plugins: [
     react(),
     VitePWA({

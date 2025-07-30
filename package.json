@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://splashcodedex.github.io/TACTMS/",
+  "homepage": "https://USERNAME.github.io/REPONAME",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -31,7 +31,7 @@
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.4.5",
-    "vite": "^7.0.6",
-    "vite-plugin-pwa": "^1.0.2"
+    "vite": "^5.3.1",
+    "vite-plugin-pwa": "^0.20.0"
   }
 }
