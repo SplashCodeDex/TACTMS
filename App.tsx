@@ -1,7 +1,8 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry, MasterListData, GoogleUserProfile } from './types';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry, GoogleUserProfile } from './types';
 import Button from './components/Button';
 import { ToastContainer, ToastMessage, ToastAction } from './components/Toast';
 import Modal from './components/Modal';
@@ -17,7 +18,7 @@ import FullTithePreviewModal from './components/FullTithePreviewModal';
 import AddNewMemberModal from './components/AddNewMemberModal';
 import CreateTitheListModal from './components/CreateTitheListModal';
 
-import { Save, AlertTriangle, Trash2, BotMessageSquare } from 'lucide-react';
+import { Save, Trash2, BotMessageSquare } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
 import Sidebar from './components/Sidebar';
@@ -1087,6 +1088,7 @@ ${JSON.stringify(sampleData, null, 2)}
         return <AnalyticsSection
                   titheListData={titheListData} currentAssembly={currentAssembly} selectedDate={selectedDate}
                   addToast={addToast} tithersCount={tithersCount} nonTithersCount={totalEntriesInList - tithersCount} totalAmount={totalTitheAmount}
+                  reconciliationReport={reconciliationReport}
                />;
       case 'reports':
           return <ReportsSection transactionLog={transactionLog} memberDatabase={memberDatabase} />;

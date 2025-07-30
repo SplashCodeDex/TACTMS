@@ -1,10 +1,12 @@
+
+
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FavoriteConfig, GoogleUserProfile, TransactionLogEntry } from '../types';
-import { ToastMessage } from '../components/Toast';
+import { FavoriteConfig, GoogleUserProfile, TransactionLogEntry } from '../types.ts';
+import { ToastMessage } from '../components/Toast.tsx';
 import { 
-    FAVORITES_STORAGE_KEY, DRIVE_SCOPES, 
+    FAVORITES_STORAGE_KEY, GOOGLE_API_KEY, GOOGLE_CLIENT_ID, DRIVE_SCOPES, 
     FAVORITES_DRIVE_FILENAME, TRANSACTION_LOG_STORAGE_KEY, TRANSACTION_LOG_DRIVE_FILENAME 
-} from '../constants';
+} from '../constants.ts';
 
 declare global {
   interface Window {
@@ -17,8 +19,6 @@ declare global {
 type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 type DataType = 'favorites' | 'transactionLog';
 
-const GOOGLE_API_KEY = import.meta.env.VITE_API_KEY;
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const IS_DRIVE_CONFIGURED = !!(GOOGLE_CLIENT_ID && GOOGLE_API_KEY);
 
 const useSyncedState = <T,>(storageKey: string, addToast: Function) => {
@@ -114,10 +114,6 @@ export const useGoogleDriveSync = (
         setSyncStatus('syncing');
 
         try {
-            if (!window.gapi?.client?.drive) {
-                await window.gapi.client.load('drive', 'v3');
-            }
-
             const [favFileId, logFileId] = await Promise.all([
                 driveFileIds.favorites || findOrCreateDriveFile(FAVORITES_DRIVE_FILENAME),
                 driveFileIds.transactionLog || findOrCreateDriveFile(TRANSACTION_LOG_DRIVE_FILENAME)
@@ -162,7 +158,7 @@ export const useGoogleDriveSync = (
         }
     }, [isLoggedIn, driveFileIds, addToast, setFavorites, setTransactionLog]);
 
-    const findOrCreateDriveFile = async (fileName: string): Promise<string | null> => {
+    const findOrCreateDriveFile = async (fileName: string) => {
         const res = await window.gapi.client.drive.files.list({
             q: `name='${fileName}' and trashed=false`, spaces: 'drive', fields: 'files(id, name)',
         });

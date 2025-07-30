@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI, Chat, Part } from '@google/genai';
 import { TitheRecordB } from '../types';
@@ -15,7 +16,6 @@ export interface ChatMessage {
 }
 
 export const useGeminiChat = () => {
-  const [chat, setChat] = useState<Chat | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -68,7 +68,6 @@ export const useGeminiChat = () => {
           - For all subsequent messages, respond conversationally as a helpful assistant without using the JSON format. Start your first conversational response with 'Hello! I've analyzed the data...'.`,
         },
       });
-      setChat(newChat);
       chatRef.current = newChat;
 
       const totalRecords = data.length;

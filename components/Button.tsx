@@ -23,17 +23,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   ...props
 }, ref) => {
   const baseStyle =
-    `font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] focus-visible:ring-opacity-70 btn-animated flex items-center justify-center shadow-md hover:shadow-lg`;
+    `font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] focus-visible:ring-opacity-70 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg`;
 
   const borderRadius = 'rounded-lg';
 
   const variantStyles = {
-    primary: `bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-[var(--text-on-accent)] focus-visible:ring-[var(--primary-accent-start)] btn-glow-primary hover:from-[var(--primary-accent-hover-start)] hover:to-[var(--primary-accent-hover-end)]`,
+    primary: `bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-[var(--text-on-accent)] focus-visible:ring-[var(--primary-accent-start)] hover:opacity-95`,
     secondary: `bg-gradient-to-r from-[var(--secondary-accent-start)] to-[var(--secondary-accent-end)] text-[var(--text-on-accent)] focus-visible:ring-[var(--secondary-accent-start)]`,
     danger: `bg-gradient-to-r from-[var(--danger-start)] to-[var(--danger-end)] text-[var(--text-on-accent)] focus-visible:ring-[var(--danger-start)] hover:opacity-90`,
-    ghost: `bg-transparent hover:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:ring-gray-500`,
-    outline: `bg-transparent border border-[var(--primary-accent-start)] text-[var(--primary-accent-start)] hover:bg-[var(--primary-accent-start)]/10 focus-visible:ring-[var(--primary-accent-start)]`,
-    subtle: `bg-[var(--bg-card-subtle-accent)] hover:bg-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:ring-gray-500 border border-[var(--border-color)]`,
+    ghost: `bg-transparent hover:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:ring-gray-500 shadow-none`,
+    outline: `bg-transparent border border-[var(--primary-accent-start)] text-[var(--primary-accent-start)] hover:bg-[var(--primary-accent-start)]/10 focus-visible:ring-[var(--primary-accent-start)] shadow-none`,
+    subtle: `bg-[var(--bg-card-subtle-accent)] hover:bg-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:ring-gray-500 border border-[var(--border-color)] shadow-none`,
   };
 
   const sizeStyles = {

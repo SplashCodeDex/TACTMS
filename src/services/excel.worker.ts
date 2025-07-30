@@ -1,5 +1,7 @@
+
+
 import * as XLSX from 'xlsx';
-import { MemberRecordA } from '../types';
+import { MemberRecordA } from '../types.ts';
 
 // The parsing logic, now inside the worker.
 const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {

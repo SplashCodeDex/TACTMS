@@ -1,4 +1,6 @@
-import { ConcatenationConfig } from './types';
+
+
+import { ConcatenationConfig } from './types.ts';
 
 export const DEFAULT_CONCAT_CONFIG: ConcatenationConfig = {
   Title: true,
@@ -36,6 +38,8 @@ export const ACCEPTED_FILE_TYPES = ".xlsx,.xls";
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 // Google Drive Sync Constants
+export const GOOGLE_API_KEY = (window as any).process?.env?.API_KEY;
+export const GOOGLE_CLIENT_ID = (window as any).process?.env?.GOOGLE_CLIENT_ID;
 export const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
 export const FAVORITES_DRIVE_FILENAME = 'tactms.app.favorites.json';
 export const TRANSACTION_LOG_DRIVE_FILENAME = 'tactms.app.transactions.json';

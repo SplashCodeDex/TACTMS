@@ -1,5 +1,7 @@
+
+
 import * as XLSX from 'xlsx';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig, MembershipReconciliationReport } from '../types';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig, MembershipReconciliationReport } from '../types.ts';
 
 export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
   return new Promise((resolve, reject) => {

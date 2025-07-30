@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry } from './types';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry, GoogleUserProfile } from './types.ts';
 import Button from './components/Button';
 import { ToastContainer, ToastMessage, ToastAction } from './components/Toast';
 import Modal from './components/Modal';
@@ -11,7 +11,7 @@ import {
   formatDateDDMMMYYYY,
   reconcileMembers,
   parseExcelFile
-} from './services/excelProcessor';
+} from './services/excelProcessor.ts';
 import FullTithePreviewModal from './components/FullTithePreviewModal';
 import AddNewMemberModal from './components/AddNewMemberModal';
 import CreateTitheListModal from './components/CreateTitheListModal';
@@ -24,16 +24,16 @@ import FavoritesView from './sections/FavoritesView';
 import AnalyticsSection from './sections/AnalyticsSection';
 import ReportsSection from './sections/ReportsSection';
 import MemberDatabaseSection from './components/MemberDatabaseSection';
-import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
+import { useGoogleDriveSync } from './hooks/useGoogleDriveSync.ts';
 
 import { 
   DEFAULT_CONCAT_CONFIG, AUTO_SAVE_KEY, AUTO_SAVE_DEBOUNCE_TIME, ITEMS_PER_FULL_PREVIEW_PAGE,
   APP_THEME_STORAGE_KEY, DEFAULT_CONCAT_CONFIG_STORAGE_KEY, ASSEMBLIES, THEME_OPTIONS, APP_ACCENT_COLOR_KEY,
   MEMBER_DATABASE_STORAGE_KEY
-} from './constants';
+} from './constants.ts';
 import DataEntryModal from './components/DataEntryModal';
 import AssemblySelectionModal from './components/AssemblySelectionModal';
-import MembershipReconciliationModal from './components/MembershipReconciliationModal';
+import { MembershipReconciliationModal } from './components/MembershipReconciliationModal';
 import EmptyState from './components/EmptyState';
 import ClearWorkspaceModal from './components/ClearWorkspaceModal';
 import UpdateMasterListConfirmModal from './components/UpdateMasterListConfirmModal';
@@ -60,7 +60,7 @@ interface PendingMasterListUpdate {
     newFileName: string;
 }
 
-const MotionDiv = motion.div as React.FC<any>;
+const MotionDiv = motion.div;
 
 const App: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -340,6 +340,25 @@ const App: React.FC = () => {
     handleResize(); 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  const restoreDraft = useCallback((draft: AutoSaveDraft) => {
+    setTitheListData(draft.titheListData || []);
+    setSelectedDate(new Date(draft.selectedDate));
+    setDescriptionText(draft.descriptionText);
+    setConcatenationConfig(draft.concatenationConfig);
+    setAgeRangeMin(draft.ageRangeMin);
+    setAgeRangeMax(draft.ageRangeMax);
+    setFileNameToSave(draft.fileNameToSave);
+    setAmountMappingColumn(draft.amountMappingColumn);
+    setCurrentAssembly(draft.assemblyName);
+    setSoulsWonCount(draft.soulsWonCount);
+    addToast("Restored your auto-saved draft.", "info");
+    
+    // Attempt to find original file name from a favorite if draft doesn't have it
+    const matchingFavorite = favorites.find(f => f.assemblyName === draft.assemblyName);
+    const fileName = draft.uploadedFileName || matchingFavorite?.originalFileName || "Previously Uploaded File";
+    setUploadedFile(new File([], fileName));
+  }, [addToast, favorites]);
 
   const saveDraft = useCallback(() => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -929,8 +948,7 @@ const App: React.FC = () => {
         addToast("No data to analyze. Please upload a file first.", "warning");
         return;
     }
-    const apiKey = import.meta.env.VITE_API_KEY;
-    if (!apiKey) {
+    if (!process.env.API_KEY) {
         addToast("AI features are not configured. Please contact support.", "error");
         return;
     }
@@ -940,7 +958,7 @@ const App: React.FC = () => {
     setValidationReportContent(''); // Clear previous report
 
     try {
-        const ai = new GoogleGenAI({ apiKey });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const sampleData = originalData.slice(0, 50); // Use a sample
         const prompt = `
 You are a data quality analyst reviewing a church membership list. Analyze the following JSON data sample for quality issues. Provide a concise summary in markdown format. Focus on:
@@ -957,7 +975,7 @@ ${JSON.stringify(sampleData, null, 2)}
 \`\`\`
 `;
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        setValidationReportContent(response.text ?? 'No content was returned from the AI.');
+        setValidationReportContent(response.text);
 
     } catch (error) {
         console.error("Error generating validation report:", error);
@@ -1068,19 +1086,20 @@ ${JSON.stringify(sampleData, null, 2)}
         return <AnalyticsSection
                   titheListData={titheListData} currentAssembly={currentAssembly} selectedDate={selectedDate}
                   addToast={addToast} tithersCount={tithersCount} nonTithersCount={totalEntriesInList - tithersCount} totalAmount={totalTitheAmount}
+                  reconciliationReport={reconciliationReport}
                />;
       case 'reports':
           return <ReportsSection transactionLog={transactionLog} memberDatabase={memberDatabase} />;
       case 'database':
         return <MemberDatabaseSection 
                  memberDatabase={memberDatabase} 
-                 onUploadMasterList={(file: File | null, isMasterList: boolean, assemblyName?: string) => handleFileAccepted(file, isMasterList, assemblyName)}
-                 onCreateTitheList={(selectedMembers: MemberRecordA[], assemblyName: string) => {
+                 onUploadMasterList={(file, isMasterList, assemblyName) => handleFileAccepted(file, isMasterList, assemblyName)}
+                 onCreateTitheList={(selectedMembers, assemblyName) => {
                      setPendingTitheListMembers(selectedMembers);
                      setPendingTitheListAssembly(assemblyName);
                      setIsCreateTitheListModalOpen(true);
                  }}
-                 onEditMember={(member: MemberRecordA, assemblyName: string) => {
+                 onEditMember={(member, assemblyName) => {
                     setMemberToEdit({ member, assemblyName });
                     setIsEditMemberModalOpen(true);
                  }}
@@ -1157,7 +1176,7 @@ ${JSON.stringify(sampleData, null, 2)}
                 isOpen={isDataEntryModalOpen}
                 onClose={() => setIsDataEntryModalOpen(false)}
                 titheListData={titheListData}
-                onSave={(updatedList: TitheRecordB[]) => {
+                onSave={(updatedList) => {
                     setTitheListData(updatedList);
                     setHasUnsavedChanges(true);
                     setIsDataEntryModalOpen(false);

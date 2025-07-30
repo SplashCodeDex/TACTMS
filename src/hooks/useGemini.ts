@@ -1,10 +1,12 @@
+
+
 import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI, Chat, Part } from '@google/genai';
-import { TitheRecordB } from '../types';
-import { formatDateDDMMMYYYY } from '../services/excelProcessor';
-import { ChartData } from '../components/BarChart';
+import { TitheRecordB } from '../types.ts';
+import { formatDateDDMMMYYYY } from '../services/excelProcessor.ts';
+import { ChartData } from '../components/BarChart.tsx';
 
-const API_KEY = import.meta.env.VITE_API_KEY;
+const API_KEY = (window as any).process?.env?.API_KEY;
 
 export interface ChatMessage {
     role: 'user' | 'model';
@@ -104,7 +106,6 @@ export const useGeminiChat = () => {
       
       let initialSummary = "I'm having trouble providing an initial analysis. Please try again.";
       try {
-        if (!responseText) throw new Error("Empty response from AI");
         let jsonStr = responseText.trim();
         const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
         const match = jsonStr.match(fenceRegex);
@@ -125,7 +126,7 @@ export const useGeminiChat = () => {
       } catch (e) {
           console.error("Failed to parse initial JSON response:", e);
           setError("AI response was not in the expected format. Displaying raw response.");
-          setChatHistory([{ role: 'model', parts: [{ text: responseText || '' }] }]);
+          setChatHistory([{ role: 'model', parts: [{ text: responseText }] }]);
       }
       
     } catch (e) {

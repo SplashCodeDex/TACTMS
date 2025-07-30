@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Filter, Users, X } from 'lucide-react';
 import Button from '../components/Button';
-import { MemberRecordA, TitheRecordB } from '../types';
+import { MemberRecordA, TitheRecordB } from '../types.ts';
 
 interface AgeFilterSectionProps {
   ageRangeMin: string;

@@ -1,5 +1,3 @@
-
-
 export interface MemberRecordA {
   [key: string]: any; // Allows dynamic keys from Excel
   'No.'?: number | string;
@@ -163,4 +161,10 @@ export interface ReportData {
   soulsWon: number;
   titherCount: number;
   recordCount: number;
+}
+
+// New type for AI Outreach Assistant
+export interface OutreachMessage {
+  memberName: string;
+  message: string;
 }

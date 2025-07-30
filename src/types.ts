@@ -162,3 +162,9 @@ export interface ReportData {
   titherCount: number;
   recordCount: number;
 }
+
+// New type for AI Outreach Assistant
+export interface OutreachMessage {
+  memberName: string;
+  message: string;
+}

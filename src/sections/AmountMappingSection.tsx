@@ -1,7 +1,9 @@
+
+
 import React, { useMemo } from 'react';
 import { WalletCards } from 'lucide-react';
 import InfoTooltip from '../components/InfoTooltip';
-import { MemberRecordA } from '../types';
+import { MemberRecordA } from '../types.ts';
 
 interface AmountMappingSectionProps {
   originalData: MemberRecordA[];

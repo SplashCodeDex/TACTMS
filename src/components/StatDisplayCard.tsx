@@ -7,10 +7,9 @@ interface StatDisplayCardProps {
   value: React.ReactNode;
   subValue?: string;
   valueClassName?: string;
-  theme: 'dark' | 'light';
 }
 
-const StatDisplayCard: React.FC<StatDisplayCardProps> = ({ icon, label, value, subValue, valueClassName, theme }) => {
+const StatDisplayCard: React.FC<StatDisplayCardProps> = ({ icon, label, value, subValue, valueClassName }) => {
   return (
     <div className="flex items-center p-4 rounded-xl shadow-lg transition-all duration-300 ease-in-out bg-[var(--bg-card-subtle-accent)] border border-[var(--border-color)] card-glow-on-hover">
       <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white shadow-md mr-4`}>
