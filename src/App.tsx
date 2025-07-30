@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry, GoogleUserProfile } from './types.ts';

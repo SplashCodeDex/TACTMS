@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
@@ -27,7 +29,7 @@ const ReconciliationList: React.FC<ReconciliationListProps> = ({ title, icon, me
                 <p className="font-medium text-[var(--text-primary)] truncate" title={name}>{name}</p>
                 <p className="text-xs text-[var(--text-muted)]">ID: {membershipId}</p>
               </li>
-            );
+            )
         })}
       </ul>
     ) : (

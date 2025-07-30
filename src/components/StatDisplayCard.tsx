@@ -1,5 +1,4 @@
 import React from 'react';
-import AnimatedNumber from './AnimatedNumber';
 
 interface StatDisplayCardProps {
   icon: React.ReactElement<{ size?: string | number }>;
