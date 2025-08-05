@@ -6,7 +6,7 @@
   "homepage": "https://USERNAME.github.io/REPONAME",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node_modules\\.bin\\tsc && vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
