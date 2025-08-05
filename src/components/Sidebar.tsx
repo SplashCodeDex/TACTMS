@@ -204,8 +204,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     accentColor, setAccentColor, openCommandPalette
 }) => {
     const logoSrc = isCollapsed
-        ? (theme === 'dark' ? '/img/TAC-Dexify-for-dark-bg-only-logo-01.svg' : '/img/TAC-Dexify-for-light-bg-only-logo.svg')
-        : (theme === 'dark' ? '/img/TAC-Dexify-only-logo-darkmode-01.svg' : '/img/TAC-Dexify-only-logo-lightmode-01.svg');
+        ? (theme === 'dark' ? `${import.meta.env.BASE_URL}img/DarkLogoCollapsed.svg` : `${import.meta.env.BASE_URL}img/LightLogoCollapsed.svg`)
+        : (theme === 'dark' ? `${import.meta.env.BASE_URL}img/DarkLogoExpanded.svg` : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`);
 
   const handleNavClick = (view: ViewType) => {
     setActiveView(view);

@@ -2,14 +2,13 @@ import React from 'react';
 import { LayoutDashboard } from 'lucide-react';
 import Button from './Button';
 import { ViewType } from '../types';
-
 interface EmptyStateProps {
   theme: 'dark' | 'light';
   setActiveView: (view: ViewType) => void;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ setActiveView, theme }) => {
-    const logoSrc = theme === 'dark' ? '/img/TAC-Dexify-for-dark-bg-only-logo-01.svg' : '/img/TAC-Dexify-for-light-bg-only-logo.svg';
+    const logoSrc = theme === 'dark' ? `${import.meta.env.BASE_URL}img/DarkLogoExpanded.svg` : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`;
 
     return (
         <div className="text-center p-10 content-card animate-fadeIn flex flex-col items-center justify-center min-h-[60vh]">
