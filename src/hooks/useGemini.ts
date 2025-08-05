@@ -1,12 +1,10 @@
-
-
 import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI, Chat, Part } from '@google/genai';
-import { TitheRecordB } from '../types.ts';
-import { formatDateDDMMMYYYY } from '../services/excelProcessor.ts';
-import { ChartData } from '../components/BarChart.tsx';
+import { TitheRecordB } from '../types';
+import { formatDateDDMMMYYYY } from '../services/excelProcessor';
+import { ChartData } from '../components/BarChart';
 
-const API_KEY = (window as any).process?.env?.API_KEY;
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 export interface ChatMessage {
     role: 'user' | 'model';
@@ -16,7 +14,6 @@ export interface ChatMessage {
 }
 
 export const useGeminiChat = () => {
-  const [chat, setChat] = useState<Chat | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -69,7 +66,6 @@ export const useGeminiChat = () => {
           - For all subsequent messages, respond conversationally as a helpful assistant without using the JSON format. Start your first conversational response with 'Hello! I've analyzed the data...'.`,
         },
       });
-      setChat(newChat);
       chatRef.current = newChat;
 
       const totalRecords = data.length;
@@ -106,7 +102,7 @@ export const useGeminiChat = () => {
       
       let initialSummary = "I'm having trouble providing an initial analysis. Please try again.";
       try {
-        let jsonStr = responseText.trim();
+        let jsonStr = (responseText ?? '').trim();
         const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
         const match = jsonStr.match(fenceRegex);
         if (match && match[2]) {
@@ -126,7 +122,7 @@ export const useGeminiChat = () => {
       } catch (e) {
           console.error("Failed to parse initial JSON response:", e);
           setError("AI response was not in the expected format. Displaying raw response.");
-          setChatHistory([{ role: 'model', parts: [{ text: responseText }] }]);
+          setChatHistory([{ role: 'model', parts: [{ text: responseText ?? '' }] }]);
       }
       
     } catch (e) {

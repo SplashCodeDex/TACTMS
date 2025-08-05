@@ -8,7 +8,7 @@ import AgeFilterSection from './AgeFilterSection';
 import ConcatenationConfigSection from './ConcatenationConfigSection';
 import TitheDetailsSection from './TitheDetailsSection';
 import AmountMappingSection from './AmountMappingSection';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig } from '../types.ts';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig } from '../types';
 import ValidationReportSection from './ValidationReportSection';
 
 interface ConfigurationSectionProps {

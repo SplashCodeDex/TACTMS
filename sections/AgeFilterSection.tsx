@@ -55,12 +55,11 @@ const AgeFilterSection: React.FC<AgeFilterSectionProps> = React.memo(({
                 value={ageRangeMin}
                 onChange={(e) => { setAgeRangeMin(e.target.value); setHasUnsavedChanges(true); }}
                 placeholder="e.g., 18"
-                className={`form-input-light ${inputErrors.ageMin ? 'input-error' : ''}`}
+                className={`form-input-light ${inputErrors.age ? 'input-error' : ''}`}
                 disabled={disableInputs}
-                aria-invalid={!!inputErrors.ageMin}
-                aria-describedby={inputErrors.ageMin ? "ageMinError" : undefined}
+                aria-invalid={!!inputErrors.age}
+                aria-describedby={inputErrors.age ? "ageError" : undefined}
               />
-              {inputErrors.ageMin && <p id="ageMinError" className="form-error-text">{inputErrors.ageMin}</p>}
             </div>
             <div>
               <label htmlFor="ageMax" className="form-label">Max Age (Years)</label>
@@ -70,13 +69,13 @@ const AgeFilterSection: React.FC<AgeFilterSectionProps> = React.memo(({
                 value={ageRangeMax}
                 onChange={(e) => { setAgeRangeMax(e.target.value); setHasUnsavedChanges(true); }}
                 placeholder="e.g., 65"
-                className={`form-input-light ${inputErrors.ageMax ? 'input-error' : ''}`}
+                className={`form-input-light ${inputErrors.age ? 'input-error' : ''}`}
                 disabled={disableInputs}
-                aria-invalid={!!inputErrors.ageMax}
-                aria-describedby={inputErrors.ageMax ? "ageMaxError" : undefined}
+                aria-invalid={!!inputErrors.age}
+                aria-describedby={inputErrors.age ? "ageError" : undefined}
               />
-              {inputErrors.ageMax && <p id="ageMaxError" className="form-error-text">{inputErrors.ageMax}</p>}
             </div>
+            {inputErrors.age && <p id="ageError" className="form-error-text col-span-2">{inputErrors.age}</p>}
           </div>
           {disableInputs && <p className="text-xs text-[var(--text-muted)] mt-2">Age filter requires original member data. Re-upload Excel or load a favorite with member data to enable.</p>}
            {isAgeFilterActive && processedDataA.length > 0 && (

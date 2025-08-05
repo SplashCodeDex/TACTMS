@@ -1,24 +1,18 @@
-
-
 import React, { useState, useMemo } from 'react';
-import { FileSpreadsheet, ListPlus, UploadCloud, Building2 } from 'lucide-react';
+import { ListPlus, UploadCloud, Building2 } from 'lucide-react';
 import FileUploader from '../components/FileUploader';
-import { FavoriteConfig } from '../types.ts';
+import { FavoriteConfig } from '../types';
 import Button from '../components/Button';
-import { ASSEMBLIES } from '../constants.ts';
+import { ASSEMBLIES } from '../constants';
 
 interface FileUploadSectionProps {
   onFileAccepted: (file: File | null, isMasterList: boolean) => void;
-  uploadedFile: File | null;
-  currentAssembly: string | null;
   onStartNewWeek: (assemblyName: string) => void;
   favorites: FavoriteConfig[];
 }
 
 const FileUploadSection: React.FC<FileUploadSectionProps> = React.memo(({
   onFileAccepted,
-  uploadedFile,
-  currentAssembly,
   onStartNewWeek,
   favorites
 }) => {

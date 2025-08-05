@@ -1,12 +1,12 @@
 
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FavoriteConfig, GoogleUserProfile, TransactionLogEntry } from '../types.ts';
-import { ToastMessage } from '../components/Toast.tsx';
+import { FavoriteConfig, GoogleUserProfile, TransactionLogEntry } from '../types';
+import { ToastMessage } from '../components/Toast';
 import { 
     FAVORITES_STORAGE_KEY, GOOGLE_API_KEY, GOOGLE_CLIENT_ID, DRIVE_SCOPES, 
     FAVORITES_DRIVE_FILENAME, TRANSACTION_LOG_STORAGE_KEY, TRANSACTION_LOG_DRIVE_FILENAME 
-} from '../constants.ts';
+} from '../constants';
 
 declare global {
   interface Window {

@@ -1,12 +1,10 @@
-
-
 import React, { useMemo, forwardRef } from 'react';
 import {
   Activity, FileSpreadsheet, Users, DollarSign, Download, Save, ListChecks, TrendingUp, AlertTriangle, Keyboard, TrendingDown, History, CalendarCheck, UserPlus, Eraser
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '../components/Button';
-import { TitheRecordB, TransactionLogEntry } from '../types.ts';
+import { TitheRecordB, TransactionLogEntry } from '../types';
 import AnimatedNumber from '../components/AnimatedNumber';
 import DonutChart from '../components/DonutChart';
 import InfoTooltip from '../components/InfoTooltip';
@@ -20,9 +18,7 @@ interface ListOverviewActionsSectionProps {
   titheListData: TitheRecordB[];
   tithersCount: number;
   nonTithersCount: number;
-  totalEntriesInList: number;
   tithersPercentage: number;
-  nonTithersPercentage: number;
   setIsFullPreviewModalOpen: (isOpen: boolean) => void;
   setIsDataEntryModalOpen: (isOpen: boolean) => void;
   fileNameToSave: string;
@@ -89,7 +85,7 @@ const ComparisonStatCard: React.FC<{
 const ListOverviewActionsSection = React.memo(forwardRef<HTMLElement, ListOverviewActionsSectionProps>(({
   currentAssembly, selectedDate, currentTotalTithe,
   hasUnsavedChanges, titheListData, tithersCount, nonTithersCount,
-  totalEntriesInList, tithersPercentage, nonTithersPercentage,
+  tithersPercentage,
   setIsFullPreviewModalOpen, setIsDataEntryModalOpen,
   fileNameToSave, setFileNameToSave, inputErrors, setInputErrors, handleDownloadExcel,
   openSaveFavoriteModal, onClearWorkspace, transactionLog, soulsWonCount

@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
@@ -48,7 +46,7 @@ interface MembershipReconciliationModalProps {
   onKeepMembers: (members: MemberRecordA[]) => void;
 }
 
-export const MembershipReconciliationModal: React.FC<MembershipReconciliationModalProps> = ({ isOpen, onClose, report, onKeepMembers }) => {
+const MembershipReconciliationModal: React.FC<MembershipReconciliationModalProps> = ({ isOpen, onClose, report, onKeepMembers }) => {
   const [selectedMissingIds, setSelectedMissingIds] = useState<Set<string | number>>(new Set());
   
   const handleToggleSelection = (id: string | number) => {
@@ -154,3 +152,5 @@ export const MembershipReconciliationModal: React.FC<MembershipReconciliationMod
     </Modal>
   );
 };
+
+export default MembershipReconciliationModal;

@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { BotMessageSquare, AlertTriangle, Lightbulb, MessageSquareQuote, Copy, Users } from 'lucide-react';
-import { TitheRecordB, MembershipReconciliationReport, OutreachMessage } from '../types.ts';
+import { TitheRecordB, MembershipReconciliationReport, OutreachMessage } from '../types';
 import Button from '../components/Button';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { useGeminiChat } from '../hooks/useGemini.ts';
+import { useGeminiChat } from '../hooks/useGemini';
 import BarChart from '../components/BarChart';
 import ChatInterface from '../components/ChatInterface';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -64,7 +63,7 @@ const AIOutreachAssistant: React.FC<{
             addToast("No new members found in the current data to generate messages for.", "warning");
             return;
         }
-        if (!process.env.API_KEY) {
+        if (!import.meta.env.VITE_API_KEY) {
             addToast("AI features are not configured. Please contact support.", "error");
             return;
         }
@@ -74,7 +73,7 @@ const AIOutreachAssistant: React.FC<{
         setMessages([]);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
             const memberNames = newMembers.map(m => `${m['First Name'] || ''} ${m.Surname || ''}`.trim()).filter(Boolean);
 
             const prompt = `You are a friendly and welcoming church administrator for The Apostolic Church. Your task is to generate a short, personalized, and encouraging SMS message for each of the following new church members.
@@ -114,13 +113,18 @@ Here are the new members to welcome: ${memberNames.join(', ')}
                     }
                 }
             });
-
-            const jsonResponse = JSON.parse(response.text);
-            if (Array.isArray(jsonResponse)) {
-                setMessages(jsonResponse);
+            
+            if (response.text) {
+                const jsonResponse = JSON.parse(response.text);
+                if (Array.isArray(jsonResponse)) {
+                    setMessages(jsonResponse);
+                } else {
+                    throw new Error("AI response was not a JSON array.");
+                }
             } else {
-                throw new Error("AI response was not a JSON array.");
+                throw new Error("AI response was empty.");
             }
+
 
         } catch (err) {
             console.error("Error generating outreach messages:", err);
@@ -134,7 +138,7 @@ Here are the new members to welcome: ${memberNames.join(', ')}
     const handleCopy = (text: string) => {
         navigator.clipboard.writeText(text).then(() => {
             addToast("Message copied to clipboard!", "success");
-        }).catch(err => {
+        }).catch(() => {
             addToast("Failed to copy message.", "error");
         });
     };
@@ -212,7 +216,7 @@ const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
   const { chatHistory, chartData, isLoading, error, startChat, sendMessage } = useGeminiChat();
 
   const handleAnalyzeClick = () => {
-    if (!process.env.API_KEY) {
+    if (!import.meta.env.VITE_API_KEY) {
       addToast("AI feature is not configured.", 'error');
       return;
     }

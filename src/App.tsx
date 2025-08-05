@@ -1,7 +1,6 @@
-
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry, GoogleUserProfile } from './types.ts';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry } from './types';
 import Button from './components/Button';
 import { ToastContainer, ToastMessage, ToastAction } from './components/Toast';
 import Modal from './components/Modal';
@@ -12,7 +11,7 @@ import {
   formatDateDDMMMYYYY,
   reconcileMembers,
   parseExcelFile
-} from './services/excelProcessor.ts';
+} from './services/excelProcessor';
 import FullTithePreviewModal from './components/FullTithePreviewModal';
 import AddNewMemberModal from './components/AddNewMemberModal';
 import CreateTitheListModal from './components/CreateTitheListModal';
@@ -25,16 +24,16 @@ import FavoritesView from './sections/FavoritesView';
 import AnalyticsSection from './sections/AnalyticsSection';
 import ReportsSection from './sections/ReportsSection';
 import MemberDatabaseSection from './components/MemberDatabaseSection';
-import { useGoogleDriveSync } from './hooks/useGoogleDriveSync.ts';
+import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 
 import { 
   DEFAULT_CONCAT_CONFIG, AUTO_SAVE_KEY, AUTO_SAVE_DEBOUNCE_TIME, ITEMS_PER_FULL_PREVIEW_PAGE,
   APP_THEME_STORAGE_KEY, DEFAULT_CONCAT_CONFIG_STORAGE_KEY, ASSEMBLIES, THEME_OPTIONS, APP_ACCENT_COLOR_KEY,
   MEMBER_DATABASE_STORAGE_KEY
-} from './constants.ts';
+} from './constants';
 import DataEntryModal from './components/DataEntryModal';
 import AssemblySelectionModal from './components/AssemblySelectionModal';
-import { MembershipReconciliationModal } from './components/MembershipReconciliationModal';
+import MembershipReconciliationModal from './components/MembershipReconciliationModal';
 import EmptyState from './components/EmptyState';
 import ClearWorkspaceModal from './components/ClearWorkspaceModal';
 import UpdateMasterListConfirmModal from './components/UpdateMasterListConfirmModal';
@@ -69,7 +68,6 @@ const App: React.FC = () => {
   const [processedDataA, setProcessedDataA] = useState<MemberRecordA[]>([]);
   const [titheListData, setTitheListData] = useState<TitheRecordB[]>([]);
   
-  const [appError, setAppError] = useState<string | null>(null);
   const [inputErrors, setInputErrors] = useState<{ [key: string]: string }>({});
 
   const [reconciliationReport, setReconciliationReport] = useState<MembershipReconciliationReport | null>(null);
@@ -238,7 +236,6 @@ const App: React.FC = () => {
     setOriginalData([]);
     setProcessedDataA([]);
     setTitheListData([]);
-    setAppError(null);
     setInputErrors({});
     setAgeRangeMin(''); setAgeRangeMax(''); setIsAgeFilterActive(false);
     setSelectedDate(new Date()); setDescriptionText('Tithe');
@@ -342,25 +339,6 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  const restoreDraft = useCallback((draft: AutoSaveDraft) => {
-    setTitheListData(draft.titheListData || []);
-    setSelectedDate(new Date(draft.selectedDate));
-    setDescriptionText(draft.descriptionText);
-    setConcatenationConfig(draft.concatenationConfig);
-    setAgeRangeMin(draft.ageRangeMin);
-    setAgeRangeMax(draft.ageRangeMax);
-    setFileNameToSave(draft.fileNameToSave);
-    setAmountMappingColumn(draft.amountMappingColumn);
-    setCurrentAssembly(draft.assemblyName);
-    setSoulsWonCount(draft.soulsWonCount);
-    addToast("Restored your auto-saved draft.", "info");
-    
-    // Attempt to find original file name from a favorite if draft doesn't have it
-    const matchingFavorite = favorites.find(f => f.assemblyName === draft.assemblyName);
-    const fileName = draft.uploadedFileName || matchingFavorite?.originalFileName || "Previously Uploaded File";
-    setUploadedFile(new File([], fileName));
-  }, [addToast, favorites]);
-
   const saveDraft = useCallback(() => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = window.setTimeout(() => {
@@ -398,32 +376,26 @@ const App: React.FC = () => {
     };
   }, [hasUnsavedChanges, titheListData, saveDraft]);
 
-  const handleFileAccepted = useCallback(async (file: File | null, isMasterList: boolean, assemblyName?: string) => {
+    const handleFileAccepted = useCallback(async (file: File | null, isMasterList: boolean, assemblyName?: string) => {
     if (!file) {
       if (isMasterList) return;
-      setUploadedFile(null);
-      setOriginalData([]); 
-      setProcessedDataA([]);
       clearWorkspace();
       return;
     }
     setUploadedFile(file);
     
     setIsParsing(true);
-    setAppError(null);
 
     try {
         const parsedData = await parseExcelFile(file);
         
-        if (isMasterList) {
-           if(assemblyName){
-              const existingData = memberDatabase[assemblyName];
-              if (existingData && existingData.data.length > 0) {
-                  setPendingUpdate({ assemblyName, newData: parsedData, newFileName: file.name });
-                  setIsUpdateConfirmModalOpen(true);
-              } else {
-                  handleMasterListUpdate(assemblyName, parsedData, file.name);
-              }
+        if (isMasterList && assemblyName) {
+           const existingData = memberDatabase[assemblyName];
+           if (existingData && existingData.data.length > 0) {
+               setPendingUpdate({ assemblyName, newData: parsedData, newFileName: file.name });
+               setIsUpdateConfirmModalOpen(true);
+           } else {
+               handleMasterListUpdate(assemblyName, parsedData, file.name);
            }
         } else {
           if (hasUnsavedChanges) {
@@ -440,7 +412,6 @@ const App: React.FC = () => {
 
     } catch (e: any) {
       const errorMessage = e.message || 'An unknown error occurred during parsing.';
-      setAppError(`Error parsing file: ${errorMessage}`);
       addToast(`Error parsing file: ${errorMessage}`, 'error', 5000);
     } finally {
         setIsParsing(false);
@@ -464,7 +435,6 @@ const App: React.FC = () => {
     
     clearWorkspace();
     setUploadedFile(pendingData.file);
-    setAppError(null);
     setCurrentAssembly(assembly);
     
     processData(pendingData.data, assembly, pendingData.file.name);
@@ -621,8 +591,7 @@ const App: React.FC = () => {
     setIsFullPreviewModalOpen(false);
   };
   
-  const { tithersCount, totalTitheAmount, totalEntriesInList, nonTithersCount, tithersPercentage, nonTithersPercentage } = useMemo(() => {
-    const totalEntries = titheListData.length;
+  const { tithersCount, totalTitheAmount } = useMemo(() => {
     let tithers = 0;
     const totalAmount = titheListData.reduce((sum, record) => {
         const amount = Number(record['Transaction Amount']);
@@ -632,17 +601,10 @@ const App: React.FC = () => {
         }
         return sum;
     }, 0);
-    const nonTithers = totalEntries - tithers;
-    const tithersPercent = totalEntries > 0 ? (tithers / totalEntries) * 100 : 0;
-    const nonTithersPercent = totalEntries > 0 ? (nonTithers / totalEntries) * 100 : 0;
 
     return {
       tithersCount: tithers, 
       totalTitheAmount: totalAmount,
-      totalEntriesInList: totalEntries,
-      nonTithersCount: nonTithers,
-      tithersPercentage: tithersPercent,
-      nonTithersPercentage: nonTithersPercent
     };
   }, [titheListData]);
 
@@ -670,7 +632,7 @@ const App: React.FC = () => {
             totalTitheAmount: totalTitheAmount,
             soulsWonCount: soulsWonCount ?? 0,
             titherCount: tithersCount,
-            recordCount: totalEntriesInList,
+            recordCount: titheListData.length,
             // Snapshot data
             titheListData: titheListData,
             concatenationConfig: concatenationConfig,
@@ -689,7 +651,7 @@ const App: React.FC = () => {
         addToast("Transaction has been logged for reporting.", "info");
     }
 
-  }, [fileNameToSave, titheListData, currentAssembly, selectedDate, totalTitheAmount, soulsWonCount, tithersCount, totalEntriesInList, setTransactionLog, addToast, concatenationConfig, descriptionText, amountMappingColumn]);
+  }, [fileNameToSave, titheListData, currentAssembly, selectedDate, totalTitheAmount, soulsWonCount, tithersCount, setTransactionLog, addToast, concatenationConfig, descriptionText, amountMappingColumn]);
   
   const openSaveFavoriteModal = () => {
     const name = `${currentAssembly} - ${formatDateDDMMMYYYY(selectedDate)}`;
@@ -949,7 +911,7 @@ const App: React.FC = () => {
         addToast("No data to analyze. Please upload a file first.", "warning");
         return;
     }
-    if (!process.env.API_KEY) {
+    if (!import.meta.env.VITE_API_KEY) {
         addToast("AI features are not configured. Please contact support.", "error");
         return;
     }
@@ -959,7 +921,7 @@ const App: React.FC = () => {
     setValidationReportContent(''); // Clear previous report
 
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
         const sampleData = originalData.slice(0, 50); // Use a sample
         const prompt = `
 You are a data quality analyst reviewing a church membership list. Analyze the following JSON data sample for quality issues. Provide a concise summary in markdown format. Focus on:
@@ -976,7 +938,7 @@ ${JSON.stringify(sampleData, null, 2)}
 \`\`\`
 `;
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        setValidationReportContent(response.text);
+        setValidationReportContent(response.text ?? '');
 
     } catch (error) {
         console.error("Error generating validation report:", error);
@@ -1008,7 +970,6 @@ ${JSON.stringify(sampleData, null, 2)}
                     favorites={favorites}
                     onStartNewWeek={startNewWeek}
                     userProfile={driveUserProfile}
-                    theme={theme}
                     onUploadFile={(file) => handleFileAccepted(file, false)}
                 />;
       case 'processor':
@@ -1046,10 +1007,8 @@ ${JSON.stringify(sampleData, null, 2)}
                   currentAssembly={currentAssembly} selectedDate={selectedDate}
                   currentTotalTithe={totalTitheAmount} hasUnsavedChanges={hasUnsavedChanges}
                   titheListData={titheListData} tithersCount={tithersCount} 
-                  nonTithersCount={nonTithersCount}
-                  tithersPercentage={tithersPercentage}
-                  nonTithersPercentage={nonTithersPercentage}
-                  totalEntriesInList={totalEntriesInList} 
+                  nonTithersCount={titheListData.length - tithersCount}
+                  tithersPercentage={(titheListData.length > 0 ? (tithersCount / titheListData.length) * 100 : 0)}
                   setIsFullPreviewModalOpen={setIsFullPreviewModalOpen} setIsDataEntryModalOpen={setIsDataEntryModalOpen}
                   fileNameToSave={fileNameToSave} setFileNameToSave={setFileNameToSave}
                   inputErrors={inputErrors} setInputErrors={setInputErrors}
@@ -1086,7 +1045,7 @@ ${JSON.stringify(sampleData, null, 2)}
       case 'analytics':
         return <AnalyticsSection
                   titheListData={titheListData} currentAssembly={currentAssembly} selectedDate={selectedDate}
-                  addToast={addToast} tithersCount={tithersCount} nonTithersCount={totalEntriesInList - tithersCount} totalAmount={totalTitheAmount}
+                  addToast={addToast} tithersCount={tithersCount} nonTithersCount={titheListData.length - tithersCount} totalAmount={totalTitheAmount}
                   reconciliationReport={reconciliationReport}
                />;
       case 'reports':
@@ -1094,13 +1053,13 @@ ${JSON.stringify(sampleData, null, 2)}
       case 'database':
         return <MemberDatabaseSection 
                  memberDatabase={memberDatabase} 
-                 onUploadMasterList={(file, isMasterList, assemblyName) => handleFileAccepted(file, isMasterList, assemblyName)}
-                 onCreateTitheList={(selectedMembers, assemblyName) => {
+                 onUploadMasterList={(file: File | null, isMasterList: boolean, assemblyName?: string) => handleFileAccepted(file, isMasterList, assemblyName)}
+                 onCreateTitheList={(selectedMembers: MemberRecordA[], assemblyName: string) => {
                      setPendingTitheListMembers(selectedMembers);
                      setPendingTitheListAssembly(assemblyName);
                      setIsCreateTitheListModalOpen(true);
                  }}
-                 onEditMember={(member, assemblyName) => {
+                 onEditMember={(member: MemberRecordA, assemblyName: string) => {
                     setMemberToEdit({ member, assemblyName });
                     setIsEditMemberModalOpen(true);
                  }}

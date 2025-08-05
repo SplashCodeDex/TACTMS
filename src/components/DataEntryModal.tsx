@@ -1,10 +1,8 @@
-
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { TitheRecordB } from '../types.ts';
+import { TitheRecordB } from '../types';
 import Modal from './Modal';
 import Button from './Button';
-import { SortAsc, SortDesc, Filter, Search, Check, Coins } from 'lucide-react';
+import { SortAsc, SortDesc, Filter, Search, Check } from 'lucide-react';
 
 interface DataEntryRowProps {
   record: TitheRecordB;
@@ -104,7 +102,6 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ isOpen, onClose, onSave
   const [showOnlyEmpty, setShowOnlyEmpty] = useState(false);
   
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
-  const activeRowRef = useRef<HTMLTableRowElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -268,7 +265,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({ isOpen, onClose, onSave
                         </tr>
                     </thead>
                     <tbody ref={tableBodyRef}>
-                        {filteredAndSortedData.map((record, index) => (
+                        {filteredAndSortedData.map((record) => (
                             <DataEntryRow
                                 key={record['No.']}
                                 record={record}

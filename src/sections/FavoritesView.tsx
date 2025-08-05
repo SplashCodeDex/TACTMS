@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Star, RotateCcw, Info as InfoIconLucide, Trash2, Pencil, Check, X, Search } from 'lucide-react';
 import Button from '../components/Button';
-import { FavoriteConfig } from '../types.ts';
-import { ToastMessage } from '../components/Toast.tsx';
-import { ASSEMBLIES } from '../constants.ts';
+import { FavoriteConfig } from '../types';
+import { ToastMessage } from '../components/Toast';
+import { ASSEMBLIES } from '../constants';
 
 interface FavoritesViewProps {
   favorites: FavoriteConfig[];

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, TrendingUp, Users, DollarSign, Activity, ListPlus, UploadCloud, Building2, User } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Activity, ListPlus, UploadCloud, Building2, User } from 'lucide-react';
 import { TransactionLogEntry, MemberDatabase, FavoriteConfig, ViewType, GoogleUserProfile } from '../types';
 import StatDisplayCard from '../components/StatDisplayCard';
 import AnimatedNumber from '../components/AnimatedNumber';
@@ -8,25 +8,22 @@ import Button from '../components/Button';
 import { ASSEMBLIES } from '../constants';
 import { formatDateDDMMMYYYY } from '../services/excelProcessor';
 
-interface DashboardProps {
+interface DashboardSectionProps {
     setActiveView: (view: ViewType) => void;
     transactionLog: TransactionLogEntry[];
     memberDatabase: MemberDatabase;
     favorites: FavoriteConfig[];
     onStartNewWeek: (assemblyName: string) => void;
     userProfile: GoogleUserProfile | null;
-    theme: 'dark' | 'light';
     onUploadFile: (file: File | null) => void;
 }
 
-const DashboardSection: React.FC<DashboardProps> = ({
-    setActiveView,
+const DashboardSection: React.FC<DashboardSectionProps> = ({ 
     transactionLog,
     memberDatabase,
     favorites,
     onStartNewWeek,
     userProfile,
-    theme,
     onUploadFile
 }) => {
     const [selectedAssembly, setSelectedAssembly] = useState('');
@@ -36,13 +33,13 @@ const DashboardSection: React.FC<DashboardProps> = ({
         const currentYear = new Date().getFullYear();
         
         const ytdTithe = transactionLog
-            .filter(log => new Date(log.selectedDate).getFullYear() === currentYear)
-            .reduce((sum, log) => sum + log.totalTitheAmount, 0);
+            .filter((log: TransactionLogEntry) => new Date(log.selectedDate).getFullYear() === currentYear)
+            .reduce((sum: number, log: TransactionLogEntry) => sum + log.totalTitheAmount, 0);
 
         let ytdSouls = 0;
-        Object.values(memberDatabase).forEach(listData => {
+        Object.values(memberDatabase).forEach((listData: any) => {
             if (listData && Array.isArray(listData.data)) {
-                listData.data.forEach(member => {
+                listData.data.forEach((member: any) => {
                     if (member.firstSeenDate) {
                         try {
                             if (new Date(member.firstSeenDate).getFullYear() === currentYear) {
@@ -55,17 +52,17 @@ const DashboardSection: React.FC<DashboardProps> = ({
         });
 
         const totalMembers = Object.values(memberDatabase)
-            .reduce((sum, listData) => sum + (listData?.data?.length || 0), 0);
+            .reduce((sum: number, listData: any) => sum + (listData?.data?.length || 0), 0);
 
         const recentActivities = [...transactionLog]
-            .sort((a, b) => b.timestamp - a.timestamp)
+            .sort((a: TransactionLogEntry, b: TransactionLogEntry) => b.timestamp - a.timestamp)
             .slice(0, 5);
             
         return { ytdTithe, ytdSouls, totalMembers, recentActivities };
     }, [transactionLog, memberDatabase]);
 
     const assembliesWithFavorites = useMemo(() => {
-        return new Set(favorites.map(f => f.assemblyName));
+        return new Set(favorites.map((f: FavoriteConfig) => f.assemblyName));
     }, [favorites]);
 
     const handleStartWeek = () => {

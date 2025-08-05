@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { WalletCards } from 'lucide-react';
 import InfoTooltip from '../components/InfoTooltip';
-import { MemberRecordA } from '../types.ts';
+import { MemberRecordA } from '../types';
 
 interface AmountMappingSectionProps {
   originalData: MemberRecordA[];

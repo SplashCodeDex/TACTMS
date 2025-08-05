@@ -1,7 +1,7 @@
 
 
 import * as XLSX from 'xlsx';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig, MembershipReconciliationReport } from '../types.ts';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig, MembershipReconciliationReport } from '../types';
 
 export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
   return new Promise((resolve, reject) => {
@@ -98,7 +98,7 @@ export const createTitheList = (
         if (mainMemberNum && oldMemberNum) {
             numberPart = `(${mainMemberNum}|${oldMemberNum})`;
         } else if (mainMemberNum) {
-            // Only wrap with parentheses if we're processing raw data.
+            // Only wrap with parentheses if we're processing a raw data.
             // If it's a re-upload, mainMemberNum is likely the full name and number,
             // so we shouldn't add extra parens. In that case, `namePart` is empty.
             numberPart = isProcessingRawData ? `(${mainMemberNum})` : mainMemberNum;

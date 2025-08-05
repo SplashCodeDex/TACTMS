@@ -1,19 +1,17 @@
-
-
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { TitheRecordB } from '../types.ts';
+import { TitheRecordB } from '../types';
 import Button from './Button';
 import Modal from './Modal';
-import { formatDateDDMMMYYYY } from '../services/excelProcessor.ts';
+import { formatDateDDMMMYYYY } from '../services/excelProcessor';
 import { 
-  Save, Trash2, Move, ListFilter, Coins, Calendar, Settings2, Columns3, UserPlus, Star, Search, GripVertical, Check, X as XIcon
+  Save, Trash2, Columns3, UserPlus, Search, GripVertical
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ToastMessage, ToastAction } from './Toast.tsx'; // Only for type
-import { COLUMN_VISIBILITY_STORAGE_KEY } from '../constants.ts';
+import { ToastMessage, ToastAction } from './Toast'; // Only for type
+import { COLUMN_VISIBILITY_STORAGE_KEY } from '../constants';
 
 const HighlightMatches = React.memo(({ text, highlight }: { text: string; highlight: string }) => {
     if (!highlight || !text) {
@@ -47,9 +45,7 @@ HighlightMatches.displayName = 'HighlightMatches';
 interface TitheRecordRowProps {
     record: TitheRecordB;
     visualIndex: number;
-    handleTitheValueChange: (recordNo: number | string, field: keyof TitheRecordB, value: any) => void;
     handleDeleteTitheRecord: (recordNo: number | string) => void;
-    handleMoveRecord: (recordNo: number | string) => void;
     startEditing: (recordNo: number | string, field: keyof TitheRecordB) => void;
     editingCell: { recordId: number | string; field: keyof TitheRecordB } | null;
     editedValue: string;
@@ -65,7 +61,7 @@ interface TitheRecordRowProps {
 
 // Row component with integrated DnD logic
 const TitheRecordRow: React.FC<TitheRecordRowProps> = ({ 
-    record, visualIndex, handleTitheValueChange, handleDeleteTitheRecord, handleMoveRecord, startEditing, 
+    record, visualIndex, handleDeleteTitheRecord, startEditing, 
     editingCell, editedValue, setEditedValue, saveEdit, cancelEdit,
     toggleRowSelection, isSelected, navigateToNextAmountCellForEditing, visibleTableHeaders, searchTerm
   }) => {
@@ -136,15 +132,12 @@ const TitheRecordRow: React.FC<TitheRecordRowProps> = ({
       </td>
       <td className="p-2 align-middle text-xs text-center">{visualIndex}</td> 
       {visibleTableHeaders.map((key) => (
-        <td key={key} className="p-2 align-middle text-xs" onClick={() => editableFields.includes(key) && startEditing(record['No.'], key)}>
+        <td key={key} className="p-2 align-middle text-xs" onDoubleClick={() => editableFields.includes(key) && startEditing(record['No.'], key)}>
           {renderCellContent(key, record[key])}
         </td>
       ))}
       <td className="p-2 align-middle text-xs">
         <div className="flex items-center justify-center gap-1">
-          <Button size="icon" variant="ghost" onClick={() => handleMoveRecord(record['No.'])} className="!p-1.5" title="Move to target position">
-            <Move size={16} className="text-[var(--primary-accent-start)]" />
-          </Button>
           <Button size="icon" variant="ghost" onClick={() => handleDeleteTitheRecord(record['No.'])} className="!p-1.5" title="Delete Record">
             <Trash2 size={16} className="text-[var(--danger-text)]" />
           </Button>
@@ -172,7 +165,7 @@ interface FullTithePreviewModalProps {
 const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   const {
     isOpen, onClose, titheListData, onSave,
-    itemsPerPage, addToast,
+    addToast,
     searchTerm, setSearchTerm, sortConfig, setSortConfig,
     openAddMemberToListModal
   } = props;
@@ -187,8 +180,6 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   const [targetPosition, setTargetPosition] = useState('1');
   const [pendingSmartMove, setPendingSmartMove] = useState<TitheRecordB | null>(null);
 
-  const [batchAmountInput, setBatchAmountInput] = useState<string>('');
-  const [batchDateInput, setBatchDateInput] = useState<string>('');
   const [lastDeleted, setLastDeleted] = useState<{ items: Array<{ record: TitheRecordB; index: number }> } | null>(null);
 
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
@@ -437,35 +428,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
 
   const cancelEditInternal = useCallback(() => setEditingCell(null), []);
   
-  const handleMoveRecord = useCallback((recordNo: string | number) => {
-    const targetPos = parseInt(targetPosition, 10);
-    if (isNaN(targetPos) || targetPos < 1 || targetPos > internalList.length) {
-        addToast(`Invalid target position. Enter a number between 1 and ${internalList.length}.`, "error");
-        return;
-    }
-
-    const oldIndex = internalList.findIndex(item => item['No.'] === recordNo);
-    if (oldIndex === -1) return;
-
-    const newIndex = targetPos - 1;
-    if (oldIndex === newIndex) {
-        addToast(`Member is already at position ${targetPos}.`, "info");
-        return;
-    }
-    
-    const movedMember = internalList[oldIndex];
-    setInternalList(list => arrayMove(list, oldIndex, newIndex));
-    setMadeChanges(true);
-    
-    if (sortConfig) {
-      setSortConfig(null);
-      addToast("Sorting has been cleared due to manual reordering.", "info", 4000);
-    }
-    
-    addToast(`Moved "${movedMember['Membership Number']}" to position ${targetPos}.`, "success");
-    
-    setTargetPosition(String(Math.min(targetPos + 1, internalList.length)));
-  }, [targetPosition, internalList, addToast, sortConfig, setSortConfig]);
+  
   
   const handleSmartMoveConfirm = useCallback(() => {
     if (!pendingSmartMove) return;
@@ -530,58 +493,6 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     setSelectedRowIds(new Set());
   }, [selectedRowIds, internalList, addToast, handleUndoDelete]);
   
-  const handleBatchUpdateAmountInternal = useCallback(() => {
-    if (selectedRowIds.size === 0) {
-        addToast("No rows selected to update amount.", "warning"); return;
-    }
-    const amountStr = batchAmountInput.trim();
-    if (amountStr === "") { // Allow setting to empty
-        setInternalList(list => list.map(record => 
-            selectedRowIds.has(record['No.']) ? { ...record, 'Transaction Amount': "" } : record
-        ));
-        setMadeChanges(true);
-        addToast(`Transaction amount cleared for ${selectedRowIds.size} selected record(s).`, "success");
-    } else {
-        const amount = parseFloat(amountStr);
-        if (isNaN(amount) || amount < 0) {
-            addToast("Invalid amount. Please enter a non-negative number or leave empty.", "error"); return;
-        }
-        setInternalList(list => list.map(record => 
-            selectedRowIds.has(record['No.']) ? { ...record, 'Transaction Amount': amount } : record
-        ));
-        setMadeChanges(true);
-        addToast(`Transaction amount set to ${amount.toFixed(2)} for ${selectedRowIds.size} selected record(s).`, "success");
-    }
-    setBatchAmountInput('');
-  }, [selectedRowIds, batchAmountInput, addToast]);
-  
-  const handleBatchUpdateDateInternal = useCallback(() => {
-    if (selectedRowIds.size === 0) {
-        addToast("No rows selected to update date.", "warning"); return;
-    }
-    if (!batchDateInput) {
-        addToast("Please select a date to apply.", "warning"); return;
-    }
-
-    try {
-        const newDate = new Date(batchDateInput);
-        const correctedDate = new Date(newDate.getTime() + newDate.getTimezoneOffset() * 60000);
-        if (isNaN(correctedDate.getTime())) throw new Error("Invalid date");
-        
-        const formattedDate = formatDateDDMMMYYYY(correctedDate);
-        
-        setInternalList(list => list.map(record =>
-            selectedRowIds.has(record['No.']) ? { ...record, 'Transaction Date (\'DD-MMM-YYYY\')': formattedDate } : record
-        ));
-        setMadeChanges(true);
-        addToast(`Transaction date set to ${formattedDate} for ${selectedRowIds.size} record(s).`, "success");
-        setBatchDateInput('');
-
-    } catch (e) {
-        addToast("Invalid date selected. Please try again.", "error");
-    }
-  }, [selectedRowIds, batchDateInput, addToast]);
-
   const navigateToNextAmountCellForEditing = useCallback((currentRecordId: number | string, direction: 'down' | 'up') => {
     const currentIndexInList = recordsToShow.findIndex(item => item['No.'] === currentRecordId);
     if (currentIndexInList === -1) return;
@@ -589,8 +500,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     let nextIndexInList = direction === 'down' ? currentIndexInList + 1 : currentIndexInList - 1;
 
     if (nextIndexInList >= 0 && nextIndexInList < recordsToShow.length) {
-        const nextRecord = recordsToShow[nextIndexInList];
-        startEditingInternal(nextRecord['No.'], 'Transaction Amount');
+        startEditingInternal(recordsToShow[nextIndexInList]['No.'], 'Transaction Amount');
     }
   }, [recordsToShow, startEditingInternal]);
 
@@ -627,7 +537,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   useEffect(() => { 
     if (!isOpen) {
       setSelectedRowIds(new Set());
-      setBatchAmountInput(''); setBatchDateInput(''); setEditingCell(null);
+      setEditingCell(null);
       setLastDeleted(null); setIsColumnSelectorOpen(false);
       setPendingSmartMove(null);
     } else {
@@ -718,7 +628,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
                         </th>
                         {visibleTableHeaders.map((key) => (
                             <th scope="col" key={key} className="p-2 text-left" onClick={() => requestSortFullPreviewInternal(key)} style={{cursor: 'pointer'}}>
-                                {String(key).replace(" ('DD-MMM-YYYY')", "").replace("Membership Number", "Member Details")}
+                                {key.replace(" ('DD-MMM-YYYY')", "").replace("Membership Number", "Member Details")}
                                 {sortConfig?.key === key && (sortConfig.direction === 'asc' ? ' ▲' : ' ▼')}
                             </th>
                         ))}
@@ -727,14 +637,12 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
                 </thead>
                 <SortableContext items={filteredAndSortedTitheList.map(item => item['No.'])} strategy={verticalListSortingStrategy}>
                     <tbody>
-                        {recordsToShow.length > 0 ? recordsToShow.map((record, index) => (
+                        {recordsToShow.length > 0 ? recordsToShow.map((record) => (
                         <TitheRecordRow
                             key={record['No.']}
                             record={record}
                             visualIndex={internalList.findIndex(r => r['No.'] === record['No.']) + 1}
-                            handleTitheValueChange={handleTitheValueChangeInternal}
                             handleDeleteTitheRecord={handleDeleteTitheRecordInternal}
-                            handleMoveRecord={() => handleMoveRecord(record['No.'])}
                             startEditing={startEditingInternal}
                             editingCell={editingCell}
                             editedValue={editedValue}
@@ -749,7 +657,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
                         />
                         )) : (
                         <tr>
-                            <td colSpan={visibleTableHeaders.length + 4} className="p-8 text-center text-[var(--text-muted)]">
+                            <td colSpan={visibleTableHeaders.length + 5} className="p-8 text-center text-[var(--text-muted)]">
                             {searchTerm ? 'No records match your search.' : 'The list is empty.'}
                             </td>
                         </tr>

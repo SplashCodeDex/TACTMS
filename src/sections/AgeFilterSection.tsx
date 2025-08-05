@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Filter, Users, X } from 'lucide-react';
 import Button from '../components/Button';
-import { MemberRecordA, TitheRecordB } from '../types.ts';
+import { MemberRecordA, TitheRecordB } from '../types';
 
 interface AgeFilterSectionProps {
   ageRangeMin: string;
@@ -59,9 +58,8 @@ const AgeFilterSection: React.FC<AgeFilterSectionProps> = React.memo(({
                 className={`form-input-light ${inputErrors.age ? 'input-error' : ''}`}
                 disabled={disableInputs}
                 aria-invalid={!!inputErrors.age}
-                aria-describedby={inputErrors.age ? "ageMinError" : undefined}
+                aria-describedby={inputErrors.age ? "ageError" : undefined}
               />
-              {inputErrors.age && <p id="ageMinError" className="form-error-text">{inputErrors.age}</p>}
             </div>
             <div>
               <label htmlFor="ageMax" className="form-label">Max Age (Years)</label>
@@ -74,10 +72,11 @@ const AgeFilterSection: React.FC<AgeFilterSectionProps> = React.memo(({
                 className={`form-input-light ${inputErrors.age ? 'input-error' : ''}`}
                 disabled={disableInputs}
                 aria-invalid={!!inputErrors.age}
-                aria-describedby={inputErrors.age ? "ageMaxError" : undefined}
+                aria-describedby={inputErrors.age ? "ageError" : undefined}
               />
             </div>
           </div>
+          {inputErrors.age && <p id="ageError" className="form-error-text mt-2 col-span-2">{inputErrors.age}</p>}
           {disableInputs && <p className="text-xs text-[var(--text-muted)] mt-2">Age filter requires original member data. Re-upload Excel or load a favorite with member data to enable.</p>}
            {isAgeFilterActive && processedDataA.length > 0 && (
             <p className="mt-4 text-sm text-[var(--primary-accent-start)]">
