@@ -1,5 +1,5 @@
 import React from 'react';
-import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, LogOut, PieChart, Check, Database, LayoutDashboard } from 'lucide-react';
+import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, LogOut, PieChart, Check, Database, LayoutDashboard, CloudOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from './Button';
 import { GoogleUserProfile, ViewType } from '../types';

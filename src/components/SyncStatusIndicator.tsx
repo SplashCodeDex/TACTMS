@@ -65,7 +65,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ status, isOnl
       >
         <Icon size={18} className={animate ? 'animate-spin' : ''} />
       </motion.div>
-      <Tooltip id="sync-status-tooltip" place="top" effect="solid" />
+      <Tooltip id="sync-status-tooltip" place="top" />
     </>
   );
 };

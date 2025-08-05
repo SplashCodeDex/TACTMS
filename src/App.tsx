@@ -37,9 +37,6 @@ import UpdateMasterListConfirmModal from './components/UpdateMasterListConfirmMo
 import EditMemberModal from './components/EditMemberModal';
 import MobileHeader from './components/MobileHeader';
 import ValidationReportModal from './components/ValidationReportModal';
-import CommandPalette from './components/CommandPalette';
-import ListOverviewActionsSection from './sections/ListOverviewActionsSection';
-import ConfigurationSection from './sections/ConfigurationSection';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Lazy-loaded sections
@@ -48,6 +45,9 @@ const FavoritesView = lazy(() => import('./sections/FavoritesView'));
 const AnalyticsSection = lazy(() => import('./sections/AnalyticsSection'));
 const ReportsSection = lazy(() => import('./sections/ReportsSection'));
 const MemberDatabaseSection = lazy(() => import('./components/MemberDatabaseSection'));
+const CommandPalette = lazy(() => import('./components/CommandPalette'));
+const ListOverviewActionsSection = lazy(() => import('./sections/ListOverviewActionsSection'));
+const ConfigurationSection = lazy(() => import('./sections/ConfigurationSection'));
 
 
 interface PendingData {
@@ -189,8 +189,12 @@ const App: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  const addToast = useCallback((message: string, type: ToastMessage['type'], duration?: number, actions?: ToastAction[]) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prevToasts => [...prevToasts, { id, message, type, duration, actions }]);
+  }, []);
 
   const {
     isSubscribed,
@@ -224,12 +228,6 @@ const App: React.FC = () => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [isCommandPaletteOpen]);
-
-
-  const addToast = useCallback((message: string, type: ToastMessage['type'], duration?: number, actions?: ToastAction[]) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts(prevToasts => [...prevToasts, { id, message, type, duration, actions }]);
-  }, []);
 
   const {
       favorites,
@@ -940,7 +938,7 @@ const App: React.FC = () => {
         return {
             ...prev,
             [assemblyName]: {
-                ...(prev[assemblyName] || { fileName: 'Mixed Source'})
+                ...(prev[assemblyName] || { fileName: 'Mixed Source'}),
                 data: updatedData,
                 lastUpdated: Date.now(),
             }
