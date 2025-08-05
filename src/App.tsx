@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry } from './types';
 import Button from './components/Button';
@@ -20,10 +20,6 @@ import { Save, Trash2, BotMessageSquare, WifiOff } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
 import Sidebar from './components/Sidebar';
-import FavoritesView from './sections/FavoritesView';
-import AnalyticsSection from './sections/AnalyticsSection';
-import ReportsSection from './sections/ReportsSection';
-import MemberDatabaseSection from './components/MemberDatabaseSection';
 import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 import { usePWAFeatures } from './hooks/usePWAFeatures';
 
@@ -41,10 +37,17 @@ import UpdateMasterListConfirmModal from './components/UpdateMasterListConfirmMo
 import EditMemberModal from './components/EditMemberModal';
 import MobileHeader from './components/MobileHeader';
 import ValidationReportModal from './components/ValidationReportModal';
-import DashboardSection from './sections/DashboardSection';
 import CommandPalette from './components/CommandPalette';
 import ListOverviewActionsSection from './sections/ListOverviewActionsSection';
 import ConfigurationSection from './sections/ConfigurationSection';
+import LoadingSpinner from './components/LoadingSpinner';
+
+// Lazy-loaded sections
+const DashboardSection = lazy(() => import('./sections/DashboardSection'));
+const FavoritesView = lazy(() => import('./sections/FavoritesView'));
+const AnalyticsSection = lazy(() => import('./sections/AnalyticsSection'));
+const ReportsSection = lazy(() => import('./sections/ReportsSection'));
+const MemberDatabaseSection = lazy(() => import('./components/MemberDatabaseSection'));
 
 
 interface PendingData {
@@ -937,7 +940,7 @@ const App: React.FC = () => {
         return {
             ...prev,
             [assemblyName]: {
-                ...(prev[assemblyName] || { fileName: 'Mixed Source'}),
+                ...(prev[assemblyName] || { fileName: 'Mixed Source'})
                 data: updatedData,
                 lastUpdated: Date.now(),
             }
@@ -1170,7 +1173,9 @@ ${JSON.stringify(sampleData, null, 2)}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {renderContent()}
+                <Suspense fallback={<div className="flex justify-center items-center h-full"><LoadingSpinner /></div>}>
+                  {renderContent()}
+                </Suspense>
               </MotionDiv>
             </AnimatePresence>
         </main>
@@ -1322,4 +1327,3 @@ ${JSON.stringify(sampleData, null, 2)}
 };
 
 export default App;
-
