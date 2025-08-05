@@ -1,9 +1,10 @@
 import React from 'react';
-import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, LogOut, Cloud, Loader2, CloudCog, AlertCircle, CloudOff, PieChart, Check, Database, LayoutDashboard } from 'lucide-react';
+import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, LogOut, PieChart, Check, Database, LayoutDashboard } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from './Button';
 import { GoogleUserProfile, ViewType } from '../types';
 import { THEME_OPTIONS } from '../constants';
+import SyncStatusIndicator from './SyncStatusIndicator';
 
 type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 type ThemeOption = typeof THEME_OPTIONS[0];
@@ -24,6 +25,7 @@ interface SidebarProps {
   signOut: () => void;
   isConfigured: boolean;
   openCommandPalette: () => void;
+  isOnline: boolean;
 }
 
 const itemVariants = {
@@ -61,8 +63,8 @@ const NavItem: React.FC<{
   );
 };
 
-const GoogleSyncControl: React.FC<Pick<SidebarProps, 'isLoggedIn' | 'userProfile' | 'syncStatus' | 'signIn' | 'signOut' | 'isCollapsed' | 'isConfigured'>> = 
-({ isLoggedIn, userProfile, syncStatus, signIn, signOut, isCollapsed, isConfigured }) => {
+const GoogleSyncControl: React.FC<Pick<SidebarProps, 'isLoggedIn' | 'userProfile' | 'syncStatus' | 'signIn' | 'signOut' | 'isCollapsed' | 'isConfigured' | 'isOnline'>> = 
+({ isLoggedIn, userProfile, syncStatus, signIn, signOut, isCollapsed, isConfigured, isOnline }) => {
     
     if (!isConfigured) {
         if (isCollapsed) {
@@ -82,27 +84,16 @@ const GoogleSyncControl: React.FC<Pick<SidebarProps, 'isLoggedIn' | 'userProfile
         );
     }
 
-    const SyncStatusIcon = () => {
-        switch(syncStatus) {
-            case 'syncing': return <Loader2 size={16} className="animate-spin text-[var(--primary-accent-start)]" />;
-            case 'synced': return <CloudCog size={16} className="text-[var(--success-text)]" />;
-            case 'error': return <AlertCircle size={16} className="text-[var(--danger-text)]" />;
-            default: return <Cloud size={16} className="text-[var(--text-muted)]" />;
-        }
-    };
-    
-    const syncStatusText: Record<SyncStatus, string> = {
-        idle: "Not Connected",
-        syncing: "Syncing...",
-        synced: "Synced",
-        error: "Sync Error"
-    };
-
     if (isLoggedIn && userProfile) {
         if (isCollapsed) {
             return (
                 <div className="flex flex-col items-center gap-3">
-                    <img src={userProfile.imageUrl} alt={userProfile.name} className="w-10 h-10 rounded-full" title={`${userProfile.name} - ${syncStatusText[syncStatus]}`}/>
+                    <div className="relative">
+                        <img src={userProfile.imageUrl} alt={userProfile.name} className="w-10 h-10 rounded-full"/>
+                        <div className="absolute -bottom-1 -right-1 bg-[var(--bg-card)] rounded-full p-0.5">
+                           <SyncStatusIndicator status={syncStatus} isOnline={isOnline} />
+                        </div>
+                    </div>
                     <Button onClick={signOut} size="icon" variant="subtle" className="w-10 h-10" title="Sign Out">
                         <LogOut size={18} />
                     </Button>
@@ -110,16 +101,14 @@ const GoogleSyncControl: React.FC<Pick<SidebarProps, 'isLoggedIn' | 'userProfile
             );
         }
         return (
-            <div className="p-3 bg-[var(--bg-card)] rounded-lg text-center">
+            <div className="p-3 bg-[var(--bg-card)] rounded-lg">
                 <div className="flex items-center gap-3">
                     <img src={userProfile.imageUrl} alt={userProfile.name} className="w-10 h-10 rounded-full"/>
-                    <div className="text-left overflow-hidden">
+                    <div className="text-left overflow-hidden flex-grow">
                         <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{userProfile.name}</p>
                         <p className="text-xs text-[var(--text-muted)] truncate">{userProfile.email}</p>
                     </div>
-                </div>
-                <div className="mt-3 text-xs flex items-center justify-center gap-2 text-[var(--text-secondary)]">
-                    <SyncStatusIcon /> {syncStatusText[syncStatus]}
+                    <SyncStatusIndicator status={syncStatus} isOnline={isOnline} />
                 </div>
                 <Button onClick={signOut} fullWidth variant="danger" size="sm" className="mt-3 !bg-transparent !text-[var(--danger-text)] hover:!bg-[var(--danger-start)]/10">
                     Sign Out
@@ -201,7 +190,7 @@ const ThemeControl: React.FC<Pick<SidebarProps, 'theme' | 'setTheme' | 'accentCo
 const Sidebar: React.FC<SidebarProps> = ({ 
     activeView, setActiveView, theme, setTheme, isCollapsed, setIsCollapsed,
     isLoggedIn, userProfile, syncStatus, signIn, signOut, isConfigured,
-    accentColor, setAccentColor, openCommandPalette
+    accentColor, setAccentColor, openCommandPalette, isOnline
 }) => {
     const logoSrc = isCollapsed
         ? (theme === 'dark' ? `${import.meta.env.BASE_URL}img/DarkLogoCollapsed.svg` : `${import.meta.env.BASE_URL}img/LightLogoCollapsed.svg`)
@@ -292,7 +281,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <GoogleSyncControl 
                 isCollapsed={isCollapsed} isLoggedIn={isLoggedIn} userProfile={userProfile}
                 syncStatus={syncStatus} signIn={signIn} signOut={signOut}
-                isConfigured={isConfigured}
+                isConfigured={isConfigured} isOnline={isOnline}
             />
         </div>
         

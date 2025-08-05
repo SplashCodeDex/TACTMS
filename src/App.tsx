@@ -197,7 +197,7 @@ const App: React.FC = () => {
     requestNotificationPermission,
     registerBackgroundSync,
     registerPeriodicSync,
-  } = usePWAFeatures();
+  } = usePWAFeatures(addToast);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -1145,6 +1145,7 @@ ${JSON.stringify(sampleData, null, 2)}
             signIn={driveSignIn} signOut={driveSignOut}
             isConfigured={isDriveConfigured}
             openCommandPalette={() => setIsCommandPaletteOpen(true)}
+            isOnline={!isOffline}
         />
         <AnimatePresence>
             {isCommandPaletteOpen && (
