@@ -4,8 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // IMPORTANT: Replace 'REPONAME' with your actual GitHub repository name
-  base: '/REPONAME/',
+  // For GitHub Pages deployment, you may need to set this to your repository name
+  // e.g., base: '/YourRepoName/',
+  base: '/',
   plugins: [
     react(),
     VitePWA({
@@ -18,7 +19,6 @@ export default defineConfig({
       devOptions: {
         enabled: true
       },
-      includeAssets: ['img/TAC-Dexify-for-dark-bg-only-logo-01.svg', 'img/icons/*.png'],
       manifest: {
         name: 'TACTMS - The Apostolic Church Tithe Made Simple',
         short_name: 'TACTMS',
@@ -39,8 +39,18 @@ export default defineConfig({
             "type": "image/png"
           },
           {
+            "src": "img/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png"
+          },
+          {
             "src": "img/icons/icon-144x144.png",
             "sizes": "144x144",
+            "type": "image/png"
+          },
+          {
+            "src": "img/icons/icon-152x152.png",
+            "sizes": "152x152",
             "type": "image/png"
           },
           {
@@ -50,9 +60,30 @@ export default defineConfig({
             "purpose": "any maskable"
           },
           {
+            "src": "img/icons/icon-384x384.png",
+            "sizes": "384x384",
+            "type": "image/png"
+          },
+          {
             "src": "img/icons/icon-512x512.png",
             "sizes": "512x512",
             "type": "image/png"
+          }
+        ],
+        "screenshots": [
+          {
+            "src": "screenshots/screenshot-wide.svg",
+            "sizes": "1280x720",
+            "type": "image/svg+xml",
+            "form_factor": "wide",
+            "label": "TACTMS Desktop View"
+          },
+          {
+            "src": "screenshots/screenshot-narrow.svg",
+            "sizes": "540x720",
+            "type": "image/svg+xml",
+            "form_factor": "narrow",
+            "label": "TACTMS Mobile View"
           }
         ]
       },
