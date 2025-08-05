@@ -25,6 +25,7 @@ import AnalyticsSection from './sections/AnalyticsSection';
 import ReportsSection from './sections/ReportsSection';
 import MemberDatabaseSection from './components/MemberDatabaseSection';
 import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
+import { usePWAFeatures } from './hooks/usePWAFeatures';
 
 import { 
   DEFAULT_CONCAT_CONFIG, AUTO_SAVE_KEY, AUTO_SAVE_DEBOUNCE_TIME, ITEMS_PER_FULL_PREVIEW_PAGE,
@@ -172,6 +173,13 @@ const App: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  const {
+    isSubscribed,
+    requestNotificationPermission,
+    registerBackgroundSync,
+    registerPeriodicSync,
+  } = usePWAFeatures();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -418,6 +426,20 @@ const App: React.FC = () => {
     }
   }, [hasUnsavedChanges, addToast, memberDatabase, clearWorkspace]);
   
+  useEffect(() => {
+    if ('launchQueue' in window) {
+      (window as any).launchQueue.setConsumer(async (launchParams: { files: any[]; }) => {
+        if (!launchParams.files || launchParams.files.length === 0) {
+          return;
+        }
+        for (const fileHandle of launchParams.files) {
+          const file = await fileHandle.getFile();
+          handleFileAccepted(file, false);
+        }
+      });
+    }
+  }, [handleFileAccepted]);
+
   const handleMasterListUpdate = (assemblyName: string, newData: MemberRecordA[], newFileName: string) => {
     setMemberDatabase(prev => ({
         ...prev,
@@ -1030,6 +1052,16 @@ ${JSON.stringify(sampleData, null, 2)}
                   handleGenerateValidationReport={handleGenerateValidationReport}
                   isGeneratingReport={isGeneratingReport}
                 />
+                <div className="content-card p-4">
+                  <h3 className="text-lg font-semibold mb-2">PWA Features</h3>
+                  <div className="flex gap-4">
+                    <Button onClick={requestNotificationPermission} disabled={isSubscribed}>
+                      {isSubscribed ? 'Notifications Enabled' : 'Enable Notifications'}
+                    </Button>
+                    <Button onClick={registerBackgroundSync}>Enable Background Sync</Button>
+                    <Button onClick={registerPeriodicSync}>Enable Periodic Sync</Button>
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -1258,3 +1290,4 @@ ${JSON.stringify(sampleData, null, 2)}
 };
 
 export default App;
+

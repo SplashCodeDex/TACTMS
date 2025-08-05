@@ -8,6 +8,10 @@
   "scope": "/",
   "lang": "en-US",
   "dir": "auto",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0D0E1B",
@@ -17,10 +21,86 @@
     "utilities",
     "business"
   ],
-  "iarc_rating_id": null,
   "prefer_related_applications": false,
   "related_applications": [],
   "scope_extensions": [],
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
+  "handle_links": "auto",
+  "protocol_handlers": [
+    {
+      "protocol": "web+tactms",
+      "url": "/protocol?data=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/handle-file",
+      "accept": {
+        "application/vnd.ms-excel": [".xls"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
+      },
+      "launch_type": "single-client"
+    }
+  ],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xls", ".xlsx"]
+        }
+      ]
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Open Member Database",
+      "short_name": "Database",
+      "description": "View and manage all member records",
+      "url": "/?view=database",
+      "icons": [{ "src": "/img/android/android-launchericon-96-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "View Reports",
+      "short_name": "Reports",
+      "description": "Access financial and membership reports",
+      "url": "/?view=reports",
+      "icons": [{ "src": "/img/android/android-launchericon-96-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "widgets": [
+    {
+      "name": "TACTMS Summary",
+      "description": "Quick overview of your latest tithe data.",
+      "tag": "tactms-summary-widget",
+      "template": "tactms-widget-template",
+      "ms_ac_template": "widgets/summary.json",
+      "data": "widgets/summary_data.json",
+      "screenshots": [
+        {
+          "src": "/screenshots/screenshot-wide.svg",
+          "sizes": "1280x720",
+          "label": "TACTMS Summary Widget"
+        }
+      ],
+      "icons": [
+        {
+          "src": "/img/android/android-launchericon-96-96.png",
+          "sizes": "96x96"
+        }
+      ],
+      "auth": false,
+      "update": 86400000
+    }
+  ],
   "icons": [
     {
       "src": "/img/android/android-launchericon-512-512.png",
