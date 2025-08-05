@@ -16,7 +16,7 @@ import FullTithePreviewModal from './components/FullTithePreviewModal';
 import AddNewMemberModal from './components/AddNewMemberModal';
 import CreateTitheListModal from './components/CreateTitheListModal';
 
-import { Save, Trash2, BotMessageSquare } from 'lucide-react';
+import { Save, Trash2, BotMessageSquare, WifiOff } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
 import Sidebar from './components/Sidebar';
@@ -62,6 +62,19 @@ interface PendingMasterListUpdate {
 }
 
 const MotionDiv = motion.div;
+
+const OfflineIndicator = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: 20 }}
+    className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-[1000]"
+  >
+    <WifiOff size={18} />
+    <span>You are currently offline.</span>
+  </motion.div>
+);
+
 
 const App: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -173,6 +186,8 @@ const App: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const {
     isSubscribed,
@@ -180,6 +195,19 @@ const App: React.FC = () => {
     registerBackgroundSync,
     registerPeriodicSync,
   } = usePWAFeatures();
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1146,6 +1174,10 @@ ${JSON.stringify(sampleData, null, 2)}
               </MotionDiv>
             </AnimatePresence>
         </main>
+        
+        <AnimatePresence>
+            {isOffline && <OfflineIndicator />}
+        </AnimatePresence>
         
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 

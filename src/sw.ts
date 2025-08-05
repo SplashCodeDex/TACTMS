@@ -1,18 +1,70 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate } from 'workbox-strategies';
+import { StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+import { ExpirationPlugin } from 'workbox-expiration';
 
 declare const self: ServiceWorkerGlobalScope;
 
 // Precache all assets injected by VitePWA
 precacheAndRoute(self.__WB_MANIFEST);
 
-// Example of a runtime caching route
+// --- RUNTIME CACHING ---
+
+// 1. Google Drive API Caching (and other Google APIs)
+// Strategy: StaleWhileRevalidate - Serve from cache first, then update in the background.
+// This is ideal for data that is not critical to be real-time, but benefits from being available instantly.
+registerRoute(
+  ({ url }) => url.hostname === 'www.googleapis.com',
+  new StaleWhileRevalidate({
+    cacheName: 'google-api-cache',
+    plugins: [
+      new CacheableResponsePlugin({
+        statuses: [0, 200], // Cache successful responses
+      }),
+      new ExpirationPlugin({
+        maxEntries: 50, // Maximum number of entries to cache
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  })
+);
+
+// 2. Generic API Caching (for future APIs)
+// Strategy: NetworkFirst - Try to get fresh data from the network first. If offline, fall back to the cache.
+// This is good for data that changes often and is important to be up-to-date.
 registerRoute(
   ({ url }) => url.pathname.startsWith('/api/'),
-  new StaleWhileRevalidate()
+  new NetworkFirst({
+    cacheName: 'api-cache',
+    plugins: [
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new ExpirationPlugin({
+        maxEntries: 30,
+        maxAgeSeconds: 24 * 60 * 60, // 1 Day
+      }),
+    ],
+  })
 );
+
+// 3. Image Caching (if you load images from external sources)
+// Strategy: StaleWhileRevalidate
+registerRoute(
+  ({ request }) => request.destination === 'image',
+  new StaleWhileRevalidate({
+    cacheName: 'image-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 60,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  })
+);
+
 
 interface SyncEvent extends Event {
   readonly tag: string;
