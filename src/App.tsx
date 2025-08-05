@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry } from './types';
 import Button from './components/Button';
@@ -16,15 +16,12 @@ import FullTithePreviewModal from './components/FullTithePreviewModal';
 import AddNewMemberModal from './components/AddNewMemberModal';
 import CreateTitheListModal from './components/CreateTitheListModal';
 
-import { Save, Trash2, BotMessageSquare } from 'lucide-react';
+import { Save, Trash2, BotMessageSquare, WifiOff } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
 import Sidebar from './components/Sidebar';
-import FavoritesView from './sections/FavoritesView';
-import AnalyticsSection from './sections/AnalyticsSection';
-import ReportsSection from './sections/ReportsSection';
-import MemberDatabaseSection from './components/MemberDatabaseSection';
 import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
+import { usePWAFeatures } from './hooks/usePWAFeatures';
 
 import { 
   DEFAULT_CONCAT_CONFIG, AUTO_SAVE_KEY, AUTO_SAVE_DEBOUNCE_TIME, ITEMS_PER_FULL_PREVIEW_PAGE,
@@ -40,10 +37,17 @@ import UpdateMasterListConfirmModal from './components/UpdateMasterListConfirmMo
 import EditMemberModal from './components/EditMemberModal';
 import MobileHeader from './components/MobileHeader';
 import ValidationReportModal from './components/ValidationReportModal';
-import DashboardSection from './sections/DashboardSection';
 import CommandPalette from './components/CommandPalette';
 import ListOverviewActionsSection from './sections/ListOverviewActionsSection';
 import ConfigurationSection from './sections/ConfigurationSection';
+import LoadingSpinner from './components/LoadingSpinner';
+
+// Lazy-loaded sections
+const DashboardSection = lazy(() => import('./sections/DashboardSection'));
+const FavoritesView = lazy(() => import('./sections/FavoritesView'));
+const AnalyticsSection = lazy(() => import('./sections/AnalyticsSection'));
+const ReportsSection = lazy(() => import('./sections/ReportsSection'));
+const MemberDatabaseSection = lazy(() => import('./components/MemberDatabaseSection'));
 
 
 interface PendingData {
@@ -61,6 +65,19 @@ interface PendingMasterListUpdate {
 }
 
 const MotionDiv = motion.div;
+
+const OfflineIndicator = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: 20 }}
+    className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-[1000]"
+  >
+    <WifiOff size={18} />
+    <span>You are currently offline.</span>
+  </motion.div>
+);
+
 
 const App: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -172,6 +189,28 @@ const App: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  const {
+    isSubscribed,
+    requestNotificationPermission,
+    registerBackgroundSync,
+    registerPeriodicSync,
+  } = usePWAFeatures();
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -418,6 +457,20 @@ const App: React.FC = () => {
     }
   }, [hasUnsavedChanges, addToast, memberDatabase, clearWorkspace]);
   
+  useEffect(() => {
+    if ('launchQueue' in window) {
+      (window as any).launchQueue.setConsumer(async (launchParams: { files: any[]; }) => {
+        if (!launchParams.files || launchParams.files.length === 0) {
+          return;
+        }
+        for (const fileHandle of launchParams.files) {
+          const file = await fileHandle.getFile();
+          handleFileAccepted(file, false);
+        }
+      });
+    }
+  }, [handleFileAccepted]);
+
   const handleMasterListUpdate = (assemblyName: string, newData: MemberRecordA[], newFileName: string) => {
     setMemberDatabase(prev => ({
         ...prev,
@@ -887,7 +940,7 @@ const App: React.FC = () => {
         return {
             ...prev,
             [assemblyName]: {
-                ...(prev[assemblyName] || { fileName: 'Mixed Source'}),
+                ...(prev[assemblyName] || { fileName: 'Mixed Source'})
                 data: updatedData,
                 lastUpdated: Date.now(),
             }
@@ -1030,6 +1083,16 @@ ${JSON.stringify(sampleData, null, 2)}
                   handleGenerateValidationReport={handleGenerateValidationReport}
                   isGeneratingReport={isGeneratingReport}
                 />
+                <div className="content-card p-4">
+                  <h3 className="text-lg font-semibold mb-2">PWA Features</h3>
+                  <div className="flex gap-4">
+                    <Button onClick={requestNotificationPermission} disabled={isSubscribed}>
+                      {isSubscribed ? 'Notifications Enabled' : 'Enable Notifications'}
+                    </Button>
+                    <Button onClick={registerBackgroundSync}>Enable Background Sync</Button>
+                    <Button onClick={registerPeriodicSync}>Enable Periodic Sync</Button>
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -1110,10 +1173,16 @@ ${JSON.stringify(sampleData, null, 2)}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {renderContent()}
+                <Suspense fallback={<div className="flex justify-center items-center h-full"><LoadingSpinner /></div>}>
+                  {renderContent()}
+                </Suspense>
               </MotionDiv>
             </AnimatePresence>
         </main>
+        
+        <AnimatePresence>
+            {isOffline && <OfflineIndicator />}
+        </AnimatePresence>
         
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 

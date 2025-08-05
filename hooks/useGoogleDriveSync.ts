@@ -29,6 +29,10 @@ const useSyncedState = <T,>(storageKey: string, addToast: Function) => {
             const localData = localStorage.getItem(storageKey);
             if (localData) {
                 setState(JSON.parse(localData));
+                if (!navigator.onLine) {
+                    const friendlyName = storageKey.replace('_', ' ');
+                    addToast(`Showing cached ${friendlyName}.`, 'info', 3000);
+                }
             }
         } catch (e) {
             console.error(`Failed to load ${storageKey} from localStorage`, e);

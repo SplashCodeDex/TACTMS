@@ -11,11 +11,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Use a custom service worker
+      srcDir: 'src',
+      filename: 'sw.ts',
+      strategies: 'injectManifest',
       injectRegister: 'auto',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2,woff}'],
-        cleanupOutdatedCaches: true,
-      },
       devOptions: {
         enabled: true
       },
