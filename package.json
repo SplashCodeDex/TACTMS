@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://USERNAME.github.io/REPONAME",
+  "homepage": "https://SplashCodeDex.github.io/TACTMS",
   "scripts": {
     "dev": "vite",
     "build": "node_modules\\.bin\\tsc && vite build",

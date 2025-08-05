@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   // For GitHub Pages deployment, you may need to set this to your repository name
   // e.g., base: '/YourRepoName/',
-  base: '/',
+  base: '/TACTMS/',
   plugins: [
     react(),
     VitePWA({
