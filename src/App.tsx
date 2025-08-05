@@ -179,7 +179,7 @@ const App: React.FC = () => {
     requestNotificationPermission,
     registerBackgroundSync,
     registerPeriodicSync,
-  } = usePWAFeatures();
+  } = usePWAFeatures(addToast);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1114,6 +1114,7 @@ ${JSON.stringify(sampleData, null, 2)}
             signIn={driveSignIn} signOut={driveSignOut}
             isConfigured={isDriveConfigured}
             openCommandPalette={() => setIsCommandPaletteOpen(true)}
+            isOnline={!isOffline}
         />
         <AnimatePresence>
             {isCommandPaletteOpen && (

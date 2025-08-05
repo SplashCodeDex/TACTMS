@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ToastMessage } from '../components/Toast';
 
 const VAPID_PUBLIC_KEY = 'YOUR_PUBLIC_VAPID_KEY'; // Replace with your actual VAPID public key from your backend
 
@@ -17,7 +18,9 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export const usePWAFeatures = () => {
+export const usePWAFeatures = (
+  addToast: (message: string, type: ToastMessage['type'], duration?: number) => void
+) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
@@ -33,14 +36,16 @@ export const usePWAFeatures = () => {
 
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
-      alert('This browser does not support desktop notification');
+      addToast('This browser does not support desktop notification', 'error');
       return;
     }
 
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      console.log('Notification permission granted.');
+      addToast('Notification permission granted.', 'success');
       subscribeUserToPush();
+    } else {
+      addToast('Notification permission denied.', 'warning');
     }
   };
 
@@ -60,8 +65,10 @@ export const usePWAFeatures = () => {
       //   headers: { 'Content-Type': 'application/json' }
       // });
       setIsSubscribed(true);
+      addToast('Successfully subscribed to push notifications!', 'success');
     } catch (error) {
       console.error('Failed to subscribe the user: ', error);
+      addToast('Failed to subscribe to push notifications.', 'error');
     }
   };
 
@@ -70,9 +77,10 @@ export const usePWAFeatures = () => {
       const registration = await navigator.serviceWorker.ready;
       await (registration as any).sync.register('sync-tithe-data');
       console.log('Background sync registered for "sync-tithe-data"');
-      alert('Offline changes will be synced in the background when you have a connection.');
+      addToast('Offline changes will be synced in the background.', 'info');
     } catch (error) {
       console.error('Background sync could not be registered!', error);
+      addToast('Background sync is not supported by this browser.', 'error');
     }
   };
 
@@ -86,15 +94,16 @@ export const usePWAFeatures = () => {
             minInterval: 24 * 60 * 60 * 1000, // 24 hours
           });
           console.log('Periodic sync registered for "get-latest-updates"');
-          alert('App will periodically sync in the background.');
+          addToast('App will periodically sync in the background.', 'info');
         } else {
-          alert('Periodic background sync permission not granted.');
+          addToast('Periodic background sync permission not granted.', 'warning');
         }
       } else {
-        alert('Periodic background sync is not supported by this browser.');
+        addToast('Periodic background sync is not supported by this browser.', 'error');
       }
     } catch (error) {
       console.error('Periodic sync could not be registered!', error);
+      addToast('Failed to register periodic sync.', 'error');
     }
   };
 
