@@ -17,6 +17,7 @@ import AddNewMemberModal from './components/AddNewMemberModal';
 import CreateTitheListModal from './components/CreateTitheListModal';
 
 import { Save, Trash2, BotMessageSquare, WifiOff } from 'lucide-react';
+import { pushAnalyticsEvent } from './services/offline-analytics';
 import { GoogleGenAI } from '@google/genai';
 
 import Sidebar from './components/Sidebar';
@@ -189,6 +190,7 @@ const App: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [newWorker, setNewWorker] = useState<ServiceWorker | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const addToast = useCallback((message: string, type: ToastMessage['type'], duration?: number, actions?: ToastAction[]) => {
@@ -201,7 +203,15 @@ const App: React.FC = () => {
     requestNotificationPermission,
     registerBackgroundSync,
     registerPeriodicSync,
-  } = usePWAFeatures(addToast);
+  } = usePWAFeatures(addToast, setNewWorker);
+
+  useEffect(() => {
+    if (newWorker) {
+      addToast('A new version is available!', 'info', undefined, [
+        { label: 'Reload', onClick: () => newWorker.postMessage({ type: 'SKIP_WAITING' }) },
+      ]);
+    }
+  }, [newWorker, addToast]);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -672,6 +682,7 @@ const App: React.FC = () => {
       }));
 
     exportToExcel(dataToExport, fileNameToSave);
+    pushAnalyticsEvent({type: 'download_excel', payload: {fileName: fileNameToSave, records: dataToExport.length}});
     
     // Log the transaction
     if (currentAssembly && titheListData.length > 0) {

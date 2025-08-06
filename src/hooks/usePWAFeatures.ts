@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { ToastMessage } from '../components/Toast';
 
 const VAPID_PUBLIC_KEY = 'YOUR_PUBLIC_VAPID_KEY'; // Replace with your actual VAPID public key from your backend
 
@@ -18,21 +17,33 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export const usePWAFeatures = (
-  addToast: (message: string, type: ToastMessage['type'], duration?: number) => void
-) => {
+export const usePWAFeatures = (addToast: (message: string, type: any, duration?: number, actions?: any[]) => void, onNewWorker: (worker: ServiceWorker) => void) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(registration => {
+        if (registration.waiting) {
+          onNewWorker(registration.waiting);
+        }
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                onNewWorker(newWorker);
+              }
+            });
+          }
+        });
+
         // --- Push Notifications ---
         registration.pushManager.getSubscription().then(subscription => {
           setIsSubscribed(!!subscription);
         });
       });
     }
-  }, []);
+  }, [onNewWorker]);
 
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {

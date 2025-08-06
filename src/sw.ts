@@ -1,9 +1,30 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate, NetworkFirst, NetworkOnly } from 'workbox-strategies';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { ExpirationPlugin } from 'workbox-expiration';
+import { BackgroundSyncPlugin } from 'workbox-background-sync';
+
+const bgSyncPlugin = new BackgroundSyncPlugin('analytics-queue', {
+  maxRetentionTime: 24 * 60 // Retry for max of 24 Hours (specified in minutes)
+});
+
+const analyticsRoute = new NetworkOnly({
+  plugins: [bgSyncPlugin]
+});
+
+registerRoute(
+  ({url}) => url.pathname === '/api/analytics',
+  analyticsRoute
+);
+
+// Serve offline.html for navigation requests when offline
+const offlineHandler = createHandlerBoundToURL('/offline.html');
+const navigationRoute = new NavigationRoute(offlineHandler, {
+  denylist: [/\/api\//] // Don't serve for API requests
+});
+registerRoute(navigationRoute);
 
 declare const self: ServiceWorkerGlobalScope;
 

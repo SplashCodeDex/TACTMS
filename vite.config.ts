@@ -69,6 +69,18 @@ export default defineConfig({
             "form_factor": "narrow",
             "label": "TACTMS Mobile View"
           }
+        ],
+        "shortcuts": [
+          {
+            "name": "Tithe Processor",
+            "url": "/processor",
+            "description": "Process tithe records"
+          },
+          {
+            "name": "Member Database",
+            "url": "/database",
+            "description": "View and manage members"
+          }
         ]
       },
     }),
