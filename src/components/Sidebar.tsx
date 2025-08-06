@@ -1,5 +1,5 @@
 import React from 'react';
-import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, LogOut, PieChart, Check, Database, LayoutDashboard, CloudOff } from 'lucide-react';
+import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, PieChart, Check, Database, LayoutDashboard } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from './Button';
 import { GoogleUserProfile, ViewType } from '../types';
@@ -29,9 +29,13 @@ interface SidebarProps {
 }
 
 const itemVariants = {
-    hidden: { opacity: 0, x: -10 },
+    hidden: { opacity: 0, x: -20, transition: { duration: 0.2 } },
     visible: { opacity: 1, x: 0, transition: { delay: 0.1, duration: 0.2 } },
-    exit: { opacity: 0, x: -10, transition: { duration: 0.1 } }
+};
+
+const logoVariants = {
+    collapsed: { height: "64px", transition: { duration: 0.3 } }, // h-16
+    expanded: { height: "96px", transition: { duration: 0.3 } }, // h-24
 };
 
 const NavItem: React.FC<{
@@ -52,13 +56,15 @@ const NavItem: React.FC<{
       title={isCollapsed ? label : undefined}
     >
       <Icon size={20} />
-      <AnimatePresence>
-        {!isCollapsed && (
-            <motion.span variants={itemVariants} initial="hidden" animate="visible" exit="exit" className="ml-3">
-                {label}
-            </motion.span>
-        )}
-      </AnimatePresence>
+      <motion.span
+        variants={itemVariants}
+        initial={isCollapsed ? "hidden" : "visible"}
+        animate={isCollapsed ? "hidden" : "visible"}
+        className="ml-3"
+        style={{ pointerEvents: isCollapsed ? 'none' : 'auto' }}
+      >
+        {label}
+      </motion.span>
     </button>
   );
 };
@@ -67,41 +73,27 @@ const GoogleSyncControl: React.FC<Pick<SidebarProps, 'isLoggedIn' | 'userProfile
 ({ isLoggedIn, userProfile, syncStatus, signIn, signOut, isCollapsed, isConfigured, isOnline }) => {
     
     if (!isConfigured) {
-        if (isCollapsed) {
-            return (
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-10 h-10 flex items-center justify-center bg-[var(--bg-card)] rounded-lg" title="Cloud Sync is not configured">
-                        <CloudOff size={20} className="text-[var(--text-muted)]"/>
-                    </div>
-                </div>
-            );
-        }
         return (
-            <div className="p-3 bg-[var(--bg-card)] rounded-lg text-center">
+            <motion.div
+                initial={isCollapsed ? "hidden" : "visible"}
+                animate={isCollapsed ? "hidden" : "visible"}
+                variants={itemVariants}
+                className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
+            >
                 <h4 className="font-semibold text-[var(--text-primary)]">Cloud Sync Unavailable</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-1">This feature has not been configured.</p>
-            </div>
+            </motion.div>
         );
     }
 
     if (isLoggedIn && userProfile) {
-        if (isCollapsed) {
-            return (
-                <div className="flex flex-col items-center gap-3">
-                    <div className="relative">
-                        <img src={userProfile.imageUrl} alt={userProfile.name} className="w-10 h-10 rounded-full"/>
-                        <div className="absolute -bottom-1 -right-1 bg-[var(--bg-card)] rounded-full p-0.5">
-                           <SyncStatusIndicator status={syncStatus} isOnline={isOnline} />
-                        </div>
-                    </div>
-                    <Button onClick={signOut} size="icon" variant="subtle" className="w-10 h-10" title="Sign Out">
-                        <LogOut size={18} />
-                    </Button>
-                </div>
-            );
-        }
         return (
-            <div className="p-3 bg-[var(--bg-card)] rounded-lg">
+            <motion.div
+                initial={isCollapsed ? "hidden" : "visible"}
+                animate={isCollapsed ? "hidden" : "visible"}
+                variants={itemVariants}
+                className="p-3 bg-[var(--bg-card)] rounded-lg"
+            >
                 <div className="flex items-center gap-3">
                     <img src={userProfile.imageUrl} alt={userProfile.name} className="w-10 h-10 rounded-full"/>
                     <div className="text-left overflow-hidden flex-grow">
@@ -113,49 +105,35 @@ const GoogleSyncControl: React.FC<Pick<SidebarProps, 'isLoggedIn' | 'userProfile
                 <Button onClick={signOut} fullWidth variant="danger" size="sm" className="mt-3 !bg-transparent !text-[var(--danger-text)] hover:!bg-[var(--danger-start)]/10">
                     Sign Out
                 </Button>
-            </div>
+            </motion.div>
         )
     }
 
-    if (isCollapsed) {
-        return (
-            <Button onClick={signIn} size="icon" variant="primary" className="w-12 h-12" title="Sync with Google Drive">
-                <LogIn size={20} />
-            </Button>
-        );
-    }
-
     return (
-        <div className="p-3 bg-[var(--bg-card)] rounded-lg text-center">
+        <motion.div
+            initial={isCollapsed ? "hidden" : "visible"}
+            animate={isCollapsed ? "hidden" : "visible"}
+            variants={itemVariants}
+            className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
+        >
             <h4 className="font-semibold text-[var(--text-primary)]">Cloud Sync</h4>
             <p className="text-xs text-[var(--text-muted)] mt-1 mb-4">Sign in to sync your favorites across devices.</p>
             <Button onClick={signIn} leftIcon={<LogIn size={16} />} fullWidth variant="primary">
                 Sign in with Google
             </Button>
-        </div>
+        </motion.div>
     );
 };
 
 const ThemeControl: React.FC<Pick<SidebarProps, 'theme' | 'setTheme' | 'accentColor' | 'setAccentColor' | 'isCollapsed'>> = 
 ({ theme, setTheme, accentColor, setAccentColor, isCollapsed }) => {
-    if (isCollapsed) {
-        return (
-             <div className="flex flex-col items-center space-y-2 p-2 bg-[var(--bg-card)] rounded-xl shadow-inner">
-                <button 
-                    className={`w-full justify-center p-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'dark' ? 'bg-[var(--primary-accent-start)]/40 text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                    onClick={() => setTheme('dark')} aria-pressed={theme === 'dark'} title="Dark Theme" >
-                    <Moon size={16}/> 
-                </button>
-                <button 
-                    className={`w-full justify-center p-2 rounded-lg transition-colors flex items-center gap-2 ${theme === 'light' ? 'bg-slate-200 text-slate-800' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                    onClick={() => setTheme('light')} aria-pressed={theme === 'light'} title="Light Theme" >
-                    <Sun size={16}/> 
-                </button>
-            </div>
-        )
-    }
     return (
-        <div className="p-3 bg-[var(--bg-card)] rounded-lg">
+        <motion.div
+            initial={isCollapsed ? "hidden" : "visible"}
+            animate={isCollapsed ? "hidden" : "visible"}
+            variants={itemVariants}
+            className="p-3 bg-[var(--bg-card)] rounded-lg"
+        >
             <h4 className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-3">Appearance</h4>
             <div className="flex items-center space-x-2 p-1 bg-[var(--input-bg)] rounded-xl shadow-inner mb-3">
                 <button 
@@ -183,7 +161,7 @@ const ThemeControl: React.FC<Pick<SidebarProps, 'theme' | 'setTheme' | 'accentCo
                     </button>
                 ))}
              </div>
-        </div>
+        </motion.div>
     )
 }
 
@@ -207,10 +185,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className={`sidebar glassmorphism-bg ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="flex flex-col items-center mb-10">
-        <img 
+        <motion.img 
           src={logoSrc}
           alt="TACTMS Logo" 
-          className={`w-auto transition-all duration-300 ${isCollapsed ? 'h-16' : 'h-24'}`}
+          variants={logoVariants}
+          animate={isCollapsed ? "collapsed" : "expanded"}
+          className="w-auto"
         />
         <AnimatePresence>
         {!isCollapsed && (

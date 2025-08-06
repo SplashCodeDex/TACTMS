@@ -65,7 +65,7 @@ body {
   background-color: var(--bg-main);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
-  overflow: hidden;
+  
 }
 
 /* Theme variables setup */
@@ -102,8 +102,9 @@ body {
 /* Core Layout */
 .app-container {
   display: flex;
-  height: 100vh;
+  min-height: 100vh; /* Use min-height to allow content to expand */
 }
+
 .sidebar {
   position: fixed;
   top: 0;
@@ -113,48 +114,59 @@ body {
   display: flex;
   flex-direction: column;
   padding: 1.25rem;
-  width: 17rem;
+  width: 17rem; /* Default expanded width */
   border-right: 1px solid var(--border-color);
   transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
 }
+
 .sidebar.collapsed {
-  width: 6rem;
+  width: 6rem; /* Collapsed width */
   padding: 1rem;
 }
 
 .main-content {
   flex-grow: 1;
   padding: 2rem;
-  margin-left: 17rem;
+  margin-left: 17rem; /* Default margin for expanded sidebar */
   overflow-y: auto;
   transition: margin-left 0.3s ease-in-out;
-  height: 100vh;
+  min-height: 100vh; /* Ensure main content takes full height */
 }
-.sidebar.collapsed + .app-container-overlay + .main-content {
-  margin-left: 6rem;
-}
-.app-container-overlay { display: none; }
 
+.sidebar.collapsed + .app-container-overlay + .main-content {
+  margin-left: 6rem; /* Margin for collapsed sidebar */
+}
+
+.app-container-overlay {
+  display: none; /* Hidden by default */
+}
+
+/* Mobile styles */
 @media (max-width: 768px) {
   .sidebar {
-    transform: translateX(-100%);
+    width: 15rem; /* Mobile sidebar width */
+    transform: translateX(-100%); /* Hide off-screen */
+    transition: transform 0.3s ease-in-out; /* Only transform transition */
   }
+
   .app-container.sidebar-open .sidebar {
-    transform: translateX(0);
+    transform: translateX(0); /* Show on-screen */
   }
+
   .app-container-overlay {
     position: fixed;
     inset: 0;
     z-index: 40;
     background-color: rgba(0,0,0,0.5);
-    display: none;
   }
+
   .app-container.sidebar-open .app-container-overlay {
-    display: block;
+    display: block; /* Show overlay when sidebar is open */
   }
+
   .main-content {
-    margin-left: 0;
-    padding-top: 5rem;
+    margin-left: 0; /* No margin on mobile */
+    padding-top: 5rem; /* Adjust for mobile header */
   }
 }
 
