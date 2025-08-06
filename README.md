@@ -1,7 +1,7 @@
 # TACTMS: Tithe & Membership, Simplified.
 
 <p align="center">
-  <img src="/img/TAC-Dexify-for-light-bg-only-logo.svg" alt="TACTMS Logo" width="400"/>
+  <img src="/img/DarkLogoExpanded.svg" alt="TACTMS Logo" width="400"/>
 </p>
 
 <p align="center">
@@ -20,17 +20,17 @@ Built as an offline-first Progressive Web App (PWA), TACTMS works seamlessly on 
 
 Managing church data shouldn't be a chore. TACTMS empowers you to:
 
--   ✅ **Save Hours of Manual Work:** Simply upload your existing Excel files. TACTMS automatically reads, analyzes, and reconciles the data in seconds, not hours.
--   💡 **Gain Instant Financial Clarity:** Our AI-powered analytics dashboard shows you key trends and insights at a glance. Understand your assembly's financial health like never before.
--   👥 **Maintain Accurate Membership Records:** Effortlessly track membership status, identify new converts, and keep your master database clean and up-to-date.
--   🔒 **Keep Your Data Safe and Secure:** All your data is processed locally on your device. Optional Google Drive integration provides a secure, encrypted backup in your own cloud account.
--   🌐 **Work Anywhere, Anytime:** Whether you're at the church office, at home, or on the go, TACTMS is always available, even without an internet connection.
+- ✅ **Save Hours of Manual Work:** Simply upload your existing Excel files. TACTMS automatically reads, analyzes, and reconciles the data in seconds, not hours.
+- 💡 **Gain Instant Financial Clarity:** Our AI-powered analytics dashboard shows you key trends and insights at a glance. Understand your assembly's financial health like never before.
+- 👥 **Maintain Accurate Membership Records:** Effortlessly track membership status, identify new converts, and keep your master database clean and up-to-date.
+- 🔒 **Keep Your Data Safe and Secure:** All your data is processed locally on your device. Optional Google Drive integration provides a secure, encrypted backup in your own cloud account.
+- 🌐 **Work Anywhere, Anytime:** Whether you're at the church office, at home, or on the go, TACTMS is always available, even without an internet connection.
 
 ## Who Is This For?
 
--   **Local Church Financial Secretaries & Treasurers:** The primary users who need to process weekly tithe lists.
--   **Pastors & Elders:** For gaining high-level insights into church growth and financial stability.
--   **District & Area Administrators:** (Coming Soon) A future version will provide aggregated analytics for oversight.
+- **Local Church Financial Secretaries & Treasurers:** The primary users who need to process weekly tithe lists.
+- **Pastors & Elders:** For gaining high-level insights into church growth and financial stability.
+- **District & Area Administrators:** (Coming Soon) A future version will provide aggregated analytics for oversight.
 
 ## Getting Started
 
