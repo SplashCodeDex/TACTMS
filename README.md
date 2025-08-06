@@ -1,7 +1,7 @@
 # TACTMS: Tithe & Membership, Simplified.
 
 <p align="center">
-  <img src="./public/img/DarkLogoExpanded.svg" alt="TACTMS Logo" width="400"/>
+  <img src="/public/img/DarkLogoExpanded.svg" alt="TACTMS Logo" width="400"/>
 </p>
 
 <p align="center">
