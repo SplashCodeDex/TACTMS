@@ -1,8 +1,10 @@
+
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { BotMessageSquare, Cpu, Star, Moon, Sun, ChevronLeft, ChevronRight, LogIn, PieChart, Check, Database, LayoutDashboard } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Button from './Button';
-import { GoogleUserProfile, ViewType } from '../types';
+import { GoogleUserProfile } from '../types';
 import { THEME_OPTIONS } from '../constants';
 import SyncStatusIndicator from './SyncStatusIndicator';
 
@@ -10,8 +12,6 @@ type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 type ThemeOption = typeof THEME_OPTIONS[0];
 
 interface SidebarProps {
-  activeView: ViewType;
-  setActiveView: (view: ViewType) => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   accentColor: ThemeOption;
@@ -41,16 +41,17 @@ const logoVariants = {
 const NavItem: React.FC<{
   icon: React.ElementType;
   label: string;
-  isActive: boolean;
-  onClick: () => void;
+  to: string;
   isCollapsed: boolean;
-}> = ({ icon: Icon, label, isActive, onClick, isCollapsed }) => {
+}> = ({ icon: Icon, label, to, isCollapsed }) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
   const activeClass = 'bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white shadow-lg shadow-[var(--primary-accent-start)]/20';
   const inactiveClass = 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5';
   
   return (
-    <button
-      onClick={onClick}
+    <Link
+      to={to}
       className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? activeClass : inactiveClass} ${isCollapsed ? 'justify-center' : ''}`}
       aria-current={isActive ? 'page' : undefined}
       title={isCollapsed ? label : undefined}
@@ -65,7 +66,7 @@ const NavItem: React.FC<{
       >
         {label}
       </motion.span>
-    </button>
+    </Link>
   );
 };
 
@@ -166,21 +167,13 @@ const ThemeControl: React.FC<Pick<SidebarProps, 'theme' | 'setTheme' | 'accentCo
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-    activeView, setActiveView, theme, setTheme, isCollapsed, setIsCollapsed,
+    theme, setTheme, isCollapsed, setIsCollapsed,
     isLoggedIn, userProfile, syncStatus, signIn, signOut, isConfigured,
     accentColor, setAccentColor, openCommandPalette, isOnline
 }) => {
     const logoSrc = isCollapsed
         ? (theme === 'dark' ? `${import.meta.env.BASE_URL}img/DarkLogoCollapsed.svg` : `${import.meta.env.BASE_URL}img/LightLogoCollapsed.svg`)
         : (theme === 'dark' ? `${import.meta.env.BASE_URL}img/DarkLogoExpanded.svg` : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`);
-
-  const handleNavClick = (view: ViewType) => {
-    setActiveView(view);
-    if (window.innerWidth < 768) {
-      setIsCollapsed(true);
-    }
-  };
-
 
   return (
     <aside className={`sidebar glassmorphism-bg ${isCollapsed ? 'collapsed' : ''}`}>
@@ -205,43 +198,37 @@ const Sidebar: React.FC<SidebarProps> = ({
         <NavItem 
           icon={LayoutDashboard} 
           label="Dashboard" 
-          isActive={activeView === 'dashboard'} 
-          onClick={() => handleNavClick('dashboard')} 
+          to="/"
           isCollapsed={isCollapsed}
         />
         <NavItem 
           icon={Cpu} 
           label="Tithe Processor" 
-          isActive={activeView === 'processor'} 
-          onClick={() => handleNavClick('processor')} 
+          to="/processor"
           isCollapsed={isCollapsed}
         />
         <NavItem 
           icon={Database} 
           label="Member Database" 
-          isActive={activeView === 'database'} 
-          onClick={() => handleNavClick('database')}
+          to="/database"
           isCollapsed={isCollapsed}
         />
         <NavItem 
           icon={Star} 
           label="Favorites" 
-          isActive={activeView === 'favorites'} 
-          onClick={() => handleNavClick('favorites')}
+          to="/favorites"
           isCollapsed={isCollapsed}
         />
         <NavItem 
           icon={PieChart} 
           label="Reports" 
-          isActive={activeView === 'reports'} 
-          onClick={() => handleNavClick('reports')}
+          to="/reports"
           isCollapsed={isCollapsed}
         />
         <NavItem 
           icon={BotMessageSquare} 
           label="AI Analytics" 
-          isActive={activeView === 'analytics'} 
-          onClick={() => handleNavClick('analytics')}
+          to="/analytics"
           isCollapsed={isCollapsed}
         />
       </nav>

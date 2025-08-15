@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, ViewType, MemberDatabase, TransactionLogEntry } from './types';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { MemberRecordA, TitheRecordB, ConcatenationConfig, FavoriteConfig, AutoSaveDraft, MembershipReconciliationReport, MemberDatabase, TransactionLogEntry } from './types';
 import Button from './components/Button';
 import { ToastContainer, ToastMessage, ToastAction } from './components/Toast';
 import Modal from './components/Modal';
@@ -32,24 +33,12 @@ import {
 import DataEntryModal from './components/DataEntryModal';
 import AssemblySelectionModal from './components/AssemblySelectionModal';
 import MembershipReconciliationModal from './components/MembershipReconciliationModal';
-import EmptyState from './components/EmptyState';
 import ClearWorkspaceModal from './components/ClearWorkspaceModal';
 import UpdateMasterListConfirmModal from './components/UpdateMasterListConfirmModal';
 import EditMemberModal from './components/EditMemberModal';
 import MobileHeader from './components/MobileHeader';
 import ValidationReportModal from './components/ValidationReportModal';
-import LoadingSpinner from './components/LoadingSpinner';
-
-// Lazy-loaded sections
-const DashboardSection = lazy(() => import('./sections/DashboardSection'));
-const FavoritesView = lazy(() => import('./sections/FavoritesView'));
-const AnalyticsSection = lazy(() => import('./sections/AnalyticsSection'));
-const ReportsSection = lazy(() => import('./sections/ReportsSection'));
-const MemberDatabaseSection = lazy(() => import('./components/MemberDatabaseSection'));
-const CommandPalette = lazy(() => import('./components/CommandPalette'));
-const ListOverviewActionsSection = lazy(() => import('./sections/ListOverviewActionsSection'));
-const ConfigurationSection = lazy(() => import('./sections/ConfigurationSection'));
-
+import CommandPalette from './components/CommandPalette';
 
 interface PendingData {
     data: MemberRecordA[];
@@ -107,8 +96,6 @@ const App: React.FC = () => {
   
   const [fileNameToSave, setFileNameToSave] = useState('GeneratedTitheList');
 
-  const [activeView, setActiveView] = useState<ViewType>('dashboard');
-  
   const [favoritesSearchTerm, setFavoritesSearchTerm] = useState('');
   const [isFavDetailsModalOpen, setIsFavDetailsModalOpen] = useState(false);
   const [selectedFavoriteForDetails, setSelectedFavoriteForDetails] = useState<FavoriteConfig | null>(null);
@@ -491,6 +478,7 @@ const App: React.FC = () => {
     addToast(`${assemblyName} master list has been updated with ${newData.length} records.`, 'success');
   }
 
+  const navigate = useNavigate();
   const handleConfirmAssemblySelection = useCallback(async (assembly: string) => {
     if (!pendingData) return;
     
@@ -500,10 +488,10 @@ const App: React.FC = () => {
     
     processData(pendingData.data, assembly, pendingData.file.name);
 
-    setActiveView('processor');
+    navigate('/processor');
     setIsAssemblySelectionModalOpen(false);
     setPendingData(null);
-  }, [pendingData, clearWorkspace]);
+  }, [pendingData, clearWorkspace, navigate]);
   
   const processData = (data: MemberRecordA[], assembly: string, sourceFileName: string) => {
     setOriginalData(data);
@@ -784,8 +772,8 @@ const App: React.FC = () => {
     clearAutoSaveDraft();
     
     addToast(`Loaded favorite: "${fav.name}"`, 'success');
-    setActiveView('processor');
-  }, [favorites, addToast, clearWorkspace, clearAutoSaveDraft]);
+    navigate('/processor');
+  }, [favorites, addToast, clearWorkspace, clearAutoSaveDraft, navigate]);
 
   const findLatestFavorite = useCallback((assemblyName: string) => {
     return favorites
@@ -837,7 +825,7 @@ const App: React.FC = () => {
     setHasUnsavedChanges(false);
     clearAutoSaveDraft();
 
-    setActiveView('processor');
+    navigate('/processor');
     addToast(`Started new week for ${assemblyName} using the latest member list.`, 'success');
   };
 
@@ -913,7 +901,7 @@ const App: React.FC = () => {
       const list = createTitheList(members, concatenationConfig, selectedDate, descriptionText, null);
       setTitheListData(list);
       setFileNameToSave(`${assembly}-TitheList-${formatDateDDMMMYYYY(new Date())}`);
-      setActiveView('processor');
+      navigate('/processor');
       setIsCreateTitheListModalOpen(false);
       addToast(`Created a new list with ${members.length} members from the database.`, 'success');
   };
@@ -1012,141 +1000,21 @@ ${JSON.stringify(sampleData, null, 2)}
     }
   };
 
-
-  const viewTitles: Record<ViewType, string> = {
-    dashboard: 'Dashboard',
-    processor: 'Tithe Processor',
-    database: 'Member Database',
-    favorites: 'Favorites',
-    reports: 'Reports',
-    analytics: 'AI Analytics',
+  const location = useLocation();
+  const viewTitles: Record<string, string> = {
+    '/': 'Dashboard',
+    '/processor': 'Tithe Processor',
+    '/database': 'Member Database',
+    '/favorites': 'Favorites',
+    '/reports': 'Reports',
+    '/analytics': 'AI Analytics',
   };
 
-  const renderContent = () => {
-    switch(activeView) {
-      case 'dashboard':
-          return <DashboardSection 
-                    setActiveView={setActiveView}
-                    transactionLog={transactionLog}
-                    memberDatabase={memberDatabase}
-                    favorites={favorites}
-                    onStartNewWeek={startNewWeek}
-                    userProfile={driveUserProfile}
-                    onUploadFile={(file) => handleFileAccepted(file, false)}
-                />;
-      case 'processor':
-        if (titheListData.length === 0 && !uploadedFile && !currentAssembly) {
-          return <EmptyState 
-                    setActiveView={setActiveView}
-                    theme={theme}
-                  />;
-        }
-        return (
-          <div className="space-y-8">
-            {isParsing ? (
-                 <div className="flex flex-col items-center justify-center p-10 content-card">
-                    <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="text-center"
-                    >
-                        <BotMessageSquare size={48} className="mx-auto mb-4 text-[var(--primary-accent-start)] animate-pulse"/>
-                        <p className="text-lg font-semibold text-[var(--text-primary)]">
-                           {'Parsing your Excel file...'}
-                        </p>
-                        <p className="text-sm text-[var(--text-secondary)]">This should only take a moment.</p>
-                    </motion.div>
-                </div>
-            ) : !currentAssembly ? (
-                <EmptyState 
-                    setActiveView={setActiveView}
-                    theme={theme}
-                />
-            ) : (
-              <>
-                <ListOverviewActionsSection
-                  ref={listOverviewRef}
-                  currentAssembly={currentAssembly} selectedDate={selectedDate}
-                  currentTotalTithe={totalTitheAmount} hasUnsavedChanges={hasUnsavedChanges}
-                  titheListData={titheListData} tithersCount={tithersCount} 
-                  nonTithersCount={titheListData.length - tithersCount}
-                  tithersPercentage={(titheListData.length > 0 ? (tithersCount / titheListData.length) * 100 : 0)}
-                  setIsFullPreviewModalOpen={setIsFullPreviewModalOpen} setIsDataEntryModalOpen={setIsDataEntryModalOpen}
-                  fileNameToSave={fileNameToSave} setFileNameToSave={setFileNameToSave}
-                  inputErrors={inputErrors} setInputErrors={setInputErrors}
-                  handleDownloadExcel={handleDownloadExcel} openSaveFavoriteModal={openSaveFavoriteModal}
-                  onClearWorkspace={() => setIsClearWorkspaceModalOpen(true)}
-                  transactionLog={transactionLog}
-                  soulsWonCount={soulsWonCount}
-                />
-                <ConfigurationSection
-                  ageRangeMin={ageRangeMin} setAgeRangeMin={setAgeRangeMin} ageRangeMax={ageRangeMax} setAgeRangeMax={setAgeRangeMax}
-                  inputErrors={inputErrors} handleApplyAgeFilter={handleApplyAgeFilter} isAgeFilterActive={isAgeFilterActive}
-                  handleRemoveAgeFilter={handleRemoveAgeFilter} isLoading={isParsing} originalData={originalData}
-                  uploadedFile={uploadedFile} titheListData={titheListData} processedDataA={processedDataA}
-                  setHasUnsavedChanges={setHasUnsavedChanges}
-                  concatenationConfig={concatenationConfig} handleConcatenationConfigChange={handleConcatenationConfigChange}
-                  selectedDate={selectedDate} onDateChange={handleDateChange}
-                  descriptionText={descriptionText} onDescriptionChange={handleDescriptionChange}
-                  amountMappingColumn={amountMappingColumn} setAmountMappingColumn={setAmountMappingColumn}
-                  handleGenerateValidationReport={handleGenerateValidationReport}
-                  isGeneratingReport={isGeneratingReport}
-                />
-                <div className="content-card p-4">
-                  <h3 className="text-lg font-semibold mb-2">PWA Features</h3>
-                  <div className="flex gap-4">
-                    <Button onClick={requestNotificationPermission} disabled={isSubscribed}>
-                      {isSubscribed ? 'Notifications Enabled' : 'Enable Notifications'}
-                    </Button>
-                    <Button onClick={registerBackgroundSync}>Enable Background Sync</Button>
-                    <Button onClick={registerPeriodicSync}>Enable Periodic Sync</Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        );
-      case 'favorites':
-        return <FavoritesView
-                  favorites={favorites}
-                  favoritesSearchTerm={favoritesSearchTerm} setFavoritesSearchTerm={setFavoritesSearchTerm}
-                  loadFavorite={loadFavorite}
-                  deleteFavorite={deleteFavorite} viewFavoriteDetails={viewFavoriteDetails}
-                  updateFavoriteName={updateFavoriteName} addToast={addToast}
-                />;
-      case 'analytics':
-        return <AnalyticsSection
-                  titheListData={titheListData} currentAssembly={currentAssembly} selectedDate={selectedDate}
-                  addToast={addToast} tithersCount={tithersCount} nonTithersCount={titheListData.length - tithersCount} totalAmount={totalTitheAmount}
-                  reconciliationReport={reconciliationReport}
-               />;
-      case 'reports':
-          return <ReportsSection transactionLog={transactionLog} memberDatabase={memberDatabase} />;
-      case 'database':
-        return <MemberDatabaseSection 
-                 memberDatabase={memberDatabase} 
-                 onUploadMasterList={(file: File | null, isMasterList: boolean, assemblyName?: string) => handleFileAccepted(file, isMasterList, assemblyName)}
-                 onCreateTitheList={(selectedMembers: MemberRecordA[], assemblyName: string) => {
-                     setPendingTitheListMembers(selectedMembers);
-                     setPendingTitheListAssembly(assemblyName);
-                     setIsCreateTitheListModalOpen(true);
-                 }}
-                 onEditMember={(member: MemberRecordA, assemblyName: string) => {
-                    setMemberToEdit({ member, assemblyName });
-                    setIsEditMemberModalOpen(true);
-                 }}
-                 addToast={addToast}
-                />;
-      default:
-        return <div>Unknown view</div>;
-    }
-  }
-  
-
   return (
-    <div className={`app-container ${!isSidebarCollapsed && window.innerWidth < 768 ? 'sidebar-open' : ''}`}>
+    <div className={
+      `app-container ${!isSidebarCollapsed && window.innerWidth < 768 ? 'sidebar-open' : ''}`
+    }>
         <Sidebar 
-            activeView={activeView} setActiveView={setActiveView}
             theme={theme} setTheme={setTheme}
             accentColor={accentColor} setAccentColor={setAccentColor}
             isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed}
@@ -1161,7 +1029,6 @@ ${JSON.stringify(sampleData, null, 2)}
                 <CommandPalette
                     isOpen={isCommandPaletteOpen}
                     onClose={() => setIsCommandPaletteOpen(false)}
-                    setActiveView={setActiveView}
                     setTheme={setTheme}
                     onStartNewWeek={startNewWeek}
                     favorites={favorites}
@@ -1173,19 +1040,17 @@ ${JSON.stringify(sampleData, null, 2)}
         <main className="main-content">
             <MobileHeader 
                 onMenuClick={() => setIsSidebarCollapsed(false)}
-                title={viewTitles[activeView]}
+                title={viewTitles[location.pathname] || 'TACTMS'}
             />
             <AnimatePresence mode="wait">
               <MotionDiv
-                key={activeView}
+                key={location.pathname}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <Suspense fallback={<div className="flex justify-center items-center h-full"><LoadingSpinner /></div>}>
-                  {renderContent()}
-                </Suspense>
+                <Outlet />
               </MotionDiv>
             </AnimatePresence>
         </main>
