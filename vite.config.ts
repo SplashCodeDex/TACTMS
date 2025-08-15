@@ -22,12 +22,12 @@ export default defineConfig({
       manifest: {
         name: "TACTMS - The Apostolic Church Tithe Made Simple",
         short_name: "TACTMS",
+        start_url: "/TACTMS/",
         description:
           "An intelligent data processing tool that uses AI to analyze, segment, and provide insights on uploaded data through an interactive chat interface with an advanced analytics database.",
         theme_color: "#1A1B29",
         background_color: "#0D0E1B",
         display: "standalone",
-        start_url: "/TACTMS/",
         scope: "/TACTMS/",
         id: "/TACTMS/",
         icons: [
