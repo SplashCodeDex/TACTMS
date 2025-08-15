@@ -2,6 +2,8 @@ import React, { Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
 import LoadingSpinner from "./components/LoadingSpinner";
+import NotFound from "./components/NotFound";
+import ErrorElement from "./components/ErrorElement";
 
 // Lazy-loaded sections from App.tsx
 const DashboardSection = React.lazy(
@@ -26,6 +28,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+    errorElement: <ErrorElement />,
     children: [
       { index: true, element: <DashboardSection /> },
       { path: "processor", element: <ListOverviewActionsSection /> },
@@ -34,6 +37,7 @@ export const router = createBrowserRouter([
       { path: "reports", element: <ReportsSection /> },
       { path: "analytics", element: <AnalyticsSection /> },
       { path: "configuration", element: <ConfigurationSection /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
