@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from "react";
+import { motion } from "framer-motion";
 
 export interface ChartData {
   label: string;
@@ -15,23 +15,35 @@ const MotionText = motion.text as React.FC<any>;
 
 const BarChart: React.FC<BarChartProps> = ({ data }) => {
   if (!data || data.length === 0) {
-    return <p className="text-center text-[var(--text-muted)] text-sm">No chart data available.</p>;
+    return (
+      <p className="text-center text-[var(--text-muted)] text-sm">
+        No chart data available.
+      </p>
+    );
   }
 
   const chartHeight = 220;
   const barWidth = 35;
   const barMargin = 20;
   const chartWidth = data.length * (barWidth + barMargin);
-  const maxValue = Math.max(...data.map(d => d.count), 0);
+  const maxValue = Math.max(...data.map((d) => d.count), 0);
 
   return (
     <div className="bar-chart-container w-full overflow-x-auto pb-4">
-      <svg width={chartWidth} height={chartHeight} aria-label="Contribution Distribution Chart">
+      <svg
+        width={chartWidth}
+        height={chartHeight}
+        aria-label="Contribution Distribution Chart"
+      >
         <g transform="translate(0, 10)">
           {data.map((d, i) => {
-            const barHeight = maxValue > 0 ? (d.count / maxValue) * (chartHeight - 40) : 0;
+            const barHeight =
+              maxValue > 0 ? (d.count / maxValue) * (chartHeight - 40) : 0;
             return (
-              <g key={d.label} transform={`translate(${i * (barWidth + barMargin)}, 0)`}>
+              <g
+                key={d.label}
+                transform={`translate(${i * (barWidth + barMargin)}, 0)`}
+              >
                 <title>{`${d.label}: ${d.count} members`}</title>
                 <MotionRect
                   className="bar"
@@ -43,8 +55,15 @@ const BarChart: React.FC<BarChartProps> = ({ data }) => {
                   rx="4"
                   ry="4"
                   initial={{ height: 0, y: chartHeight - 30 }}
-                  animate={{ height: barHeight, y: chartHeight - 30 - barHeight }}
-                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: i * 0.1 }}
+                  animate={{
+                    height: barHeight,
+                    y: chartHeight - 30 - barHeight,
+                  }}
+                  transition={{
+                    duration: 0.8,
+                    ease: [0.22, 1, 0.36, 1],
+                    delay: i * 0.1,
+                  }}
                 />
                 <MotionText
                   className="bar-value"
@@ -53,7 +72,11 @@ const BarChart: React.FC<BarChartProps> = ({ data }) => {
                   textAnchor="middle"
                   initial={{ opacity: 0, y: chartHeight - 30 }}
                   animate={{ opacity: 1, y: chartHeight - 35 - barHeight }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: i * 0.1 + 0.3 }}
+                  transition={{
+                    duration: 0.8,
+                    ease: "easeOut",
+                    delay: i * 0.1 + 0.3,
+                  }}
                 >
                   {d.count}
                 </MotionText>

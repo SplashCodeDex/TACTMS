@@ -1,8 +1,7 @@
-
-import React from 'react';
-import Modal from './Modal';
-import Button from './Button';
-import { ChevronsRight, Users } from 'lucide-react';
+import React from "react";
+import Modal from "./Modal";
+import Button from "./Button";
+import { ChevronsRight, Users } from "lucide-react";
 
 interface CreateTitheListModalProps {
   isOpen: boolean;
@@ -27,22 +26,39 @@ const CreateTitheListModal: React.FC<CreateTitheListModalProps> = ({
       size="md"
       footerContent={
         <>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onConfirm} variant="primary" leftIcon={<ChevronsRight size={16} />}>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            variant="primary"
+            leftIcon={<ChevronsRight size={16} />}
+          >
             Confirm & Proceed
           </Button>
         </>
       }
     >
       <div className="space-y-4 text-center">
-        <Users size={40} className="mx-auto text-[var(--primary-accent-start)]" />
+        <Users
+          size={40}
+          className="mx-auto text-[var(--primary-accent-start)]"
+        />
         <p className="text-lg text-[var(--text-primary)]">
-          You have selected <strong className="font-bold text-gradient-primary">{memberCount}</strong> members from the
-          <strong className="font-bold text-gradient-primary ml-1">{assemblyName} Assembly</strong> master list.
+          You have selected{" "}
+          <strong className="font-bold text-gradient-primary">
+            {memberCount}
+          </strong>{" "}
+          members from the
+          <strong className="font-bold text-gradient-primary ml-1">
+            {assemblyName} Assembly
+          </strong>{" "}
+          master list.
         </p>
         <p className="text-sm text-[var(--text-secondary)]">
-          Confirming will take you to the Tithe Processor with a new list containing these members.
-          You can then reorder them and set their master sort order for weekly use.
+          Confirming will take you to the Tithe Processor with a new list
+          containing these members. You can then reorder them and set their
+          master sort order for weekly use.
         </p>
       </div>
     </Modal>

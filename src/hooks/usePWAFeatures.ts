@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-const VAPID_PUBLIC_KEY = 'YOUR_PUBLIC_VAPID_KEY'; // Replace with your actual VAPID public key from your backend
+const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY"; // Replace with your actual VAPID public key from your backend
 
 function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
@@ -17,20 +15,31 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export const usePWAFeatures = (addToast: (message: string, type: any, duration?: number, actions?: any[]) => void, onNewWorker: (worker: ServiceWorker) => void) => {
+export const usePWAFeatures = (
+  addToast: (
+    message: string,
+    type: any,
+    duration?: number,
+    actions?: any[],
+  ) => void,
+  onNewWorker: (worker: ServiceWorker) => void,
+) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
         if (registration.waiting) {
           onNewWorker(registration.waiting);
         }
-        registration.addEventListener('updatefound', () => {
+        registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
           if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
                 onNewWorker(newWorker);
               }
             });
@@ -38,7 +47,7 @@ export const usePWAFeatures = (addToast: (message: string, type: any, duration?:
         });
 
         // --- Push Notifications ---
-        registration.pushManager.getSubscription().then(subscription => {
+        registration.pushManager.getSubscription().then((subscription) => {
           setIsSubscribed(!!subscription);
         });
       });
@@ -46,17 +55,17 @@ export const usePWAFeatures = (addToast: (message: string, type: any, duration?:
   }, [onNewWorker]);
 
   const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      addToast('This browser does not support desktop notification', 'error');
+    if (!("Notification" in window)) {
+      addToast("This browser does not support desktop notification", "error");
       return;
     }
 
     const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      addToast('Notification permission granted.', 'success');
+    if (permission === "granted") {
+      addToast("Notification permission granted.", "success");
       subscribeUserToPush();
     } else {
-      addToast('Notification permission denied.', 'warning');
+      addToast("Notification permission denied.", "warning");
     }
   };
 
@@ -67,8 +76,8 @@ export const usePWAFeatures = (addToast: (message: string, type: any, duration?:
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
-      
-      console.log('User is subscribed:', subscription);
+
+      console.log("User is subscribed:", subscription);
       // TODO: Send subscription to your backend server
       // await fetch('/api/subscribe', {
       //   method: 'POST',
@@ -76,45 +85,56 @@ export const usePWAFeatures = (addToast: (message: string, type: any, duration?:
       //   headers: { 'Content-Type': 'application/json' }
       // });
       setIsSubscribed(true);
-      addToast('Successfully subscribed to push notifications!', 'success');
+      addToast("Successfully subscribed to push notifications!", "success");
     } catch (error) {
-      console.error('Failed to subscribe the user: ', error);
-      addToast('Failed to subscribe to push notifications.', 'error');
+      console.error("Failed to subscribe the user: ", error);
+      addToast("Failed to subscribe to push notifications.", "error");
     }
   };
 
   const registerBackgroundSync = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      await (registration as any).sync.register('sync-tithe-data');
+      await (registration as any).sync.register("sync-tithe-data");
       console.log('Background sync registered for "sync-tithe-data"');
-      addToast('Offline changes will be synced in the background.', 'info');
+      addToast("Offline changes will be synced in the background.", "info");
     } catch (error) {
-      console.error('Background sync could not be registered!', error);
-      addToast('Background sync is not supported by this browser.', 'error');
+      console.error("Background sync could not be registered!", error);
+      addToast("Background sync is not supported by this browser.", "error");
     }
   };
 
   const registerPeriodicSync = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      if ('periodicSync' in registration) {
-        const status = await navigator.permissions.query({ name: 'periodic-background-sync' as any });
-        if (status.state === 'granted') {
-          await (registration as any).periodicSync.register('get-latest-updates', {
-            minInterval: 24 * 60 * 60 * 1000, // 24 hours
-          });
+      if ("periodicSync" in registration) {
+        const status = await navigator.permissions.query({
+          name: "periodic-background-sync" as any,
+        });
+        if (status.state === "granted") {
+          await (registration as any).periodicSync.register(
+            "get-latest-updates",
+            {
+              minInterval: 24 * 60 * 60 * 1000, // 24 hours
+            },
+          );
           console.log('Periodic sync registered for "get-latest-updates"');
-          addToast('App will periodically sync in the background.', 'info');
+          addToast("App will periodically sync in the background.", "info");
         } else {
-          addToast('Periodic background sync permission not granted.', 'warning');
+          addToast(
+            "Periodic background sync permission not granted.",
+            "warning",
+          );
         }
       } else {
-        addToast('Periodic background sync is not supported by this browser.', 'error');
+        addToast(
+          "Periodic background sync is not supported by this browser.",
+          "error",
+        );
       }
     } catch (error) {
-      console.error('Periodic sync could not be registered!', error);
-      addToast('Failed to register periodic sync.', 'error');
+      console.error("Periodic sync could not be registered!", error);
+      addToast("Failed to register periodic sync.", "error");
     }
   };
 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import Modal from './Modal';
-import Button from './Button';
-import { ASSEMBLIES } from '../constants';
+import React, { useState, useEffect } from "react";
+import Modal from "./Modal";
+import Button from "./Button";
+import { ASSEMBLIES } from "../constants";
 
 interface AssemblySelectionModalProps {
   isOpen: boolean;
@@ -18,10 +18,12 @@ const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({
   fileName,
   suggestedAssembly,
 }) => {
-  const [selectedAssembly, setSelectedAssembly] = useState(suggestedAssembly || '');
+  const [selectedAssembly, setSelectedAssembly] = useState(
+    suggestedAssembly || "",
+  );
 
   useEffect(() => {
-    setSelectedAssembly(suggestedAssembly || '');
+    setSelectedAssembly(suggestedAssembly || "");
   }, [suggestedAssembly, isOpen]);
 
   const handleConfirm = () => {
@@ -34,7 +36,11 @@ const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Select Assembly">
       <div className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Which assembly does the file <span className="font-semibold text-gray-800 dark:text-gray-200">{fileName}</span> belong to?
+          Which assembly does the file{" "}
+          <span className="font-semibold text-gray-800 dark:text-gray-200">
+            {fileName}
+          </span>{" "}
+          belong to?
         </p>
         <div>
           <label htmlFor="assembly-select" className="form-label">

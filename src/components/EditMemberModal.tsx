@@ -1,5 +1,5 @@
-import React from 'react';
-import { MemberRecordA } from '../types';
+import React from "react";
+import { MemberRecordA } from "../types";
 
 interface EditMemberModalProps {
   isOpen: boolean;
@@ -9,7 +9,13 @@ interface EditMemberModalProps {
   assemblyName: string;
 }
 
-const EditMemberModal: React.FC<EditMemberModalProps> = ({ isOpen, onClose, onSave, memberData, assemblyName }) => {
+const EditMemberModal: React.FC<EditMemberModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  memberData,
+  assemblyName,
+}) => {
   if (!isOpen) return null;
 
   return (

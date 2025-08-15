@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from "react";
+import { motion } from "framer-motion";
 
 interface DonutChartProps {
   percentage: number;
@@ -21,11 +21,16 @@ const DonutChart: React.FC<DonutChartProps> = ({
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percentage / 100) * circumference;
 
-  const colorVar = color || 'var(--primary-accent-start)';
+  const colorVar = color || "var(--primary-accent-start)";
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="-rotate-90"
+      >
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -45,17 +50,17 @@ const DonutChart: React.FC<DonutChartProps> = ({
           strokeDashoffset={circumference}
           strokeLinecap="round"
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.2, ease: 'circOut' }}
+          transition={{ duration: 1.2, ease: "circOut" }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <MotionSpan
-            className="text-xl font-bold text-[var(--text-primary)]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+          className="text-xl font-bold text-[var(--text-primary)]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
         >
-            {Math.round(percentage)}%
+          {Math.round(percentage)}%
         </MotionSpan>
       </div>
     </div>

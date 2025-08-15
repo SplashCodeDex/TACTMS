@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ValidationReportSectionProps {
   handleGenerateReport: () => void;
@@ -6,12 +6,19 @@ interface ValidationReportSectionProps {
   hasData: boolean;
 }
 
-const ValidationReportSection: React.FC<ValidationReportSectionProps> = ({ handleGenerateReport, isGenerating, hasData }) => {
+const ValidationReportSection: React.FC<ValidationReportSectionProps> = ({
+  handleGenerateReport,
+  isGenerating,
+  hasData,
+}) => {
   return (
     <div>
       <h3>AI Validation Report</h3>
-      <button onClick={handleGenerateReport} disabled={isGenerating || !hasData}>
-        {isGenerating ? 'Generating...' : 'Generate Report'}
+      <button
+        onClick={handleGenerateReport}
+        disabled={isGenerating || !hasData}
+      >
+        {isGenerating ? "Generating..." : "Generate Report"}
       </button>
     </div>
   );

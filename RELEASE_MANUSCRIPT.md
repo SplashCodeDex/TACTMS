@@ -1,3 +1,41 @@
+## 2025-08-15: Foundational Stability & Modernization
+
+**Author:** Gemini (facilitated by CodeDeX)
+
+### Change Summary
+
+This release focused on addressing critical bugs, modernizing the application's core architecture, and establishing a testing foundation. These changes significantly improve the application's stability, performance, and maintainability.
+
+### Architectural Decisions & Reasoning
+
+1.  **PWA & Service Worker Fixes:**
+    - **Problem:** The application was suffering from several PWA-related errors, including a broken offline analytics queue, manifest syntax errors, and incorrect service worker navigation handling.
+    - **Solution:**
+      - Reworked the service worker's offline analytics logic to correctly use `workbox-background-sync` and a message-based queueing system.
+      - Corrected the `vite.config.ts` to ensure the PWA manifest is generated correctly and that navigation routes are properly handled by the service worker.
+    - **Reasoning:** A stable and reliable PWA experience is a core requirement of the application. These fixes ensure that the application is installable, works correctly offline, and that analytics data is not lost.
+
+2.  **Integration of TanStack Query (React Query):**
+    - **Problem:** The application was using custom hooks for data fetching, which lacked features like caching, request deduplication, and background data synchronization.
+    - **Solution:** Integrated TanStack Query to handle all data fetching from Google Drive. This involved creating new hooks (`useFindOrCreateDriveFile`, `useReadFromDrive`, `useSaveToDrive`) and refactoring the `useGoogleDriveSync` hook to use them.
+    - **Reasoning:** TanStack Query is the industry standard for data fetching in React. It provides a robust and efficient data layer, which simplifies the code, improves performance, and provides a better user experience.
+
+3.  **Implementation of React Router:**
+    - **Problem:** The application was using an internal state variable to manage navigation, which prevented users from using the browser's back/forward buttons, bookmarking pages, or sharing direct links.
+    - **Solution:** Implemented React Router to handle all navigation. This involved configuring the router in `src/Router.tsx` and updating the `Sidebar` component to use the `Link` component.
+    - **Reasoning:** React Router is the industry standard for routing in React. It provides a professional and intuitive navigation experience for users.
+
+4.  **Establishment of a Testing Foundation:**
+    - **Problem:** The codebase lacked an automated testing suite, which made it risky to add new features or refactor existing code.
+    - **Solution:** Set up a comprehensive testing environment using Vitest and React Testing Library. Added unit tests for the critical `excelProcessor.ts` file.
+    - **Reasoning:** Automated testing is essential for maintaining a high-quality codebase. It gives us the confidence to innovate rapidly while ensuring that the application remains stable and reliable.
+
+### Impact
+
+These changes have transformed the application from a proof-of-concept to a stable and modern web application. The application is now more performant, more reliable, and has a solid foundation for future development. The integration of TanStack Query and React Router brings the application in line with modern best practices, and the new testing suite will ensure that the application remains high-quality as it evolves.
+
+---
+
 # TACTMS Release Manuscript
 
 This document tracks the significant architectural decisions, feature implementations, and the reasoning behind them for the TACTMS project.
@@ -13,19 +51,19 @@ Fixed two critical UI issues: the non-functional "Database" panel and the distor
 ### Architectural Decisions & Reasoning
 
 1.  **Implemented `MemberDatabaseSection` Component:**
-    *   **Problem:** The "Database" view was empty because the `MemberDatabaseSection` component was a placeholder with no implementation.
-    *   **Solution:** Developed a full-featured UI for the component. This includes:
-        *   A tabbed interface to switch between different assembly databases.
-        *   A searchable and sortable table to display member records.
-        *   Controls for uploading new master lists.
-        *   Functionality to select members and create a new tithe list from the selection.
-        *   An "Edit Member" feature to allow for data correction.
-    *   **Reasoning:** A functional member database is a core requirement of the application. This implementation provides the necessary tools for users to manage their member lists effectively.
+    - **Problem:** The "Database" view was empty because the `MemberDatabaseSection` component was a placeholder with no implementation.
+    - **Solution:** Developed a full-featured UI for the component. This includes:
+      - A tabbed interface to switch between different assembly databases.
+      - A searchable and sortable table to display member records.
+      - Controls for uploading new master lists.
+      - Functionality to select members and create a new tithe list from the selection.
+      - An "Edit Member" feature to allow for data correction.
+    - **Reasoning:** A functional member database is a core requirement of the application. This implementation provides the necessary tools for users to manage their member lists effectively.
 
 2.  **Fixed and Enhanced `AssemblySelectionModal`:**
-    *   **Problem:** The modal for selecting an assembly was using placeholder content, resulting in a distorted UI and no real functionality.
-    *   **Solution:** Replaced the placeholder content with a proper dropdown menu populated from the `ASSEMBLIES` constant. The modal is now styled consistently with the rest of the application and includes logic to handle user selection and confirmation.
-    *   **Reasoning:** This modal is a critical step in the data import workflow. The fix ensures a smooth and intuitive user journey when uploading new files.
+    - **Problem:** The modal for selecting an assembly was using placeholder content, resulting in a distorted UI and no real functionality.
+    - **Solution:** Replaced the placeholder content with a proper dropdown menu populated from the `ASSEMBLIES` constant. The modal is now styled consistently with the rest of the application and includes logic to handle user selection and confirmation.
+    - **Reasoning:** This modal is a critical step in the data import workflow. The fix ensures a smooth and intuitive user journey when uploading new files.
 
 ### Impact
 
@@ -44,12 +82,10 @@ Resolved critical issues with the Progressive Web App (PWA) configuration to ens
 ### Architectural Decisions & Reasoning
 
 1.  **Corrected Manifest Icon Paths:**
-
     - **Problem:** The browser was unable to load PWA icons because the paths in `vite.config.ts` were absolute (`/img/icons/...`), which did not align with Vite's build output structure.
     - **Solution:** Modified the icon paths to be relative (`img/icons/...`). This makes the paths more robust and independent of the server's root directory, ensuring icons are correctly located after the build process.
 
 2.  **Added PWA Screenshot Assets:**
-
     - **Problem:** The PWA manifest lacked a `screenshots` array, which is recommended for a richer installation UI on supported platforms.
     - **Solution:** Generated two placeholder SVG images (`screenshot-wide.svg` and `screenshot-narrow.svg`) and placed them in the `public/screenshots` directory. The `vite.config.ts` manifest was updated to include these screenshots, with appropriate metadata for different form factors (desktop and mobile).
 
@@ -74,7 +110,6 @@ Addressed various build errors, implemented code splitting for improved performa
 ### Architectural Decisions & Reasoning
 
 1.  **Resolved Build Errors:**
-
     - **Problem:** Several TypeScript errors (`TS2448`, `TS2454`, `TS2304`, `TS2307`) were preventing successful builds after initial PWA configuration. These included `addToast` being used before declaration, `isOffline` being undefined, `CloudOff` not imported, and `react-tooltip` type declaration issues.
     - **Solution:**
       - Reordered `usePWAFeatures` call after `addToast` definition in `src/App.tsx`.
@@ -84,7 +119,6 @@ Addressed various build errors, implemented code splitting for improved performa
     - **Reasoning:** Ensuring a clean build is fundamental for stable development and deployment.
 
 2.  **Implemented Code Splitting:**
-
     - **Problem:** The application had a large initial JavaScript bundle size, leading to slower load times, especially on slower networks.
     - **Solution:** Utilized `React.lazy` and `Suspense` to dynamically import major view components (`DashboardSection`, `FavoritesView`, `AnalyticsSection`, `ReportsSection`, `MemberDatabaseSection`, `CommandPalette`, `ListOverviewActionsSection`, `ConfigurationSection`) in `src/App.tsx`.
     - **Reasoning:** Code splitting reduces the initial load burden by only loading code for the parts of the application that are immediately needed, significantly improving perceived performance and user experience.
@@ -115,7 +149,6 @@ Addressed inconsistencies in the application's layout on mobile devices and fixe
 ### Architectural Decisions & Reasoning
 
 1.  **Improved Responsive Layout:**
-
     - **Problem:** The application's layout appeared "messy" on mobile devices, indicating a lack of proper responsiveness and potential conflicts with fixed dimensions.
     - **Solution:**
       - Removed `overflow: hidden;` from the `body` in `src/index.css` to allow natural content scrolling.
@@ -136,7 +169,6 @@ The application now offers a significantly improved visual experience on mobile 
 ### Up Next (What to implement next)
 
 2. Robust Data Fetching & Caching (The Nervous System):
-
    - The Challenge: Your custom hooks for data fetching are a great start. However, we can make them even more powerful by adding
      sophisticated caching, request deduplication, and background data synchronization.
    - The Solution: Let's integrate TanStack Query (formerly React Query).
@@ -145,7 +177,6 @@ The application now offers a significantly improved visual experience on mobile 
      which will reduce your manual state management and make the application feel faster and more responsive.
 
 3. Professional Routing (The GPS):
-
    - The Challenge: The app currently uses an internal state variable (activeView) to manage navigation. This prevents users from using
      the browser's back/forward buttons, bookmarking specific pages, or sharing direct links to a particular view.
    - The Solution: We should implement React Router.

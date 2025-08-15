@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import React, { useEffect } from "react";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 
 interface AnimatedNumberProps {
   n: number;
@@ -7,10 +7,16 @@ interface AnimatedNumberProps {
   duration?: number;
 }
 
-const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ n, formatter, duration = 1 }) => {
+const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
+  n,
+  formatter,
+  duration = 1,
+}) => {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest: number) => {
-    const formatted = formatter ? formatter(latest) : Math.round(latest).toString();
+    const formatted = formatter
+      ? formatter(latest)
+      : Math.round(latest).toString();
     return formatted;
   });
 

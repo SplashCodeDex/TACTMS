@@ -1,7 +1,8 @@
-import { Queue } from 'workbox-background-sync';
-
-const queue = new Queue('analytics-queue');
-
 export const pushAnalyticsEvent = async (event: any) => {
-  await queue.pushRequest({request: new Request('/api/analytics', {method: 'POST', body: JSON.stringify(event)})});
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: "QUEUE_ANALYTICS_EVENT",
+      payload: event,
+    });
+  }
 };

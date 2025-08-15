@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
-import Modal from './Modal';
-import Button from './Button';
-import { Building2 } from 'lucide-react';
-import { ASSEMBLIES } from '../constants';
+import React, { useState, useEffect } from "react";
+import Modal from "./Modal";
+import Button from "./Button";
+import { Building2 } from "lucide-react";
+import { ASSEMBLIES } from "../constants";
 
 interface AssemblySelectionModalProps {
   isOpen: boolean;
@@ -13,24 +12,30 @@ interface AssemblySelectionModalProps {
   suggestedAssembly?: string;
 }
 
-const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({ isOpen, onClose, onConfirm, fileName, suggestedAssembly }) => {
-  const [selectedAssembly, setSelectedAssembly] = useState('');
-  const [error, setError] = useState('');
+const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  fileName,
+  suggestedAssembly,
+}) => {
+  const [selectedAssembly, setSelectedAssembly] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     // When the modal opens or the suggestion changes, update the selection
     if (isOpen) {
-      setSelectedAssembly(suggestedAssembly || '');
-      setError(''); // Reset error when modal opens/re-renders
+      setSelectedAssembly(suggestedAssembly || "");
+      setError(""); // Reset error when modal opens/re-renders
     }
   }, [isOpen, suggestedAssembly]);
 
   const handleConfirm = () => {
     if (!selectedAssembly) {
-      setError('Please select an assembly to continue.');
+      setError("Please select an assembly to continue.");
       return;
     }
-    setError('');
+    setError("");
     onConfirm(selectedAssembly);
   };
 
@@ -41,19 +46,34 @@ const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({ isOpen,
       title="Assign Assembly"
       size="md"
       footerContent={
-        <Button onClick={handleConfirm} variant="primary" leftIcon={<Building2 size={16}/>}>
+        <Button
+          onClick={handleConfirm}
+          variant="primary"
+          leftIcon={<Building2 size={16} />}
+        >
           Confirm & Process
         </Button>
       }
     >
       <div className="space-y-4">
         <p className="text-sm text-[var(--text-secondary)]">
-          Please assign the uploaded file <strong className="text-[var(--text-primary)] truncate" title={fileName}>{fileName}</strong> to an assembly.
+          Please assign the uploaded file{" "}
+          <strong
+            className="text-[var(--text-primary)] truncate"
+            title={fileName}
+          >
+            {fileName}
+          </strong>{" "}
+          to an assembly.
         </p>
-        
+
         {suggestedAssembly && (
           <div className="p-3 bg-[var(--success-start)]/10 border border-[var(--success-border)]/50 rounded-lg text-center text-sm">
-            We've suggested <strong className="text-[var(--success-text)]">{suggestedAssembly} Assembly</strong> based on the file name.
+            We've suggested{" "}
+            <strong className="text-[var(--success-text)]">
+              {suggestedAssembly} Assembly
+            </strong>{" "}
+            based on the file name.
           </div>
         )}
 
@@ -66,13 +86,17 @@ const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({ isOpen,
             value={selectedAssembly}
             onChange={(e) => {
               setSelectedAssembly(e.target.value);
-              if (error) setError('');
+              if (error) setError("");
             }}
-            className={`form-input-light w-full ${error ? 'input-error' : ''}`}
+            className={`form-input-light w-full ${error ? "input-error" : ""}`}
           >
-            <option value="" disabled>-- Select an Assembly --</option>
-            {ASSEMBLIES.sort().map(assembly => (
-              <option key={assembly} value={assembly}>{assembly} Assembly</option>
+            <option value="" disabled>
+              -- Select an Assembly --
+            </option>
+            {ASSEMBLIES.sort().map((assembly) => (
+              <option key={assembly} value={assembly}>
+                {assembly} Assembly
+              </option>
             ))}
           </select>
           {error && <p className="form-error-text mt-2">{error}</p>}
