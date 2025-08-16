@@ -75,12 +75,12 @@ export default defineConfig({
         shortcuts: [
           {
             name: "Tithe Processor",
-            url: "/processor",
+            url: "/TACTMS/processor",
             description: "Process tithe records",
           },
           {
             name: "Member Database",
-            url: "/database",
+            url: "/TACTMS/database",
             description: "View and manage members",
           },
         ],
