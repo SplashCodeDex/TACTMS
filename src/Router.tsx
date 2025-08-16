@@ -24,25 +24,32 @@ const ConfigurationSection = React.lazy(
   () => import("./sections/ConfigurationSection"),
 );
 
-export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <App />,
-    errorElement: <ErrorElement />,
-    children: [
-      { index: true, element: <DashboardSection /> },
-      { path: "processor", element: <ListOverviewActionsSection /> },
-      { path: "database", element: <MemberDatabaseSection /> },
-      { path: "favorites", element: <FavoritesView /> },
-      { path: "reports", element: <ReportsSection /> },
-      { path: "analytics", element: <AnalyticsSection /> },
-      { path: "configuration", element: <ConfigurationSection /> },
-      { path: "*", element: <NotFound /> },
+export const createRouter = (props: any) =>
+  createBrowserRouter(
+    [
+      {
+        path: "/",
+        element: <App {...props} />,
+        errorElement: <ErrorElement />,
+        children: [
+          { index: true, element: <DashboardSection {...props} /> },
+          { path: "processor", element: <ListOverviewActionsSection {...props} /> },
+          { path: "database", element: <MemberDatabaseSection {...props} /> },
+          { path: "favorites", element: <FavoritesView {...props} /> },
+          { path: "reports", element: <ReportsSection {...props} /> },
+          { path: "analytics", element: <AnalyticsSection {...props} /> },
+          { path: "configuration", element: <ConfigurationSection {...props} /> },
+          { path: "*", element: <NotFound /> },
+        ],
+      },
     ],
-  },
-]);
+    {
+      basename: "/TACTMS/",
+    },
+  );
 
-const Router: React.FC = () => {
+const Router: React.FC = (props) => {
+  const router = createRouter(props);
   return (
     <Suspense
       fallback={
