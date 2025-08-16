@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
+import { useOutletContext } from "react-router-dom";
 import LoadingSpinner from "./components/LoadingSpinner";
 import NotFound from "./components/NotFound";
 import ErrorElement from "./components/ErrorElement";
@@ -24,6 +25,20 @@ const ConfigurationSection = React.lazy(
   () => import("./sections/ConfigurationSection"),
 );
 
+const ContextualDashboard = () => <DashboardSection {...useOutletContext()} />;
+const ContextualFavorites = () => <FavoritesView {...useOutletContext()} />;
+const ContextualAnalytics = () => <AnalyticsSection {...useOutletContext()} />;
+const ContextualReports = () => <ReportsSection {...useOutletContext()} />;
+const ContextualDatabase = () => (
+  <MemberDatabaseSection {...useOutletContext()} />
+);
+const ContextualListOverview = () => (
+  <ListOverviewActionsSection {...useOutletContext()} />
+);
+const ContextualConfiguration = () => (
+  <ConfigurationSection {...useOutletContext()} />
+);
+
 export const createRouter = (props: any) =>
   createBrowserRouter(
     [
@@ -32,13 +47,13 @@ export const createRouter = (props: any) =>
         element: <App {...props} />,
         errorElement: <ErrorElement />,
         children: [
-          { index: true, element: <DashboardSection {...props} /> },
-          { path: "processor", element: <ListOverviewActionsSection {...props} /> },
-          { path: "database", element: <MemberDatabaseSection {...props} /> },
-          { path: "favorites", element: <FavoritesView {...props} /> },
-          { path: "reports", element: <ReportsSection {...props} /> },
-          { path: "analytics", element: <AnalyticsSection {...props} /> },
-          { path: "configuration", element: <ConfigurationSection {...props} /> },
+          { index: true, element: <ContextualDashboard /> },
+          { path: "processor", element: <ContextualListOverview /> },
+          { path: "database", element: <ContextualDatabase /> },
+          { path: "favorites", element: <ContextualFavorites /> },
+          { path: "reports", element: <ContextualReports /> },
+          { path: "analytics", element: <ContextualAnalytics /> },
+          { path: "configuration", element: <ContextualConfiguration /> },
           { path: "*", element: <NotFound /> },
         ],
       },

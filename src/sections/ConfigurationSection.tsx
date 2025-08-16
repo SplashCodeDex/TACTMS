@@ -1,15 +1,37 @@
-import React, { useState } from "react";
-import { Settings, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  LogIn,
+  LogOut,
+  Cloud,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import Button from "../components/Button";
+import SyncStatusIndicator from "../components/SyncStatusIndicator";
 
 import AgeFilterSection from "./AgeFilterSection";
 import ConcatenationConfigSection from "./ConcatenationConfigSection";
 import TitheDetailsSection from "./TitheDetailsSection";
 import AmountMappingSection from "./AmountMappingSection";
-import { MemberRecordA, TitheRecordB, ConcatenationConfig } from "../types";
+import {
+  MemberRecordA,
+  TitheRecordB,
+  ConcatenationConfig,
+  GoogleUserProfile,
+} from "../types";
 import ValidationReportSection from "./ValidationReportSection";
 
+type SyncStatus = "idle" | "syncing" | "synced" | "error";
+
 interface ConfigurationSectionProps {
+  isLoggedIn: boolean;
+  userProfile: GoogleUserProfile | null;
+  syncStatus: SyncStatus;
+  signIn: () => void;
+  signOut: () => void;
+  isConfigured: boolean;
   ageRangeMin: string;
   setAgeRangeMin: (value: string) => void;
   ageRangeMax: string;
@@ -40,6 +62,20 @@ const MotionDiv = motion.div;
 
 const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
   const [isOpen, setIsOpen] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   return (
     <MotionDiv
@@ -142,6 +178,68 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
                       isGenerating={props.isGeneratingReport}
                       hasData={props.originalData.length > 0}
                     />
+                  </div>
+                  <div className="lg:col-span-2 pt-6 border-t border-[var(--border-color)]/50">
+                    <h3 className="subsection-heading flex items-center">
+                      <Cloud size={18} className="mr-2 icon-primary" />
+                      Cloud Sync
+                    </h3>
+                    {props.isConfigured ? (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background-modifier-hover)]">
+                        {props.isLoggedIn && props.userProfile ? (
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={props.userProfile.imageUrl}
+                              alt="User"
+                              className="w-10 h-10 rounded-full"
+                            />
+                            <div>
+                              <p className="font-semibold text-[var(--text-normal)]">
+                                {props.userProfile.name}
+                              </p>
+                              <p className="text-sm text-[var(--text-muted)]">
+                                {props.userProfile.email}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[var(--text-muted)]">
+                            Sign in to sync your favorites and transaction logs.
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4">
+                          <SyncStatusIndicator
+                            status={props.syncStatus}
+                            isOnline={isOnline}
+                          />
+                          {props.isLoggedIn ? (
+                            <Button
+                              onClick={props.signOut}
+                              variant="secondary"
+                              className="!py-2"
+                            >
+                              <LogOut size={16} className="mr-2" />
+                              Sign Out
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={props.signIn}
+                              variant="primary"
+                              className="!py-2"
+                            >
+                              <LogIn size={16} className="mr-2" />
+                              Sign in with Google
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center p-4 bg-[var(--background-modifier-hover)] rounded-lg">
+                        <p className="text-[var(--text-muted)]">
+                          Cloud Sync is not configured by the administrator.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

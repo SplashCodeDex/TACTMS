@@ -28,3 +28,6 @@ dev-dist/
 
 # Temporary files
 *.zip
+
+# Environment variables
+.env
