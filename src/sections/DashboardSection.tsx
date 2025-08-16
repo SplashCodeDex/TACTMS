@@ -14,7 +14,6 @@ import {
   TransactionLogEntry,
   MemberDatabase,
   FavoriteConfig,
-  ViewType,
   GoogleUserProfile,
 } from "../types";
 import StatDisplayCard from "../components/StatDisplayCard";
@@ -22,25 +21,27 @@ import AnimatedNumber from "../components/AnimatedNumber";
 import Button from "../components/Button";
 import { ASSEMBLIES } from "../constants";
 import { formatDateDDMMMYYYY } from "../services/excelProcessor";
+import { useOutletContext } from "react-router-dom";
 
 interface DashboardSectionProps {
-  setActiveView: (view: ViewType) => void;
   transactionLog: TransactionLogEntry[];
   memberDatabase: MemberDatabase;
   favorites: FavoriteConfig[];
   onStartNewWeek: (assemblyName: string) => void;
   userProfile: GoogleUserProfile | null;
-  onUploadFile: (file: File | null) => void;
+  onUploadFile: (file: File | null, isMasterList: boolean) => void;
+  onGenerateValidationReport: () => void;
 }
 
-const DashboardSection: React.FC<DashboardSectionProps> = ({
-  transactionLog = [],
-  memberDatabase = {},
-  favorites = [],
-  onStartNewWeek,
-  userProfile,
-  onUploadFile,
-}) => {
+const DashboardSection: React.FC = () => {
+  const {
+    transactionLog = [],
+    memberDatabase = {},
+    favorites = [],
+    onStartNewWeek,
+    userProfile,
+    onUploadFile,
+  } = useOutletContext<DashboardSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -108,7 +109,7 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     if (onUploadFile) {
-      onUploadFile(file);
+      onUploadFile(file, false);
     }
     if (event.target) event.target.value = "";
   };

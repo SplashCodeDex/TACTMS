@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "./Button";
 import { Upload, PlusCircle, Edit, Search } from "lucide-react";
+import { useOutletContext } from "react-router-dom";
 
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
@@ -21,13 +22,14 @@ interface MemberDatabaseSectionProps {
   ) => void;
 }
 
-const MemberDatabaseSection: React.FC<MemberDatabaseSectionProps> = ({
-  memberDatabase = {},
-  onUploadMasterList,
-  onCreateTitheList,
-  onEditMember,
-  addToast,
-}) => {
+const MemberDatabaseSection: React.FC = () => {
+  const {
+    memberDatabase = {},
+    onUploadMasterList,
+    onCreateTitheList,
+    onEditMember,
+    addToast,
+  } = useOutletContext<MemberDatabaseSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(
     Object.keys(memberDatabase)[0] || null,
   );

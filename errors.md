@@ -1,10 +1,10 @@
 # TACTMS Errors and the error messages must be deleted after fixing them and not the main error.md file
 
-(index):28 GET http://localhost:5174/@vite/client net::ERR_ABORTED 404 (Not Found)
-(index):39 GET http://localhost:5174/index.css net::ERR_ABORTED 404 (Not Found)
-(index):43 GET http://localhost:5174/src/index.tsx net::ERR_ABORTED 404 (Not Found)
-(index):44 GET http://localhost:5174/index.tsx net::ERR_ABORTED 404 (Not Found)
-(index):23 GET http://localhost:5174/@react-refresh net::ERR_ABORTED 404 (Not Found)
-(index):46 GET http://localhost:5174/@vite-plugin-pwa/pwa-entry-point-loaded net::ERR_ABORTED 404 (Not Found)
-manifest.webmanifest:1 GET http://localhost:5174/manifest.webmanifest 404 (Not Found)
-(index):1 Manifest fetch from http://localhost:5174/manifest.webmanifest failed, code 404
+I've analyzed the issue with the file upload. The problem is architectural: the components rendered by the router (`DashboardSection`, etc.) are not receiving the necessary props (like the `onUploadFile` handler) from the main `App` component where the application's state and logic reside.
+
+To fix this, I'll refactor the application to use React Router's context feature. This is a multi-step process:
+
+1. First, I'll close the browser.
+2. I will modify `App.tsx` to pass all the necessary state and handlers to its child routes via the `Outlet`'s `context` prop.
+3. Then, I will update `DashboardSection.tsx` to consume this context using the `useOutletContext` hook, which will fix the file upload issue.
+4. Finally, I will apply the same context pattern to all the other routed components to resolve the remaining TypeScript errors and ensure they receive their required props.

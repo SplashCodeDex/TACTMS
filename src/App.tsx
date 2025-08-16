@@ -1402,7 +1402,91 @@ ${JSON.stringify(sampleData, null, 2)}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <Outlet />
+            <Outlet
+              context={{
+                // Dashboard
+                transactionLog,
+                memberDatabase,
+                favorites,
+                onStartNewWeek: startNewWeek,
+                userProfile: driveUserProfile,
+                onUploadFile: handleFileAccepted,
+                onGenerateValidationReport: handleGenerateValidationReport,
+                // Favorites
+                favoritesSearchTerm,
+                setFavoritesSearchTerm,
+                loadFavorite,
+                deleteFavorite,
+                viewFavoriteDetails,
+                updateFavoriteName,
+                addToast,
+                // Analytics
+                titheListData,
+                currentAssembly,
+                selectedDate,
+                // Reports
+                // MemberDatabase
+                onUploadMasterList: (file: File, assembly: string) =>
+                  handleFileAccepted(file, true, assembly),
+                onCreateTitheList: (
+                  members: MemberRecordA[],
+                  assembly: string,
+                ) => {
+                  setPendingTitheListMembers(members);
+                  setPendingTitheListAssembly(assembly);
+                  setIsCreateTitheListModalOpen(true);
+                },
+                onEditMember: (member: MemberRecordA, assemblyName: string) => {
+                  setMemberToEdit({ member, assemblyName });
+                  setIsEditMemberModalOpen(true);
+                },
+                // ListOverviewActions
+                currentTotalTithe: totalTitheAmount,
+                hasUnsavedChanges,
+                tithersCount,
+                nonTithersCount: processedDataA.length - tithersCount,
+                tithersPercentage:
+                  processedDataA.length > 0
+                    ? (tithersCount / processedDataA.length) * 100
+                    : 0,
+                setIsFullPreviewModalOpen,
+                setIsDataEntryModalOpen,
+                fileNameToSave,
+                setFileNameToSave,
+                inputErrors,
+                setInputErrors,
+                handleDownloadExcel,
+                openSaveFavoriteModal,
+                onClearWorkspace: () => setIsClearWorkspaceModalOpen(true),
+                soulsWonCount,
+                // Configuration
+                ageRangeMin,
+                setAgeRangeMin,
+                ageRangeMax,
+                setAgeRangeMax,
+                isAgeFilterActive,
+                handleApplyAgeFilter,
+                handleRemoveAgeFilter,
+                concatenationConfig,
+                handleConcatenationConfigChange,
+                descriptionText,
+                handleDescriptionChange,
+                amountMappingColumn,
+                setAmountMappingColumn,
+                theme,
+                setTheme,
+                accentColor,
+                setAccentColor,
+                isDriveLoggedIn,
+                driveUserProfile,
+                driveSyncStatus,
+                driveSignIn,
+                driveSignOut,
+                isDriveConfigured,
+                isSubscribed,
+                requestNotificationPermission,
+              }}
+            />
           </MotionDiv>
         </AnimatePresence>
       </main>

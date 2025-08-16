@@ -18,6 +18,7 @@ import { useGeminiChat } from "../hooks/useGemini";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
 import { GoogleGenAI, Type } from "@google/genai";
+import { useOutletContext } from "react-router-dom";
 
 interface AnalyticsSectionProps {
   titheListData: TitheRecordB[];
@@ -267,16 +268,17 @@ Here are the new members to welcome: ${memberNames.join(", ")}
   );
 };
 
-const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
-  titheListData = [],
-  currentAssembly,
-  selectedDate,
-  addToast,
-  tithersCount,
-  nonTithersCount,
-  totalAmount,
-  reconciliationReport,
-}) => {
+const AnalyticsSection: React.FC = () => {
+  const {
+    titheListData = [],
+    currentAssembly,
+    selectedDate,
+    addToast,
+    tithersCount,
+    nonTithersCount,
+    totalAmount,
+    reconciliationReport,
+  } = useOutletContext<AnalyticsSectionProps>();
   const { chatHistory, chartData, isLoading, error, startChat, sendMessage } =
     useGeminiChat();
 
