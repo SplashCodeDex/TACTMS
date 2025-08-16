@@ -84,7 +84,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
     };
 
     const groupedAndFilteredFavorites = useMemo(() => {
-      const search = favoritesSearchTerm.toLowerCase();
+      const search = (favoritesSearchTerm || "").toLowerCase();
 
       const filtered = favorites
         .filter((fav) => {
