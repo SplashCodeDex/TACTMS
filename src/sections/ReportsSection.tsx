@@ -12,16 +12,16 @@ import AnimatedNumber from "../components/AnimatedNumber";
 import StatDisplayCard from "../components/StatDisplayCard";
 import { motion, AnimatePresence } from "framer-motion";
 import DistrictTrendChart from "../components/DistrictTrendChart";
+import { useOutletContext } from "react-router-dom";
 
 interface ReportsSectionProps {
   transactionLog: TransactionLogEntry[];
   memberDatabase: MemberDatabase;
 }
 
-const ReportsSection: React.FC<ReportsSectionProps> = ({
-  transactionLog = [],
-  memberDatabase = {},
-}) => {
+const ReportsSection: React.FC = () => {
+  const { transactionLog = [], memberDatabase = {} } =
+    useOutletContext<ReportsSectionProps>();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const yearOptions = useMemo(() => {

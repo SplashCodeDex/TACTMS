@@ -13,6 +13,7 @@ import Button from "../components/Button";
 import { FavoriteConfig } from "../types";
 import { ToastMessage } from "../components/Toast";
 import { ASSEMBLIES } from "../constants";
+import { useOutletContext } from "react-router-dom";
 
 interface FavoritesViewProps {
   favorites: FavoriteConfig[];
@@ -29,8 +30,8 @@ interface FavoritesViewProps {
   ) => void;
 }
 
-const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
-  ({
+const FavoritesView: React.FC = React.memo(() => {
+  const {
     favorites = [],
     favoritesSearchTerm,
     setFavoritesSearchTerm,
@@ -39,7 +40,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
     viewFavoriteDetails,
     updateFavoriteName,
     addToast,
-  }) => {
+  } = useOutletContext<FavoritesViewProps>();
     const [searchInput, setSearchInput] = useState(favoritesSearchTerm);
     const [editingFavId, setEditingFavId] = useState<string | null>(null);
     const [editingFavName, setEditingFavName] = useState("");
@@ -87,7 +88,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
       const search = (favoritesSearchTerm || "").toLowerCase();
 
       const filtered = favorites
-        .filter((fav) => {
+        .filter((fav: FavoriteConfig) => {
           // Basic data integrity: A favorite must have an assembly name to be displayed.
           if (!fav || !fav.assemblyName) {
             return false;
@@ -101,7 +102,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
             (fav.assemblyName ?? "").toLowerCase().includes(search)
           );
         })
-        .sort((a, b) => b.timestamp - a.timestamp);
+        .sort((a: FavoriteConfig, b: FavoriteConfig) => b.timestamp - a.timestamp);
 
       const grouped = new Map<string, FavoriteConfig[]>();
 
@@ -109,14 +110,14 @@ const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
       // while also including all standard assemblies to maintain the structure.
       const allPresentAssemblies = new Set([
         ...ASSEMBLIES,
-        ...filtered.map((f) => f.assemblyName),
+        ...filtered.map((f: FavoriteConfig) => f.assemblyName),
       ]);
 
       allPresentAssemblies.forEach((assembly) => {
         grouped.set(assembly, []);
       });
 
-      filtered.forEach((fav) => {
+      filtered.forEach((fav: FavoriteConfig) => {
         // fav.assemblyName is guaranteed to exist here due to the filter above.
         const group = grouped.get(fav.assemblyName);
         if (group) {

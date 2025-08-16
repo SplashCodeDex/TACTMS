@@ -23,6 +23,7 @@ import AnimatedNumber from "../components/AnimatedNumber";
 import DonutChart from "../components/DonutChart";
 import InfoTooltip from "../components/InfoTooltip";
 import StatDisplayCard from "../components/StatDisplayCard";
+import { useOutletContext } from "react-router-dom";
 
 interface ListOverviewActionsSectionProps {
   currentAssembly: string | null;
@@ -111,34 +112,31 @@ const ComparisonStatCard: React.FC<{
 };
 
 const ListOverviewActionsSection = React.memo(
-  forwardRef<HTMLElement, ListOverviewActionsSectionProps>(
-    (
-      {
-        currentAssembly,
-        selectedDate,
-        currentTotalTithe,
-        hasUnsavedChanges,
-        titheListData = [],
-        tithersCount,
-        nonTithersCount,
-        tithersPercentage,
-        setIsFullPreviewModalOpen,
-        setIsDataEntryModalOpen,
-        fileNameToSave,
-        setFileNameToSave,
-        inputErrors,
-        setInputErrors,
-        handleDownloadExcel,
-        openSaveFavoriteModal,
-        onClearWorkspace,
-        transactionLog = [],
-        soulsWonCount,
-      },
-      ref,
-    ) => {
-      const {
-        lowestTitheAmount,
-        highestTitheAmount,
+  forwardRef<HTMLElement>((_props, ref) => {
+    const {
+      currentAssembly,
+      selectedDate,
+      currentTotalTithe,
+      hasUnsavedChanges,
+      titheListData = [],
+      tithersCount,
+      nonTithersCount,
+      tithersPercentage,
+      setIsFullPreviewModalOpen,
+      setIsDataEntryModalOpen,
+      fileNameToSave,
+      setFileNameToSave,
+      inputErrors,
+      setInputErrors,
+      handleDownloadExcel,
+      openSaveFavoriteModal,
+      onClearWorkspace,
+      transactionLog = [],
+      soulsWonCount,
+    } = useOutletContext<ListOverviewActionsSectionProps>();
+    const {
+      lowestTitheAmount,
+      highestTitheAmount,
         lowestTitherName,
         highestTitherName,
         historicalStats,
