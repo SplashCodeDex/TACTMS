@@ -107,7 +107,9 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
-    onUploadFile(file);
+    if (onUploadFile) {
+      onUploadFile(file);
+    }
     if (event.target) event.target.value = "";
   };
 

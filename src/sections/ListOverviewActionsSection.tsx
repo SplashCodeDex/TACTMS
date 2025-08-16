@@ -177,10 +177,15 @@ const ListOverviewActionsSection = React.memo(
           return ((current - previous) / previous) * 100;
         };
 
-        const currentMonth = selectedDate.getMonth();
-        const currentYear = selectedDate.getFullYear();
+        const validSelectedDate =
+          selectedDate instanceof Date && !isNaN(selectedDate.getTime())
+            ? selectedDate
+            : new Date();
 
-        const prevMonthDate = new Date(selectedDate);
+        const currentMonth = validSelectedDate.getMonth();
+        const currentYear = validSelectedDate.getFullYear();
+
+        const prevMonthDate = new Date(validSelectedDate);
         prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
         const prevMonth = prevMonthDate.getMonth();
         const prevMonthYear = prevMonthDate.getFullYear();
