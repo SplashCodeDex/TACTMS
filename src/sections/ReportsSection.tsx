@@ -19,8 +19,8 @@ interface ReportsSectionProps {
 }
 
 const ReportsSection: React.FC<ReportsSectionProps> = ({
-  transactionLog,
-  memberDatabase,
+  transactionLog = [],
+  memberDatabase = {},
 }) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 

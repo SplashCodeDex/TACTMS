@@ -22,7 +22,7 @@ interface MemberDatabaseSectionProps {
 }
 
 const MemberDatabaseSection: React.FC<MemberDatabaseSectionProps> = ({
-  memberDatabase,
+  memberDatabase = {},
   onUploadMasterList,
   onCreateTitheList,
   onEditMember,

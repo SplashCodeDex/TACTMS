@@ -34,9 +34,9 @@ interface DashboardSectionProps {
 }
 
 const DashboardSection: React.FC<DashboardSectionProps> = ({
-  transactionLog,
-  memberDatabase,
-  favorites,
+  transactionLog = [],
+  memberDatabase = {},
+  favorites = [],
   onStartNewWeek,
   userProfile,
   onUploadFile,

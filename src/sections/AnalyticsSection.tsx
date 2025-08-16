@@ -123,7 +123,7 @@ const AIOutreachAssistant: React.FC<{
         .filter(Boolean);
 
       const prompt = `You are a friendly and welcoming church administrator for The Apostolic Church. Your task is to generate a short, personalized, and encouraging SMS message for each of the following new church members.
-      
+
 Guidelines:
 - Keep each message under 160 characters to fit in a standard SMS.
 - Start with a warm greeting addressing the member by their first name.
@@ -268,7 +268,7 @@ Here are the new members to welcome: ${memberNames.join(", ")}
 };
 
 const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
-  titheListData,
+  titheListData = [],
   currentAssembly,
   selectedDate,
   addToast,

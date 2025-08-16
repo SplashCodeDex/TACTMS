@@ -31,7 +31,7 @@ interface FavoritesViewProps {
 
 const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
   ({
-    favorites,
+    favorites = [],
     favoritesSearchTerm,
     setFavoritesSearchTerm,
     loadFavorite,
@@ -96,10 +96,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = React.memo(
             return true;
           }
           return (
-            (fav.name && fav.name.toLowerCase().includes(search)) ||
-            (fav.originalFileName &&
-              fav.originalFileName.toLowerCase().includes(search)) ||
-            fav.assemblyName.toLowerCase().includes(search)
+            (fav.name ?? "").toLowerCase().includes(search) ||
+            (fav.originalFileName ?? "").toLowerCase().includes(search) ||
+            (fav.assemblyName ?? "").toLowerCase().includes(search)
           );
         })
         .sort((a, b) => b.timestamp - a.timestamp);
