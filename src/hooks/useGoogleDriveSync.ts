@@ -29,7 +29,6 @@ declare global {
 }
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
-type DataType = "favorites" | "transactionLog";
 
 const IS_DRIVE_CONFIGURED = !!(GOOGLE_CLIENT_ID && GOOGLE_API_KEY);
 
@@ -120,7 +119,11 @@ export const useGoogleDriveSync = (
       window.gapi.load("client", () => {
         window.gapi.client
           .init({ apiKey: GOOGLE_API_KEY })
-          .then(() => setIsGapiLoaded(true))
+          .then(() => {
+            window.gapi.client.load("drive", "v3", () =>
+              setIsGapiLoaded(true),
+            );
+          })
           .catch((e: any) => console.error("Error init gapi client", e));
       });
     document.body.appendChild(scriptGapi);
@@ -160,6 +163,7 @@ export const useGoogleDriveSync = (
             addToast("Authentication failed. Please try again.", "error");
             return;
           }
+          window.gapi.client.setToken(tokenResponse);
           setIsLoggedIn(true);
           fetchUserProfile();
         },

@@ -4,7 +4,7 @@
   "description": "An intelligent data processing tool that uses AI to analyze, segment, and provide insights on uploaded data through an interactive chat interface with an advanced analytics database.",
   "id": "/TACTMS/?source=pwa",
   "start_url": "/TACTMS/",
-  "scope": "/",
+  "scope": "/TACTMS/",
   "lang": "en-US",
   "dir": "auto",
   "display_override": ["standalone", "minimal-ui"],

@@ -34,7 +34,7 @@ describe("createTitheList", () => {
     Surname: true,
     "Other Names": true,
     "Membership Number": true,
-    "Old Membership Number": true,
+    // "Old Membership Number": true, // This was likely for a legacy feature to include old membership numbers in the concatenated name. It has been removed from the type definition.
   };
 
   const selectedDate = new Date(2025, 7, 15);

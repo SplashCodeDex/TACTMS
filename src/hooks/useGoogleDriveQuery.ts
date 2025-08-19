@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  FAVORITES_DRIVE_FILENAME,
-  TRANSACTION_LOG_DRIVE_FILENAME,
-} from "../constants";
+// import {
+//   FAVORITES_DRIVE_FILENAME,
+//   TRANSACTION_LOG_DRIVE_FILENAME,
+// } from "../constants"; // TODO: Use these constants when implementing Google Drive sync.
 
 declare global {
   interface Window {

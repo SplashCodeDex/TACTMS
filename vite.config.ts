@@ -7,8 +7,8 @@ export default defineConfig({
   // For GitHub Pages deployment, you may need to set this to your repository name
   // e.g., base: '/YourRepoName/',
   base: "/TACTMS/",
-  plugins: [
-    react(),
+    plugins: [
+      react(),
     VitePWA({
       registerType: "autoUpdate",
       // Use a custom service worker
@@ -86,8 +86,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallbackAllowlist: [/\/TACTMS\//],
+        navigateFallbackAllowlist: [/^\/TACTMS\//],
       },
     }),
-  ],
+    ],
 });

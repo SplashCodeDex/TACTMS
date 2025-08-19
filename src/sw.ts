@@ -8,10 +8,10 @@ import {
 } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
-import { BackgroundSyncPlugin } from "workbox-background-sync";
+import { Queue } from "workbox-background-sync";
 
 // Serve offline.html for navigation requests when offline
-const offlineHandler = createHandlerBoundToURL("/offline.html");
+const offlineHandler = createHandlerBoundToURL("offline.html");
 const navigationRoute = new NavigationRoute(offlineHandler, {
   denylist: [/\/api\//], // Don't serve for API requests
 });
@@ -44,10 +44,11 @@ registerRoute(
 );
 
 // 2. Generic API Caching (for future APIs)
-// Strategy: NetworkFirst - Try to get fresh data from the network first. If offline, fall back to the cache.
-// This is good for data that changes often and is important to be up-to-date.
+// Strategy: NetworkFirst for GET, NetworkOnly for others.
+// This ensures GET requests are cached for offline use, while mutations (POST, etc.) are not.
 registerRoute(
-  ({ url }) => url.pathname.startsWith("/api/"),
+  ({ url, request }) =>
+    url.pathname.startsWith("/api/") && request.method === "GET",
   new NetworkFirst({
     cacheName: "api-cache",
     plugins: [
@@ -60,6 +61,12 @@ registerRoute(
       }),
     ],
   }),
+);
+
+registerRoute(
+  ({ url, request }) =>
+    url.pathname.startsWith("/api/") && request.method !== "GET",
+  new NetworkOnly(),
 );
 
 // 3. Image Caching (if you load images from external sources)
@@ -126,7 +133,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   if (event.action === "open_app") {
-    event.waitUntil(self.clients.openWindow("/"));
+    event.waitUntil(self.clients.openWindow("./"));
   }
 });
 
@@ -159,7 +166,7 @@ self.addEventListener("periodicsync", (event) => {
 // --- WIDGETS ---
 self.addEventListener("widgetclick", (event: any) => {
   if (event.action === "open-app") {
-    event.waitUntil(self.clients.openWindow("/"));
+    event.waitUntil(self.clients.openWindow("./"));
   }
 });
 
@@ -184,7 +191,7 @@ self.addEventListener("message", (event) => {
   }
 });
 
-const analyticsSyncQueue = new BackgroundSyncPlugin("analytics-queue", {
+const analyticsSyncQueue = new Queue("analytics-queue", {
   maxRetentionTime: 24 * 60, // Retry for max of 24 Hours
 });
 
@@ -192,7 +199,7 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "QUEUE_ANALYTICS_EVENT") {
     const { payload } = event.data;
 
-    const promiseChain = fetch("/api/analytics", {
+    const promiseChain = fetch("api/analytics", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -201,7 +208,7 @@ self.addEventListener("message", (event) => {
     }).catch(() => {
       // The request failed, so we'll queue it for later.
       return analyticsSyncQueue.pushRequest({
-        request: new Request("/api/analytics", {
+        request: new Request("api/analytics", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
