@@ -36,9 +36,13 @@ export const ACCEPTED_FILE_TYPES = ".xlsx,.xls";
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 // Google Drive Sync Constants
-export const GOOGLE_API_KEY = process.env.VITE_API_KEY;
-export const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
-export const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
+export const GOOGLE_API_KEY = import.meta.env.VITE_API_KEY;
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+export const DRIVE_SCOPES = [
+  "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+].join(" ");
 export const FAVORITES_DRIVE_FILENAME = "tactms.app.favorites.json";
 export const TRANSACTION_LOG_DRIVE_FILENAME = "tactms.app.transactions.json";
 

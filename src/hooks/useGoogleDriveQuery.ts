@@ -31,8 +31,13 @@ const readFromDrive = async <T>(fileId: string): Promise<T[]> => {
       fileId,
       alt: "media",
     });
-    return res.body ? JSON.parse(res.body) : [];
+    if (res.body) {
+      const data = JSON.parse(res.body);
+      return Array.isArray(data) ? data : [];
+    }
+    return [];
   } catch (e) {
+    console.error("readFromDrive: Error reading or parsing file", e);
     return [];
   }
 };

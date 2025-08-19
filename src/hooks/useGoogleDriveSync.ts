@@ -282,14 +282,17 @@ export const useGoogleDriveSync = (
   };
 
   useEffect(() => {
-    if (isLoggedIn) syncWithDrive();
-  }, [isLoggedIn, syncWithDrive]);
+    if (isLoggedIn && favFileId && logFileId) {
+      syncWithDrive();
+    }
+  }, [isLoggedIn, favFileId, logFileId, syncWithDrive]);
+
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && favFileId && logFileId) {
       const t = setTimeout(() => syncWithDrive(true), 1500);
       return () => clearTimeout(t);
     }
-  }, [favorites, transactionLog, isLoggedIn, syncWithDrive]);
+  }, [favorites, transactionLog, isLoggedIn, favFileId, logFileId, syncWithDrive]);
 
   const signIn = () => {
     if (!isConfigured) {
