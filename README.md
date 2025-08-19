@@ -38,6 +38,22 @@ As a user, there's no complex installation. You can use TACTMS directly in your 
 
 **For developers** interested in contributing to the project, please see our [**Contributing Guide**](CONTRIBUTING.md) for full setup instructions.
 
+### Cloud Sync Configuration (For Developers)
+
+To enable the Google Drive Cloud Sync feature during development, you need to provide your own Google API credentials.
+
+1.  **Create a `.env.local` file** in the root of the project.
+2.  **Add the following environment variables** to the file:
+
+    ```
+    VITE_API_KEY="YOUR_GOOGLE_API_KEY"
+    VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
+    ```
+
+3.  **Replace the placeholder values** with your actual Google API Key and Client ID. You can obtain these from the [Google Cloud Console](https://console.cloud.google.com/).
+
+> **Note:** This step is only necessary for developers running the application locally. The production build will have these values pre-configured.
+
 ---
 
 We believe in building tools that empower the church. We hope TACTMS is a blessing to your ministry.

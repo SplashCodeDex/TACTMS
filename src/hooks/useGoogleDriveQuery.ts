@@ -38,12 +38,15 @@ const readFromDrive = async <T>(fileId: string): Promise<T[]> => {
 };
 
 const saveToDrive = (fileId: string, data: any[]) => {
-  const metadata = new Blob([JSON.stringify(data, null, 2)], {
+  const content = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
   });
   const form = new FormData();
-  form.append("metadata", new Blob([], { type: "application/json" }));
-  form.append("file", metadata);
+  form.append(
+    "metadata",
+    new Blob([JSON.stringify({})], { type: "application/json" }),
+  );
+  form.append("file", content);
   return window.gapi.client.request({
     path: `/upload/drive/v3/files/${fileId}`,
     method: "PATCH",

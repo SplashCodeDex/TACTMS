@@ -236,7 +236,8 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
                     ) : (
                       <div className="text-center p-4 bg-[var(--background-modifier-hover)] rounded-lg">
                         <p className="text-[var(--text-muted)]">
-                          Cloud Sync is not configured by the administrator.
+                          Cloud Sync is not configured. Add your credentials to
+                          the <code>.env.local</code> file.
                         </p>
                       </div>
                     )}
