@@ -138,7 +138,7 @@ const MemberDatabaseSection: React.FC = () => {
                   placeholder="Search members..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="form-input-light w-64 pl-10"
+                  className="form-input-light w-full sm:w-64 pl-10"
                 />
               </div>
               <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md cursor-pointer hover:bg-blue-700">
