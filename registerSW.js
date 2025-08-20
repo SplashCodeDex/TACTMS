@@ -1,1 +1,1 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/TACTMS/sw.js', { scope: '/TACTMS/' })})}
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('https://splashcodedex.github.io/TACTMS/sw.js', { scope: 'https://splashcodedex.github.io/TACTMS/' })})}
