@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   return {
     // For GitHub Pages deployment, you may need to set this to your repository name
     // e.g., base: '/YourRepoName/',
-    base: "/TACTMS/",
+    base: "https://splashcodedex.github.io/TACTMS/",
     define: {
       "process.env.VITE_API_KEY": JSON.stringify(env.VITE_API_KEY),
       "process.env.VITE_GOOGLE_CLIENT_ID": JSON.stringify(
