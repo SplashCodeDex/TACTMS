@@ -18,6 +18,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { MagicCard } from "./MagicCard";
 import {
   DndContext,
   closestCenter,
@@ -816,9 +817,9 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <div className="space-y-4 relative">
-          <div className="table-toolbar">
-            <div className="actions-group">
+        <div className="space-y-4">
+          <div className="table-toolbar relative">
+            <div className="actions-group flex items-center gap-2">
               <Button
                 onClick={openAddMemberToListModal}
                 size="sm"
@@ -852,39 +853,45 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
                   {isColumnSelectorOpen && (
                     <motion.div
                       ref={columnSelectorRef}
-                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                      initial={{ opacity: 0, scale: 0.9, y: -15 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      className="absolute top-full mt-2 -right-12 w-64 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-lg shadow-2xl z-50 p-4 origin-top-right"
+                      exit={{ opacity: 0, scale: 0.9, y: -15 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className="absolute top-full mt-2 right-0 w-64 rounded-xl border border-white/10 bg-white/5 p-4 shadow-xl shadow-black/20 backdrop-blur-lg z-[110] origin-top-right"
                     >
-                      <h4 className="text-sm font-semibold mb-3 text-[var(--text-primary)]">
-                        Visible Columns
-                      </h4>
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                        {ALL_TABLE_COLUMNS.map((key) => (
-                          <label
-                            key={key}
-                            className="flex items-center space-x-3 cursor-pointer text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={columnVisibility[key] ?? true}
-                              onChange={() =>
-                                setColumnVisibility((prev) => ({
-                                  ...prev,
-                                  [key]: !(prev[key] ?? true),
-                                }))
-                              }
-                              className="form-checkbox h-4 w-4 text-[var(--primary-accent-start)] bg-[var(--input-bg)] border-[var(--border-color)] rounded focus:ring-[var(--primary-accent-start)] focus:ring-offset-[var(--bg-elevated)]"
-                            />
-                            <span>
-                              {key
-                                .replace(" ('DD-MMM-YYYY')", "")
-                                .replace("Membership Number", "Member Details")}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
+                      <MagicCard>
+                        <h4 className="text-sm font-semibold mb-3 text-[var(--text-primary)]">
+                          Visible Columns
+                        </h4>
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                          {ALL_TABLE_COLUMNS.map((key) => (
+                            <label
+                              key={key}
+                              className="flex items-center space-x-3 cursor-pointer text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={columnVisibility[key] ?? true}
+                                onChange={() =>
+                                  setColumnVisibility((prev) => ({
+                                    ...prev,
+                                    [key]: !(prev[key] ?? true),
+                                  }))
+                                }
+                                className="form-checkbox h-4 w-4 text-[var(--primary-accent-start)] bg-[var(--input-bg)] border-[var(--border-color)] rounded focus:ring-[var(--primary-accent-start)] focus:ring-offset-[var(--bg-elevated)]"
+                              />
+                              <span>
+                                {key
+                                  .replace(" ('DD-MMM-YYYY')", "")
+                                  .replace(
+                                    "Membership Number",
+                                    "Member Details",
+                                  )}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </MagicCard>
                     </motion.div>
                   )}
                 </AnimatePresence>
