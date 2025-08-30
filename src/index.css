@@ -161,7 +161,7 @@ body {
   min-height: 100vh; /* Ensure main content takes full height */
 }
 
-.sidebar.collapsed + .app-container-overlay + .main-content {
+.sidebar.collapsed + .app-container-overlay {
   margin-left: 6rem; /* Margin for collapsed sidebar */
 }
 

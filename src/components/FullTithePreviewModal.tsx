@@ -819,7 +819,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
       >
         <div className="space-y-4">
           <div className="table-toolbar relative">
-            <div className="actions-group flex items-center gap-2">
+            <div className="actions-group flex items-center gap-2 mb-4">
               <Button
                 onClick={openAddMemberToListModal}
                 size="sm"
@@ -963,7 +963,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
               <caption className="sr-only">
                 Tithe list for editing. Can be sorted and reordered.
               </caption>
-              <thead className="bg-[var(--bg-card-subtle-accent)] sticky top-0 z-10">
+              <thead className="bg-[var(--bg-card-subtle-accent)] backdrop-blur-lg sticky top-0 z-10">
                 <tr>
                   <th
                     scope="col"
