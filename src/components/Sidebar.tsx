@@ -389,7 +389,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 Press <span className="kbd-hint">⌘K</span> to search
               </button>
               <p className="text-xs text-[var(--text-muted)]">
-                &copy; 2025 Dexify by DexignMasters
+                &copy; {new Date().getFullYear()} Dexify by DexignMasters
               </p>
             </motion.div>
           )}

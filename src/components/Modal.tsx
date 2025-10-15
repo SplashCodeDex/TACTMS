@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -18,6 +18,50 @@ const Modal: React.FC<ModalProps> = ({
   footerContent,
   size = "md",
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          onClose();
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+
+      const focusableElements = modalRef.current?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      ) as NodeListOf<HTMLElement>;
+
+      if (focusableElements.length > 0) {
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        firstElement.focus();
+
+        const handleTabKey = (e: KeyboardEvent) => {
+          if (e.key === "Tab") {
+            if (e.shiftKey && document.activeElement === firstElement) {
+              e.preventDefault();
+              lastElement.focus();
+            } else if (!e.shiftKey && document.activeElement === lastElement) {
+              e.preventDefault();
+              firstElement.focus();
+            }
+          }
+        };
+
+        document.addEventListener("keydown", handleTabKey);
+
+        return () => {
+          document.removeEventListener("keydown", handleKeyDown);
+          document.removeEventListener("keydown", handleTabKey);
+        };
+      }
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const sizeClasses = {
@@ -38,6 +82,7 @@ const Modal: React.FC<ModalProps> = ({
       aria-labelledby="modal-title"
     >
       <div
+        ref={modalRef}
         className={`modal-content glassmorphism-bg ${sizeClasses[size]}`}
         onClick={(e) => e.stopPropagation()}
       >

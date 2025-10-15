@@ -179,3 +179,15 @@ export interface PendingMasterListUpdate {
   newData: MemberRecordA[];
   newFileName: string;
 }
+
+export interface ChatMessage {
+  role: "user" | "model";
+  parts: { text: string }[];
+  summary?: string;
+  isLoading?: boolean;
+}
+
+export interface ChartData {
+  label: string;
+  count: number;
+}

@@ -35,7 +35,8 @@ import CreateTitheListModal from "./components/CreateTitheListModal";
 import { Save, Trash2, WifiOff } from "lucide-react";
 // import { BotMessageSquare } from "lucide-react"; // TODO: Re-introduce for AI chat features.
 import { pushAnalyticsEvent } from "./services/offline-analytics";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { useGemini } from "./hooks/useGemini";
 
 import Sidebar from "./components/Sidebar";
 import { useGoogleDriveSync } from "./hooks/useGoogleDriveSync";
@@ -225,14 +226,12 @@ const App: React.FC = () => {
     assemblyName: string;
   } | null>(null);
 
-  // State for AI Validation Report
-  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
-  const [validationReportContent, setValidationReportContent] = useState("");
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [newWorker, setNewWorker] = useState<ServiceWorker | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
 
   const addToast = useCallback(
     (
@@ -248,6 +247,11 @@ const App: React.FC = () => {
       ]);
     },
     [],
+  );
+
+  const { isGeneratingReport, validationReportContent, generateValidationReport, setValidationReportContent } = useGemini(
+    import.meta.env.VITE_API_KEY,
+    addToast,
   );
 
   const {
@@ -1294,55 +1298,7 @@ const App: React.FC = () => {
     setIsAddNewMemberModalOpen(true);
   };
 
-  const handleGenerateValidationReport = async () => {
-    if (!originalData || originalData.length === 0) {
-      addToast("No data to analyze. Please upload a file first.", "warning");
-      return;
-    }
-    if (!import.meta.env.VITE_API_KEY) {
-      addToast(
-        "AI features are not configured. Please contact support.",
-        "error",
-      );
-      return;
-    }
 
-    setIsGeneratingReport(true);
-    setIsValidationModalOpen(true);
-    setValidationReportContent(""); // Clear previous report
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
-      const sampleData = originalData.slice(0, 50); // Use a sample
-      const prompt = `
-You are a data quality analyst reviewing a church membership list. Analyze the following JSON data sample for quality issues. Provide a concise summary in markdown format. Focus on:
-- Rows with missing critical information (e.g., missing phone numbers, email, membership numbers). List the row number or name if possible.
-- Potential duplicates based on similar names or details.
-- Inconsistent formatting (e.g., in names, phone numbers, or addresses).
-- Any other logical inconsistencies you find.
-
-Do not suggest changes, just report the issues found. Start the report with a main heading "# Data Quality Report" and a brief summary of findings, then provide details under subheadings like "## Missing Information" or "## Potential Duplicates".
-
-Data Sample:
-\`\`\`json
-${JSON.stringify(sampleData, null, 2)}
-\`\`\`
-`;
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-      });
-      setValidationReportContent(response.text ?? "");
-    } catch (error) {
-      console.error("Error generating validation report:", error);
-      const errorMessage =
-        "Sorry, I encountered an error while generating the report. Please check your connection or API configuration and try again.";
-      setValidationReportContent(`# Error\n\n${errorMessage}`);
-      addToast("Failed to generate AI report.", "error");
-    } finally {
-      setIsGeneratingReport(false);
-    }
-  };
 
   const location = useLocation();
   const viewTitles: Record<string, string> = {
@@ -1413,7 +1369,10 @@ ${JSON.stringify(sampleData, null, 2)}
                 onStartNewWeek: startNewWeek,
                 userProfile: driveUserProfile,
                 onUploadFile: handleFileAccepted,
-                onGenerateValidationReport: handleGenerateValidationReport,
+                onGenerateValidationReport: () => {
+                  generateValidationReport(originalData);
+                  setIsValidationModalOpen(true);
+                },
                 // Favorites
                 favoritesSearchTerm,
                 setFavoritesSearchTerm,

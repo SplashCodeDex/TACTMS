@@ -1,0 +1,80 @@
+{
+    "mcpServers": {
+      "Shadcn": {
+        "httpUrl": "https://www.shadcn.io/api/mcp",
+        "args": []
+      },
+      "sequentialthinking": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
+      },
+      "puppeteer": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-puppeteer"
+        ]
+      },
+      "time": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-time"
+        ]
+      },
+      "memory": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ]
+      },
+      "n8n-mcp": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "n8n-mcp@2.12.2"
+        ],
+        "env": {
+          "MCP_MODE": "stdio",
+          "LOG_LEVEL": "error",
+          "DISABLE_CONSOLE_OUTPUT": "true"
+        }
+      },
+      "context7": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@upstash/context7-mcp",
+          "--api-key",
+          "YOUR_API_KEY"
+        ]
+      },
+      "firebase": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "firebase-tools@latest",
+          "experimental:mcp",
+          "--dir",
+          "/home/user/PlanMyLife",
+          "--only",
+          "auth,firestore,storage"
+        ]
+      },
+      "playwright": {
+        "command": "npx",
+        "args": [
+          "@playwright/mcp@latest"
+        ]
+      },
+      "Sentry": {
+        "url": "https://mcp.sentry.dev/mcp"
+      },
+      "gitmcp": {
+        "url": "https://gitmcp.io/docs"
+      }
+        }
+  }

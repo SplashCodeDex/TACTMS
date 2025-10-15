@@ -17,7 +17,7 @@ import SkeletonLoader from "../components/SkeletonLoader";
 import { useGeminiChat } from "../hooks/useGemini";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useOutletContext } from "react-router-dom";
 
 interface AnalyticsSectionProps {
@@ -118,7 +118,7 @@ const AIOutreachAssistant: React.FC<{
     setMessages([]);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+      const ai = new GoogleGenerativeAI({ apiKey: import.meta.env.VITE_API_KEY });
       const memberNames = newMembers
         .map((m) => `${m["First Name"] || ""} ${m.Surname || ""}`.trim())
         .filter(Boolean);
@@ -142,16 +142,16 @@ Here are the new members to welcome: ${memberNames.join(", ")}
         config: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: Type.ARRAY,
+            type: "array",
             items: {
-              type: Type.OBJECT,
+              type: "object",
               properties: {
                 memberName: {
-                  type: Type.STRING,
+                  type: "string",
                   description: "The full name of the new church member.",
                 },
                 message: {
-                  type: Type.STRING,
+                  type: "string",
                   description:
                     "The personalized welcome SMS message for the member.",
                 },

@@ -99,16 +99,19 @@ const MembershipReconciliationModal: React.FC<
       setSelectedMissingIds(new Set());
     } else {
       setSelectedMissingIds(
-        new Set(report.missingMembers.map((m) => m["No."]!).filter(Boolean)),
+        new Set(report.missingMembers.map((m) => m["No."]).filter(Boolean) as Set<string | number>),
       );
     }
   };
 
   const handleKeepSelected = () => {
     if (!report) return;
-    const membersToKeep = report.missingMembers.filter((m) =>
-      selectedMissingIds.has(m["No."]!),
-    );
+    const membersToKeep = report.missingMembers.filter((m) => {
+      if (m["No."]) {
+        return selectedMissingIds.has(m["No."]);
+      }
+      return false;
+    });
     if (membersToKeep.length > 0) {
       onKeepMembers(membersToKeep);
       setSelectedMissingIds(new Set()); // Clear selection after action
@@ -164,10 +167,14 @@ const MembershipReconciliationModal: React.FC<
                       className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)] flex items-center gap-3 hover:bg-[var(--border-color)]/30 transition-colors"
                     >
                       <button
-                        onClick={() => handleToggleSelection(member["No."]!)}
+                        onClick={() => {
+                          if (member["No."]) {
+                            handleToggleSelection(member["No."]);
+                          }
+                        }}
                         className="flex-shrink-0 p-1"
                       >
-                        {selectedMissingIds.has(member["No."]!) ? (
+                        {member["No."] && selectedMissingIds.has(member["No."]) ? (
                           <CheckSquare
                             size={20}
                             className="text-[var(--primary-accent-start)]"

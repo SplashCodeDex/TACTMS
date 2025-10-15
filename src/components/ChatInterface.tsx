@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Sparkles } from "lucide-react";
 import Button from "./Button";
-import { ChatMessage } from "../hooks/useGemini";
+import { ChatMessage } from "../types";
+import { formatMarkdown } from "../lib/markdown";
 
 interface ChatInterfaceProps {
   chatHistory: ChatMessage[];
@@ -20,7 +21,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollOfView({ behavior: "smooth" });
   }, [chatHistory]);
 
   const handleSend = (e?: React.FormEvent) => {
@@ -33,46 +34,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const handlePromptClick = (prompt: string) => {
     onSendMessage(prompt);
-  };
-
-  const formatMessage = (text: string) => {
-    let html = text;
-
-    html = html.replace(
-      /^### (.*$)/gm,
-      '<h3 class="text-lg font-semibold text-[var(--text-primary)] mt-3 mb-1">$1</h3>',
-    );
-    html = html.replace(
-      /^## (.*$)/gm,
-      '<h2 class="text-xl font-bold text-gradient-primary mt-4 mb-2">$1</h2>',
-    );
-    html = html.replace(
-      /^# (.*$)/gm,
-      '<h1 class="text-2xl font-bold text-gradient-primary mt-5 mb-3">$1</h1>',
-    );
-
-    html = html.replace(/((?:^[*-] .*(?:\n|$))+)/gm, (match) => {
-      const items = match
-        .trim()
-        .split("\n")
-        .map(
-          (item) =>
-            `<li class="list-disc ml-5 mb-1.5">${item.replace(/^[*-] /, "").trim()}</li>`,
-        )
-        .join("");
-      return `<ul class="list-outside mt-2">${items}</ul>`;
-    });
-
-    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-    html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
-    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
-    html = html.replace(/_(.*?)_/g, "<em>$1</em>");
-
-    html = html.replace(/\n/g, "<br />");
-    html = html.replace(/<br \/>\s*(<(?:ul|ol|h[1-3]))/g, "$1");
-    html = html.replace(/(<\/(?:ul|ol|h[1-3])>)\s*<br \/>/g, "$1");
-
-    return html;
   };
 
   return (
@@ -91,7 +52,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <div
                   className="text-sm"
                   dangerouslySetInnerHTML={{
-                    __html: formatMessage(msg.parts[0].text || ""),
+                    __html: formatMarkdown(msg.parts[0].text || ""),
                   }}
                 />
               )}
