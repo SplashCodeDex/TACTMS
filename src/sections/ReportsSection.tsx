@@ -33,57 +33,59 @@ const ReportsSection: React.FC = () => {
     return Array.from(years).sort((a, b) => b - a);
   }, [transactionLog]);
 
-  const reportDataByMonth = useMemo<Record<number, ReportData[]>>(() => {
-    const monthlyData: Record<number, ReportData[]> = {};
-
-    for (let month = 0; month < 12; month++) {
-      monthlyData[month] = ASSEMBLIES.map((name) => {
-        const assemblyMasterList = memberDatabase[name]?.data || [];
-        const soulsWonForMonth = assemblyMasterList.filter((member) => {
-          if (!member.firstSeenDate) return false;
-          try {
-            const seenDate = new Date(member.firstSeenDate);
-            return (
-              seenDate.getMonth() === month &&
-              seenDate.getFullYear() === selectedYear
-            );
-          } catch (e) {
-            return false;
-          }
-        }).length;
-
-        const assemblyLogsForMonth = transactionLog.filter((log) => {
-          const logDate = new Date(log.selectedDate);
+  const calculateMonthlyReportData = (
+    month: number,
+    selectedYear: number,
+    transactionLog: TransactionLogEntry[],
+    memberDatabase: MemberDatabase,
+  ): ReportData[] => {
+    return ASSEMBLIES.map((name) => {
+      const assemblyMasterList = memberDatabase[name]?.data || [];
+      const soulsWonForMonth = assemblyMasterList.filter((member) => {
+        if (!member.firstSeenDate) return false;
+        try {
+          const seenDate = new Date(member.firstSeenDate);
           return (
-            log.assemblyName === name &&
-            logDate.getMonth() === month &&
-            logDate.getFullYear() === selectedYear
+            seenDate.getMonth() === month &&
+            seenDate.getFullYear() === selectedYear
           );
-        });
+        } catch (e) {
+          return false;
+        }
+      }).length;
 
-        const monthlyTotals = assemblyLogsForMonth.reduce(
-          (acc, log) => {
-            acc.totalTithe += log.totalTitheAmount;
-            acc.titherCount += log.titherCount;
-            acc.recordCount += log.recordCount;
-            return acc;
-          },
-          { totalTithe: 0, titherCount: 0, recordCount: 0 },
+      const assemblyLogsForMonth = transactionLog.filter((log) => {
+        const logDate = new Date(log.selectedDate);
+        return (
+          log.assemblyName === name &&
+          logDate.getMonth() === month &&
+          logDate.getFullYear() === selectedYear
         );
-
-        return {
-          assemblyName: name,
-          totalTithe: monthlyTotals.totalTithe,
-          soulsWon: soulsWonForMonth,
-          titherCount: monthlyTotals.titherCount,
-          recordCount: monthlyTotals.recordCount,
-        };
       });
-    }
-    return monthlyData;
-  }, [transactionLog, memberDatabase, selectedYear]);
 
-  const yearSummary = useMemo(() => {
+      const monthlyTotals = assemblyLogsForMonth.reduce(
+        (acc, log) => {
+          acc.totalTithe += log.totalTitheAmount;
+          acc.titherCount += log.titherCount;
+          acc.recordCount += log.recordCount;
+          return acc;
+        },
+        { totalTithe: 0, titherCount: 0, recordCount: 0 },
+      );
+
+      return {
+        assemblyName: name,
+        totalTithe: monthlyTotals.totalTithe,
+        soulsWon: soulsWonForMonth,
+        titherCount: monthlyTotals.titherCount,
+        recordCount: monthlyTotals.recordCount,
+      };
+    });
+  };
+
+  const aggregateYearlySummary = (
+    monthlyReportData: Record<number, ReportData[]>,
+  ) => {
     const summary = {
       totalTithe: 0,
       totalSouls: 0,
@@ -102,7 +104,7 @@ const ReportsSection: React.FC = () => {
     for (let month = 0; month < 12; month++) {
       let monthTithe = 0;
       let monthSouls = 0;
-      reportDataByMonth[month].forEach((report) => {
+      monthlyReportData[month].forEach((report) => {
         monthTithe += report.totalTithe;
         monthSouls += report.soulsWon;
         const current = assemblyTotals.get(report.assemblyName) || {
@@ -144,6 +146,23 @@ const ReportsSection: React.FC = () => {
     }
 
     return summary;
+  };
+
+  const reportDataByMonth = useMemo<Record<number, ReportData[]>>(() => {
+    const monthlyData: Record<number, ReportData[]> = {};
+    for (let month = 0; month < 12; month++) {
+      monthlyData[month] = calculateMonthlyReportData(
+        month,
+        selectedYear,
+        transactionLog,
+        memberDatabase,
+      );
+    }
+    return monthlyData;
+  }, [selectedYear, transactionLog, memberDatabase]);
+
+  const yearSummary = useMemo(() => {
+    return aggregateYearlySummary(reportDataByMonth);
   }, [reportDataByMonth]);
 
   const hasDataForPeriod =

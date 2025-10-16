@@ -6,33 +6,7 @@ import {
   MembershipReconciliationReport,
 } from "../types";
 
-export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = event.target?.result;
-        if (!data) {
-          reject(new Error("File data is null"));
-          return;
-        }
-        const workbook = XLSX.read(data, { type: "binary", cellDates: true });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<MemberRecordA>(worksheet, {
-          raw: false,
-          dateNF: "dd-mmm-yyyy",
-        });
-        resolve(jsonData);
-      } catch (e) {
-        reject(e);
-      }
-    };
-    reader.onerror = (error) => reject(error);
-    reader.readAsBinaryString(file);
-  });
-};
-
+import { parseExcelFile } from "../lib/excelUtils";
 export const parseAgeStringToYears = (
   ageString: string | undefined,
 ): number | null => {
@@ -87,13 +61,9 @@ export const createTitheList = (
     formattedDate,
   );
 
-  return members.map((member, index) => {
-    // Heuristic to detect if we're processing a raw data file (with name parts)
-    // vs a previously generated file (without separate name parts).
+  const getConcatenatedMemberName = (member: MemberRecordA, config: ConcatenationConfig): string => {
     const isProcessingRawData = !!(member["First Name"] || member["Surname"]);
-
     let namePart = "";
-    // This will only populate if the fields exist, which is true for raw data
     if (config.Title && member.Title) namePart += `${member.Title} `;
     if (config["First Name"] && member["First Name"])
       namePart += `${member["First Name"]} `;
@@ -110,9 +80,6 @@ export const createTitheList = (
       if (mainMemberNum && oldMemberNum) {
         numberPart = `(${mainMemberNum}|${oldMemberNum})`;
       } else if (mainMemberNum) {
-        // Only wrap with parentheses if we're processing a raw data.
-        // If it's a re-upload, mainMemberNum is likely the full name and number,
-        // so we shouldn't add extra parens. In that case, `namePart` is empty.
         numberPart = isProcessingRawData ? `(${mainMemberNum})` : mainMemberNum;
       } else if (oldMemberNum) {
         numberPart = `(${oldMemberNum})`;
@@ -121,8 +88,6 @@ export const createTitheList = (
 
     let concatenatedName = namePart;
     if (numberPart) {
-      // If we're processing a re-upload (`namePart` is empty), use `numberPart` directly.
-      // Otherwise, combine them.
       concatenatedName = namePart ? `${namePart} ${numberPart}` : numberPart;
     }
 
@@ -135,7 +100,10 @@ export const createTitheList = (
     ) {
       concatenatedName = "";
     }
+    return concatenatedName;
+  };
 
+  const getTransactionAmount = (member: MemberRecordA, amountMappingColumn?: string | null): number | string => {
     let transactionAmount: number | string = "";
     if (
       amountMappingColumn &&
@@ -151,9 +119,15 @@ export const createTitheList = (
           !isNaN(parsedAmount) && parsedAmount >= 0 ? parsedAmount : "";
       }
     }
+    return transactionAmount;
+  };
+
+  return members.map((member, index) => {
+    const concatenatedName = getConcatenatedMemberName(member, config);
+    const transactionAmount = getTransactionAmount(member, amountMappingColumn);
 
     return {
-      "No.": member["No."] || index + 1, // Use existing No if it's there (from kept members), otherwise index
+      "No.": member["No."] || index + 1,
       "Transaction Type": "Individual Tithe-[Income]",
       "Payment Source Type": "Registered Member",
       "Membership Number": concatenatedName,
@@ -166,7 +140,6 @@ export const createTitheList = (
     };
   });
 };
-
 export const reconcileMembers = (
   newData: MemberRecordA[],
   masterData: MemberRecordA[],
@@ -195,7 +168,7 @@ export const reconcileMembers = (
   };
 };
 
-export const exportToExcel = (data: any[], fileName: string): void => {
+export const exportToExcel = (data: TitheRecordB[], fileName: string): void => {
   if (!data || data.length === 0) {
     console.error("No data provided to export.");
     return;

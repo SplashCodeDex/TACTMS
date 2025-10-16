@@ -16,7 +16,7 @@ const AnalyticsSection = React.lazy(
 );
 const ReportsSection = React.lazy(() => import("./sections/ReportsSection"));
 const MemberDatabaseSection = React.lazy(
-  () => import("./components/MemberDatabaseSection"),
+  () => import("./sections/MemberDatabaseSection"),
 );
 const ListOverviewActionsSection = React.lazy(
   () => import("./sections/ListOverviewActionsSection"),

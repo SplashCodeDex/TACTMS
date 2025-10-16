@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// import {
-//   FAVORITES_DRIVE_FILENAME,
-//   TRANSACTION_LOG_DRIVE_FILENAME,
-// } from "../constants"; // TODO: Use these constants when implementing Google Drive sync.
+import { gapi } from "gapi"; // Import gapi types
+import {
+  FAVORITES_DRIVE_FILENAME,
+  TRANSACTION_LOG_DRIVE_FILENAME,
+} from "../constants"; // Use these constants when implementing Google Drive sync.
 
 declare global {
   interface Window {
-    gapi: any;
+    gapi: typeof gapi; // Use typeof gapi
   }
 }
 
@@ -85,7 +86,12 @@ export const useReadFromDrive = <T>(
 export const useSaveToDrive = (fileId: string | null) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any[]) => saveToDrive(fileId!, data),
+    mutationFn: (data: any[]) => {
+      if (!fileId) {
+        throw new Error("Cannot save to Drive: fileId is null.");
+      }
+      return saveToDrive(fileId, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["driveFileContent", fileId] });
     },

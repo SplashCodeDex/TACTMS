@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 // A generic hook for web workers
 export const useWorker = <T, U>(workerPath: string) => {
   const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<any | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const workerRef = useRef<Worker | null>(null);
 
@@ -11,12 +11,12 @@ export const useWorker = <T, U>(workerPath: string) => {
     // Create the worker instance
     workerRef.current = new Worker(workerPath, { type: "module" });
 
-    workerRef.current.onmessage = (event: MessageEvent<any>) => {
-      if (event.data.error) {
+    workerRef.current.onmessage = (event: MessageEvent<T | { error: string }>) => {
+      if (event.data && typeof event.data === 'object' && 'error' in event.data) {
         setError(event.data.error);
         setData(null);
       } else {
-        setData(event.data);
+        setData(event.data as T);
         setError(null);
       }
       setIsLoading(false);

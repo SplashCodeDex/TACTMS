@@ -174,10 +174,19 @@ self.addEventListener("widgetclick", (event: any) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
+      const cachesToKeep = [
+        "google-api-cache",
+        "api-cache",
+        "image-cache",
+        "analytics-queue", // Workbox queue cache
+      ];
+
       return Promise.all(
-        cacheNames.map((_cacheName) => {
-          // Clean up old caches if needed
-          return null;
+        cacheNames.map((cacheName) => {
+          if (!cachesToKeep.includes(cacheName) && !cacheName.startsWith('workbox-precache')) {
+            return caches.delete(cacheName);
+          }
+          return Promise.resolve();
         }),
       );
     }),

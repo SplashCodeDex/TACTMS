@@ -418,9 +418,6 @@ body {
 }
 .info-tooltip-content {
   position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-0.5rem);
   background-color: var(--bg-elevated);
   color: var(--text-primary);
   padding: 0.5rem 0.75rem;
@@ -438,13 +435,14 @@ body {
   z-index: 20;
   border: 1px solid var(--border-color);
 }
-.info-tooltip-container:hover .info-tooltip-content,
-.info-tooltip-container:focus .info-tooltip-content {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(-0.75rem);
+
+/* Default (top) position */
+.info-tooltip-top {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-0.5rem);
 }
-.info-tooltip-content::after {
+.info-tooltip-top::after {
   content: "";
   position: absolute;
   top: 100%;
@@ -453,6 +451,79 @@ body {
   border-width: 5px;
   border-style: solid;
   border-color: var(--bg-elevated) transparent transparent transparent;
+}
+
+/* Bottom position */
+.info-tooltip-bottom {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(0.5rem);
+}
+.info-tooltip-bottom::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent var(--bg-elevated) transparent;
+}
+
+/* Left position */
+.info-tooltip-left {
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%) translateX(-0.5rem);
+}
+.info-tooltip-left::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent transparent var(--bg-elevated);
+}
+
+/* Right position */
+.info-tooltip-right {
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%) translateX(0.5rem);
+}
+.info-tooltip-right::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent var(--bg-elevated) transparent transparent;
+}
+
+.info-tooltip-container:hover .info-tooltip-content,
+.info-tooltip-container:focus .info-tooltip-content {
+  opacity: 1;
+  visibility: visible;
+}
+.info-tooltip-container:hover .info-tooltip-top,
+.info-tooltip-container:focus .info-tooltip-top {
+  transform: translateX(-50%) translateY(-0.75rem);
+}
+.info-tooltip-container:hover .info-tooltip-bottom,
+.info-tooltip-container:focus .info-tooltip-bottom {
+  transform: translateX(-50%) translateY(0.75rem);
+}
+.info-tooltip-container:hover .info-tooltip-left,
+.info-tooltip-container:focus .info-tooltip-left {
+  transform: translateY(-50%) translateX(-0.75rem);
+}
+.info-tooltip-container:hover .info-tooltip-right,
+.info-tooltip-container:focus .info-tooltip-right {
+  transform: translateY(-50%) translateX(0.75rem);
 }
 .glassmorphism-bg {
   background: rgba(26, 27, 41, 0.7);

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "./Button";
-import { Upload, PlusCircle, Edit, Search } from "lucide-react";
+import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 
 interface MemberDatabaseSectionProps {
@@ -36,6 +36,16 @@ const MemberDatabaseSection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<MemberRecordA[]>([]);
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof MemberRecordA | null;
+    direction: "asc" | "desc";
+  }>({ key: null, direction: "asc" });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [membersPerPage] = useState(10); // You can make this configurable if needed
+
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
     assemblyName: string,
@@ -46,16 +56,52 @@ const MemberDatabaseSection: React.FC = () => {
     }
   };
 
-  const filteredMembers = useMemo(() => {
+  const sortedAndFilteredMembers = useMemo(() => {
     if (!selectedAssembly) return [];
-    const members = memberDatabase[selectedAssembly]?.data || [];
-    if (!searchTerm) return members;
-    return members.filter((member) =>
-      Object.values(member).some((value) =>
-        String(value).toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
-    );
-  }, [memberDatabase, selectedAssembly, searchTerm]);
+    let members = memberDatabase[selectedAssembly]?.data || [];
+
+    if (searchTerm) {
+      members = members.filter((member) =>
+        Object.values(member).some((value) =>
+          String(value).toLowerCase().includes(searchTerm.toLowerCase()),
+        ),
+      );
+    }
+
+    if (sortConfig.key) {
+      members.sort((a, b) => {
+        const aValue = String(a[sortConfig.key!]).toLowerCase();
+        const bValue = String(b[sortConfig.key!]).toLowerCase();
+
+        if (aValue < bValue) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return members;
+  }, [memberDatabase, selectedAssembly, searchTerm, sortConfig]);
+
+  const handleSort = (key: keyof MemberRecordA) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Get current members for pagination
+  const indexOfLastMember = currentPage * membersPerPage;
+  const indexOfFirstMember = indexOfLastMember - membersPerPage;
+  const currentMembers = sortedAndFilteredMembers.slice(indexOfFirstMember, indexOfLastMember);
+
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  const totalPages = Math.ceil(sortedAndFilteredMembers.length / membersPerPage);
 
   const handleSelectMember = (member: MemberRecordA) => {
     setSelectedMembers((prev) =>
@@ -102,15 +148,15 @@ const MemberDatabaseSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex border-b border-gray-200 dark:border-gray-700">
+      <div className="flex border-b border-[var(--border-color)]">
         {Object.keys(memberDatabase).map((assemblyName) => (
           <button
             key={assemblyName}
             onClick={() => setSelectedAssembly(assemblyName)}
-            className={`px-4 py-2 text-sm font-medium ${
+            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
               selectedAssembly === assemblyName
-                ? "border-b-2 border-blue-500 text-blue-500"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                ? "border-b-2 border-[var(--primary-accent-start)] text-[var(--primary-accent-start)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             }`}
           >
             {assemblyName}
@@ -154,37 +200,67 @@ const MemberDatabaseSection: React.FC = () => {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+            <table className="modern-table min-w-full divide-y divide-[var(--border-color)]">
+              <thead className="bg-[var(--bg-elevated)]">
                 <tr>
                   <th scope="col" className="p-4">
                     <input
                       type="checkbox"
                       className="form-checkbox"
                       checked={
-                        selectedMembers.length === filteredMembers.length &&
-                        filteredMembers.length > 0
+                        selectedMembers.length === sortedAndFilteredMembers.length &&
+                        sortedAndFilteredMembers.length > 0
                       }
                       onChange={handleSelectAll}
                     />
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    onClick={() => handleSort("First Name")}
                   >
-                    Name
+                    <div className="flex items-center gap-1">
+                      Name
+                      {sortConfig.key === "First Name" && (
+                        sortConfig.direction === "asc" ? (
+                          <ArrowUp size={14} />
+                        ) : (
+                          <ArrowDown size={14} />
+                        )
+                      )}
+                    </div>
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    onClick={() => handleSort("Membership Number")}
                   >
-                    Membership No.
+                    <div className="flex items-center gap-1">
+                      Membership No.
+                      {sortConfig.key === "Membership Number" && (
+                        sortConfig.direction === "asc" ? (
+                          <ArrowUp size={14} />
+                        ) : (
+                          <ArrowDown size={14} />
+                        )
+                      )}
+                    </div>
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    onClick={() => handleSort("Phone Number")}
                   >
-                    Phone Number
+                    <div className="flex items-center gap-1">
+                      Phone Number
+                      {sortConfig.key === "Phone Number" && (
+                        sortConfig.direction === "asc" ? (
+                          <ArrowUp size={14} />
+                        ) : (
+                          <ArrowDown size={14} />
+                        )
+                      )}
+                    </div>
                   </th>
                   <th
                     scope="col"
@@ -194,8 +270,8 @@ const MemberDatabaseSection: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
-                {filteredMembers.map((member) => (
+              <tbody className="divide-y divide-[var(--border-color)]">
+                {currentMembers.map((member) => (
                   <tr key={member["No."]}>
                     <td className="p-4">
                       <input
@@ -230,6 +306,39 @@ const MemberDatabaseSection: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {filteredMembers.length > membersPerPage && (
+            <div className="flex justify-center mt-4">
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => paginate(i + 1)}
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      currentPage === i + 1
+                        ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
+                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-12">

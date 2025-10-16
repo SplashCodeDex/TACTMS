@@ -31,7 +31,7 @@ export interface MemberRecordA {
   "Spiritual Gifts"?: string;
   "Level of Education"?: string;
   "Course Studied"?: string;
-  "Type of Employement"?: string; // Typo in source image, kept for matching
+  "Type of Employment"?: string;
   "Place of Work"?: string;
   "Profession/Occupation"?: string;
   "Is Communicant? (Yes/No)"?: string;
@@ -39,7 +39,7 @@ export interface MemberRecordA {
   "Holy Spirit Baptism? (Yes/No)"?: string;
   "Water Baptism? (Yes/No)"?: string;
   "Right Hand of Fellowship? (Yes/No)"?: string;
-  "Salaried St Ministers (SSNIT Number"?: string; // Typo in source image
+  "Salaried Staff Ministers (SSNIT Number)"?: string;
 
   // New fields for accuracy
   firstSeenDate?: string; // ISO string

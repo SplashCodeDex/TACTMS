@@ -8,23 +8,20 @@ export interface ChartData {
 
 interface BarChartProps {
   data: ChartData[];
+  chartHeight?: number;
+  barWidth?: number;
+  barMargin?: number;
 }
 
-const MotionRect = motion.rect as React.FC<any>;
-const MotionText = motion.text as React.FC<any>;
+const MotionRect = motion.rect;
+const MotionText = motion.text;
 
-const BarChart: React.FC<BarChartProps> = ({ data }) => {
-  if (!data || data.length === 0) {
-    return (
-      <p className="text-center text-[var(--text-muted)] text-sm">
-        No chart data available.
-      </p>
-    );
-  }
-
-  const chartHeight = 220;
-  const barWidth = 35;
-  const barMargin = 20;
+const BarChart: React.FC<BarChartProps> = ({
+  data,
+  chartHeight = 220,
+  barWidth = 35,
+  barMargin = 20,
+}) => {
   const chartWidth = data.length * (barWidth + barMargin);
   const maxValue = Math.max(...data.map((d) => d.count), 0);
 

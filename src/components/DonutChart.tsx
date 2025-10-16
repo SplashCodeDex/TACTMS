@@ -8,8 +8,8 @@ interface DonutChartProps {
   color?: string;
 }
 
-const MotionCircle = motion.circle as React.FC<any>;
-const MotionSpan = motion.span as React.FC<any>;
+const MotionCircle = motion.circle;
+const MotionSpan = motion.span;
 
 const DonutChart: React.FC<DonutChartProps> = ({
   percentage,

@@ -20,11 +20,14 @@ import {
   useSaveToDrive,
 } from "./useGoogleDriveQuery";
 
+import { gapi } from "gapi"; // Import gapi types
+import { google } from "google-one-tap"; // Import google-one-tap types (for google.accounts)
+
 declare global {
   interface Window {
-    gapi: any;
-    google: any;
-    tokenClient: any;
+    gapi: typeof gapi;
+    google: typeof google;
+    tokenClient: google.accounts.oauth2.TokenClient;
   }
 }
 

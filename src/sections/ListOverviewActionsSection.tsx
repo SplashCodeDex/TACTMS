@@ -134,123 +134,149 @@ const ListOverviewActionsSection = React.memo(
       transactionLog = [],
       soulsWonCount,
     } = useOutletContext<ListOverviewActionsSectionProps>();
+
+    const getMinMaxTitheStats = (titheListData: TitheRecordB[]) => {
+      const tithersWithAmount = titheListData
+        .map((r) => ({
+          ...r,
+          amount: Number(r["Transaction Amount"]) || 0,
+        }))
+        .filter((r) => r.amount > 0);
+
+      let lowestTither: (TitheRecordB & { amount: number }) | null = null;
+      let highestTither: (TitheRecordB & { amount: number }) | null = null;
+
+      if (tithersWithAmount.length > 0) {
+        lowestTither = tithersWithAmount.reduce((prev, curr) =>
+          prev.amount < curr.amount ? prev : curr,
+        );
+        highestTither = tithersWithAmount.reduce((prev, curr) =>
+          prev.amount > curr.amount ? prev : curr,
+        );
+      }
+
+      const lowestTitheAmount = lowestTither ? lowestTither.amount : 0;
+      const highestTitheAmount = highestTither ? highestTither.amount : 0;
+      const lowestTitherName = lowestTither
+        ? lowestTither["Membership Number"]
+        : undefined;
+      const highestTitherName = highestTither
+        ? highestTither["Membership Number"]
+        : undefined;
+
+      return {
+        lowestTitheAmount,
+        highestTitheAmount,
+        lowestTitherName,
+        highestTitherName,
+      };
+    };
+
+    const calcChange = (current: number, previous: number | null) => {
+      if (previous === null || previous === 0) return current > 0 ? Infinity : 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    const getHistoricalTotals = (
+      transactionLog: TransactionLogEntry[],
+      currentAssembly: string | null,
+      selectedDate: Date,
+      currentTotalTithe: number,
+    ) => {
+      const validSelectedDate =
+        selectedDate instanceof Date && !isNaN(selectedDate.getTime())
+          ? selectedDate
+          : new Date();
+
+      const currentMonth = validSelectedDate.getMonth();
+      const currentYear = validSelectedDate.getFullYear();
+
+      const prevMonthDate = new Date(validSelectedDate);
+      prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+      const prevMonth = prevMonthDate.getMonth();
+      const prevMonthYear = prevMonthDate.getFullYear();
+
+      let lastMonthTotal: number | null = null;
+      let lastYearTotal: number | null = null;
+      let ytdTotal = 0;
+
+      if (transactionLog && transactionLog.length > 0 && currentAssembly) {
+        const assemblyLog = transactionLog.filter(
+          (log) => log.assemblyName === currentAssembly,
+        );
+
+        lastMonthTotal = assemblyLog
+          .filter((log) => {
+            const logDate = new Date(log.selectedDate);
+            return (
+              logDate.getMonth() === prevMonth &&
+              logDate.getFullYear() === prevMonthYear
+            );
+          })
+          .reduce((sum, log) => sum + log.totalTitheAmount, 0);
+
+        lastYearTotal = assemblyLog
+          .filter((log) => {
+            const logDate = new Date(log.selectedDate);
+            return (
+              logDate.getMonth() === currentMonth &&
+              logDate.getFullYear() === currentYear - 1
+            );
+          })
+          .reduce((sum, log) => sum + log.totalTitheAmount, 0);
+
+        ytdTotal = assemblyLog
+          .filter(
+            (log) => new Date(log.selectedDate).getFullYear() === currentYear,
+          )
+          .reduce((sum, log) => sum + log.totalTitheAmount, 0);
+      }
+      ytdTotal += currentTotalTithe; // Add current list to YTD for real-time view
+
+      return {
+        lastMonthTotal,
+        lastYearTotal,
+        ytdTotal,
+      };
+    };
+
     const {
       lowestTitheAmount,
       highestTitheAmount,
-        lowestTitherName,
-        highestTitherName,
-        historicalStats,
-      } = useMemo(() => {
-        const tithersWithAmount = titheListData
-          .map((r) => ({
-            ...r,
-            amount: Number(r["Transaction Amount"]) || 0,
-          }))
-          .filter((r) => r.amount > 0);
+      lowestTitherName,
+      highestTitherName,
+    } = useMemo(() => getMinMaxTitheStats(titheListData), [titheListData]);
 
-        let lowestTither: (TitheRecordB & { amount: number }) | null = null;
-        let highestTither: (TitheRecordB & { amount: number }) | null = null;
+    const {
+      lastMonthTotal,
+      lastYearTotal,
+      ytdTotal,
+    } = useMemo(
+      () =>
+        getHistoricalTotals(
+          transactionLog,
+          currentAssembly,
+          selectedDate,
+          currentTotalTithe,
+        ),
+      [transactionLog, currentAssembly, selectedDate, currentTotalTithe],
+    );
 
-        if (tithersWithAmount.length > 0) {
-          lowestTither = tithersWithAmount.reduce((prev, curr) =>
-            prev.amount < curr.amount ? prev : curr,
-          );
-          highestTither = tithersWithAmount.reduce((prev, curr) =>
-            prev.amount > curr.amount ? prev : curr,
-          );
-        }
-
-        const lowestTitheAmount = lowestTither ? lowestTither.amount : 0;
-        const highestTitheAmount = highestTither ? highestTither.amount : 0;
-        const lowestTitherName = lowestTither
-          ? lowestTither["Membership Number"]
-          : undefined;
-        const highestTitherName = highestTither
-          ? highestTither["Membership Number"]
-          : undefined;
-
-        const calcChange = (current: number, previous: number | null) => {
-          if (previous === null || previous === 0)
-            return current > 0 ? Infinity : 0;
-          return ((current - previous) / previous) * 100;
-        };
-
-        const validSelectedDate =
-          selectedDate instanceof Date && !isNaN(selectedDate.getTime())
-            ? selectedDate
-            : new Date();
-
-        const currentMonth = validSelectedDate.getMonth();
-        const currentYear = validSelectedDate.getFullYear();
-
-        const prevMonthDate = new Date(validSelectedDate);
-        prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-        const prevMonth = prevMonthDate.getMonth();
-        const prevMonthYear = prevMonthDate.getFullYear();
-
-        let lastMonthTotal: number | null = null;
-        let lastYearTotal: number | null = null;
-        let ytdTotal = 0;
-
-        if (transactionLog && transactionLog.length > 0 && currentAssembly) {
-          const assemblyLog = transactionLog.filter(
-            (log) => log.assemblyName === currentAssembly,
-          );
-
-          lastMonthTotal = assemblyLog
-            .filter((log) => {
-              const logDate = new Date(log.selectedDate);
-              return (
-                logDate.getMonth() === prevMonth &&
-                logDate.getFullYear() === prevMonthYear
-              );
-            })
-            .reduce((sum, log) => sum + log.totalTitheAmount, 0);
-
-          lastYearTotal = assemblyLog
-            .filter((log) => {
-              const logDate = new Date(log.selectedDate);
-              return (
-                logDate.getMonth() === currentMonth &&
-                logDate.getFullYear() === currentYear - 1
-              );
-            })
-            .reduce((sum, log) => sum + log.totalTitheAmount, 0);
-
-          ytdTotal = assemblyLog
-            .filter(
-              (log) => new Date(log.selectedDate).getFullYear() === currentYear,
-            )
-            .reduce((sum, log) => sum + log.totalTitheAmount, 0);
-        }
-        ytdTotal += currentTotalTithe; // Add current list to YTD for real-time view
-
-        return {
-          lowestTitheAmount,
-          highestTitheAmount,
-          lowestTitherName,
-          highestTitherName,
-          historicalStats: {
-            vsLastMonth: {
-              change: calcChange(currentTotalTithe, lastMonthTotal),
-              current: currentTotalTithe,
-              previous: lastMonthTotal,
-            },
-            vsLastYear: {
-              change: calcChange(currentTotalTithe, lastYearTotal),
-              current: currentTotalTithe,
-              previous: lastYearTotal,
-            },
-            ytdTotal: ytdTotal,
-          },
-        };
-      }, [
-        titheListData,
-        transactionLog,
-        selectedDate,
-        currentTotalTithe,
-        currentAssembly,
-      ]);
+    const historicalStats = useMemo(() => {
+      return {
+        vsLastMonth: {
+          change: calcChange(currentTotalTithe, lastMonthTotal),
+          current: currentTotalTithe,
+          previous: lastMonthTotal,
+        },
+        vsLastYear: {
+          change: calcChange(currentTotalTithe, lastYearTotal),
+          current: currentTotalTithe,
+          previous: lastYearTotal,
+        },
+        ytdTotal: ytdTotal,
+      };
+    }, [currentTotalTithe, lastMonthTotal, lastYearTotal, ytdTotal]);
 
       if (titheListData.length === 0) {
         return null;

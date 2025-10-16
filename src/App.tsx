@@ -26,8 +26,8 @@ import {
   filterMembersByAge,
   formatDateDDMMMYYYY,
   reconcileMembers,
-  parseExcelFile,
 } from "./services/excelProcessor";
+import { parseExcelFile } from "./lib/excelUtils";
 import FullTithePreviewModal from "./components/FullTithePreviewModal";
 import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";

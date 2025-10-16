@@ -30,7 +30,6 @@ interface DashboardSectionProps {
   onStartNewWeek: (assemblyName: string) => void;
   userProfile: GoogleUserProfile | null;
   onUploadFile: (file: File | null, isMasterList: boolean) => void;
-  onGenerateValidationReport: () => void;
 }
 
 const DashboardSection: React.FC = () => {
@@ -59,9 +58,9 @@ const DashboardSection: React.FC = () => {
       );
 
     let ytdSouls = 0;
-    Object.values(memberDatabase).forEach((listData: any) => {
+    Object.values(memberDatabase).forEach((listData: MasterListData) => {
       if (listData && Array.isArray(listData.data)) {
-        listData.data.forEach((member: any) => {
+        listData.data.forEach((member: MemberRecordA) => {
           if (member.firstSeenDate) {
             try {
               if (
@@ -78,7 +77,7 @@ const DashboardSection: React.FC = () => {
     });
 
     const totalMembers = Object.values(memberDatabase).reduce(
-      (sum: number, listData: any) => sum + (listData?.data?.length || 0),
+      (sum: number, listData: MasterListData) => sum + (listData?.data?.length || 0),
       0,
     );
 

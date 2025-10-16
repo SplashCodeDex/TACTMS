@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { ToastMessage, ToastAction } from "../components/Toast";
+
 const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY"; // Replace with your actual VAPID public key from your backend
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -18,9 +20,9 @@ function urlBase64ToUint8Array(base64String: string) {
 export const usePWAFeatures = (
   addToast: (
     message: string,
-    type: any,
+    type: ToastMessage["type"],
     duration?: number,
-    actions?: any[],
+    actions?: ToastAction[],
   ) => void,
   onNewWorker: (worker: ServiceWorker) => void,
 ) => {
@@ -95,7 +97,7 @@ export const usePWAFeatures = (
   const registerBackgroundSync = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      await (registration as any).sync.register("sync-tithe-data");
+      await registration.sync.register("sync-tithe-data");
       console.log('Background sync registered for "sync-tithe-data"');
       addToast("Offline changes will be synced in the background.", "info");
     } catch (error) {
@@ -109,10 +111,10 @@ export const usePWAFeatures = (
       const registration = await navigator.serviceWorker.ready;
       if ("periodicSync" in registration) {
         const status = await navigator.permissions.query({
-          name: "periodic-background-sync" as any,
+          name: "periodic-background-sync",
         });
         if (status.state === "granted") {
-          await (registration as any).periodicSync.register(
+          await registration.periodicSync.register(
             "get-latest-updates",
             {
               minInterval: 24 * 60 * 60 * 1000, // 24 hours
