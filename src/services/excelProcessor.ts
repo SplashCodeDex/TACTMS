@@ -29,6 +29,9 @@ export const filterMembersByAge = (
   minAge?: number,
   maxAge?: number,
 ): MemberRecordA[] => {
+  if (minAge === undefined && maxAge === undefined) {
+    return members; // Return all members if no age range is specified
+  }
   return members.filter((member) => {
     // Extract age number from a string like "30 years" or "30 years 5 months"
     const ageMatch = member.Age?.match(/(\d+)/);
@@ -140,8 +143,16 @@ export const reconcileMembers = (
   newData: MemberRecordA[],
   masterData: MemberRecordA[],
 ): Omit<MembershipReconciliationReport, "previousFileDate"> => {
-  const getMemberId = (m: MemberRecordA) =>
-    String(m["Membership Number"] || m["Old Membership Number"] || "").trim();
+  const getMemberId = (m: MemberRecordA) => {
+    const membershipNumber = String(m["Membership Number"] || m["Old Membership Number"] || "").trim();
+    if (membershipNumber) return membershipNumber;
+
+    // Fallback to First Name + Surname if no membership number
+    const firstName = String(m["First Name"] || "").trim();
+    const surname = String(m.Surname || "").trim();
+    if (firstName && surname) return `${firstName}-${surname}`;
+    return ""; // No identifiable ID
+  };
 
   const masterMemberIds = new Set(
     masterData.map(getMemberId).filter((id) => id),
@@ -164,11 +175,13 @@ export const reconcileMembers = (
   };
 };
 
-export const exportToExcel = (data: TitheRecordB[], fileName: string): void => {
+export const exportToExcel = (data: TitheRecordB[], fileName?: string): void => {
   if (!data || data.length === 0) {
     console.error("No data provided to export.");
     return;
   }
+
+  const actualFileName = fileName && fileName.trim() !== "" ? fileName : "exported_data"; // Use default if fileName is empty or undefined
 
   const worksheet = XLSX.utils.json_to_sheet(data);
 
@@ -190,5 +203,5 @@ export const exportToExcel = (data: TitheRecordB[], fileName: string): void => {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Exported Data");
-  XLSX.writeFile(workbook, `${fileName}.xlsx`);
+  XLSX.writeFile(workbook, `${actualFileName}.xlsx`);
 };

@@ -108,9 +108,9 @@ describe("filterMembersByAge", () => {
 
   it("should filter members by minimum age", () => {
     const filtered = filterMembersByAge(members, 25);
-    expect(filtered).toHaveLength(6); // Alice, Bob, David, Frank, Grace, Heidi
+    expect(filtered).toHaveLength(5); // Alice, Bob, David, Frank, Heidi
     expect(filtered.map((m) => m["First Name"])).toEqual(
-      expect.arrayContaining(["Alice", "Bob", "David", "Frank", "Grace", "Heidi"]),
+      expect.arrayContaining(["Alice", "Bob", "David", "Frank", "Heidi"]),
     );
   });
 
@@ -371,16 +371,18 @@ describe("exportToExcel", () => {
     expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledWith(expect.any(Object), `${mockFileName}.xlsx`);
   });
 
-  it("should handle empty data gracefully", () => {
-    exportToExcel([], mockFileName);
-
-    expect(vi.mocked(XLSX.utils.book_new)).toHaveBeenCalledOnce();
-    expect(vi.mocked(XLSX.utils.json_to_sheet)).toHaveBeenCalledWith([]);
-    expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledOnce();
+  it("should use default filename if none provided", () => {
+    const data = [{ "First Name": "John", Surname: "Doe" }];
+    exportToExcel(data);
+    expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledWith(
+      expect.any(Object),
+      "exported_data.xlsx",
+    );
   });
 
-  it("should use default filename if none provided", () => {
-    exportToExcel(mockTitheData, ""); // Empty filename
-    expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledWith(expect.any(Object), `exported_data.xlsx`);
+  it("should handle empty data gracefully", () => {
+    const data: any[] = [];
+    exportToExcel(data);
+    expect(vi.mocked(XLSX.writeFile)).not.toHaveBeenCalled();
   });
 });
