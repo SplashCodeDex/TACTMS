@@ -372,7 +372,20 @@ describe("exportToExcel", () => {
   });
 
   it("should use default filename if none provided", () => {
-    const data = [{ "First Name": "John", Surname: "Doe" }];
+    const data: TitheRecordB[] = [
+      {
+        "No.": 1,
+        "Transaction Type": "Individual Tithe-[Income]",
+        "Payment Source Type": "Registered Member",
+        "Membership Number": "Test User (123)",
+        "Transaction Date ('DD-MMM-YYYY')": "15-AUG-2025",
+        Currency: "GHS",
+        "Exchange Rate": 1,
+        "Payment Method": "Cash",
+        "Transaction Amount": 100,
+        "Narration/Description": "Tithe for 15-AUG-2025",
+      },
+    ];
     exportToExcel(data);
     expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledWith(
       expect.any(Object),

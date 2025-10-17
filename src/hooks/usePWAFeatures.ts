@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ToastMessage, ToastAction } from "../components/Toast";
 
-const VAPID_PUBLIC_KEY = "YOUR_PUBLIC_VAPID_KEY"; // Replace with your actual VAPID public key from your backend
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -72,8 +72,8 @@ export const usePWAFeatures = (
   };
 
   const subscribeUserToPush = async () => {
-    if (VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY") {
-      console.error("VAPID public key is a placeholder and must be replaced.");
+    if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY") {
+      console.error("VAPID public key is missing or a placeholder and must be replaced.");
       addToast("Push notification setup is incomplete by the administrator.", "error");
       return;
     }
