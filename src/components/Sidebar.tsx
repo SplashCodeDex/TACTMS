@@ -71,15 +71,19 @@ const NavItem: React.FC<{
       title={isCollapsed ? label : undefined}
     >
       <Icon size={20} />
-      <motion.span
-        variants={itemVariants}
-        initial={isCollapsed ? "hidden" : "visible"}
-        animate={isCollapsed ? "hidden" : "visible"}
-        className="ml-3"
-        style={{ pointerEvents: isCollapsed ? "none" : "auto" }}
-      >
-        {label}
-      </motion.span>
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.span
+            initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+            animate={{ opacity: 1, width: "auto", marginLeft: "0.75rem" }}
+            exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="whitespace-nowrap"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </Link>
   );
 };
@@ -87,14 +91,22 @@ const NavItem: React.FC<{
 const GoogleSyncControl: React.FC<
   Pick<
     SidebarProps,
-    | "isLoggedIn"
-    | "userProfile"
-    | "syncStatus"
-    | "signIn"
-    | "signOut"
-    | "isCollapsed"
-    | "isConfigured"
-    | "isOnline"
+    |
+      "isLoggedIn"
+    |
+      "userProfile"
+    |
+      "syncStatus"
+    |
+      "signIn"
+    |
+      "signOut"
+    |
+      "isCollapsed"
+    |
+      "isConfigured"
+    |
+      "isOnline"
   >
 > = ({
   isLoggedIn,
