@@ -72,6 +72,11 @@ export const usePWAFeatures = (
   };
 
   const subscribeUserToPush = async () => {
+    if (VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY") {
+      console.error("VAPID public key is a placeholder and must be replaced.");
+      addToast("Push notification setup is incomplete by the administrator.", "error");
+      return;
+    }
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
@@ -109,12 +114,15 @@ export const usePWAFeatures = (
   const registerPeriodicSync = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
+      // Use a type guard to ensure the 'periodicSync' property exists
       if ("periodicSync" in registration) {
+        // Assert the permission name as a string to bypass the TS error
         const status = await navigator.permissions.query({
-          name: "periodic-background-sync",
+          name: "periodic-background-sync" as PermissionName,
         });
         if (status.state === "granted") {
-          await registration.periodicSync.register(
+          // Assert the registration object to use the periodicSync API
+          await (registration as ServiceWorkerRegistration & { periodicSync: any }).periodicSync.register(
             "get-latest-updates",
             {
               minInterval: 24 * 60 * 60 * 1000, // 24 hours

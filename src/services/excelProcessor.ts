@@ -6,7 +6,6 @@ import {
   MembershipReconciliationReport,
 } from "../types";
 
-import { parseExcelFile } from "../lib/excelUtils";
 export const parseAgeStringToYears = (
   ageString: string | undefined,
 ): number | null => {
@@ -30,21 +29,18 @@ export const filterMembersByAge = (
   minAge?: number,
   maxAge?: number,
 ): MemberRecordA[] => {
-  if (minAge === undefined && maxAge === undefined) return members;
   return members.filter((member) => {
-    const ageInYears = parseAgeStringToYears(member.Age);
-    if (ageInYears === null) return true;
-
-    let meetsMin = true;
-    let meetsMax = true;
-
-    if (minAge !== undefined) {
-      meetsMin = ageInYears >= minAge;
+    // Extract age number from a string like "30 years" or "30 years 5 months"
+    const ageMatch = member.Age?.match(/(\d+)/);
+    if (!ageMatch) {
+      return false; // Exclude members with non-numeric age
     }
-    if (maxAge !== undefined) {
-      meetsMax = ageInYears <= maxAge;
-    }
-    return meetsMin && meetsMax;
+    const age = parseInt(ageMatch[1], 10);
+
+    const isAboveMin = minAge === undefined || age >= minAge;
+    const isBelowMax = maxAge === undefined || age <= maxAge;
+
+    return isAboveMin && isBelowMax;
   });
 };
 
@@ -183,7 +179,7 @@ export const exportToExcel = (data: TitheRecordB[], fileName: string): void => {
   const colWidths = Array.from(allKeys).map((key) => {
     let maxLength = key.length;
     data.forEach((row) => {
-      const value = row[key];
+      const value = row[key as keyof TitheRecordB];
       if (value != null && String(value).length > maxLength) {
         maxLength = String(value).length;
       }

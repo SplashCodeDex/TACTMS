@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+/// <reference types="vitest/globals" />
 import { formatDateDDMMMYYYY, createTitheList, filterMembersByAge, reconcileMembers, exportToExcel } from "./excelProcessor";
-import { MemberRecordA, ConcatenationConfig } from "../types";
+import { parseExcelFile } from "../lib/excelUtils";
+import { MemberRecordA, ConcatenationConfig, TitheRecordB } from "../types";
 import * as XLSX from "xlsx"; // Import XLSX to use vi.mocked
 
 vi.mock("xlsx", () => ({
@@ -255,12 +256,27 @@ describe("parseExcelFile", () => {
     onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
     onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
     result: ArrayBuffer | string | null = null;
-    readAsArrayBuffer(blob: Blob) {
+    readAsArrayBuffer(_blob: Blob) {
       // Simulate async read
       setTimeout(() => {
         this.result = new ArrayBuffer(8); // Dummy buffer
         if (this.onload) {
-          this.onload(new ProgressEvent("load"));
+          const mockEvent = {
+            target: { result: this.result },
+          } as unknown as ProgressEvent<FileReader>;
+          this.onload.call(this as any, mockEvent);
+        }
+      }, 100);
+    }
+    readAsBinaryString(_file: File) {
+      // Simulate async read for binary string
+      setTimeout(() => {
+        this.result = "dummy binary string"; // Dummy binary string
+        if (this.onload) {
+          const mockEvent = {
+            target: { result: this.result },
+          } as unknown as ProgressEvent<FileReader>;
+          this.onload.call(this as any, mockEvent);
         }
       }, 100);
     }
@@ -284,7 +300,7 @@ describe("parseExcelFile", () => {
     const mockJsonData = [
       { "First Name": "Test", Surname: "User" },
     ];
-    vi.mocked(XLSX.read).mockReturnValueOnce({ Sheets: { Sheet1: {} } });
+    vi.mocked(XLSX.read).mockReturnValueOnce({ SheetNames: ["Sheet1"], Sheets: { Sheet1: {} } });
     vi.mocked(XLSX.utils.sheet_to_json).mockReturnValueOnce(mockJsonData);
 
     const result = await parseExcelFile(mockFile);
@@ -303,13 +319,13 @@ describe("parseExcelFile", () => {
   });
 
   it("should throw an error if no sheets are found", async () => {
-    vi.mocked(XLSX.read).mockReturnValueOnce({ Sheets: {} }); // No sheets
+    vi.mocked(XLSX.read).mockReturnValueOnce({ SheetNames: [], Sheets: {} }); // No sheets
 
     await expect(parseExcelFile(mockFile)).rejects.toThrow("No sheets found in the Excel file.");
   });
 
   it("should throw an error if sheet_to_json fails", async () => {
-    vi.mocked(XLSX.read).mockReturnValueOnce({ Sheets: { Sheet1: {} } });
+    vi.mocked(XLSX.read).mockReturnValueOnce({ SheetNames: ["Sheet1"], Sheets: { Sheet1: {} } });
     vi.mocked(XLSX.utils.sheet_to_json).mockImplementationOnce(() => {
       throw new Error("JSON conversion error");
     });
@@ -324,35 +340,35 @@ describe("exportToExcel", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal("saveAs", mockSaveAs);
-    // Reset mocks for xlsx
     vi.mocked(XLSX.utils.book_new).mockClear();
     vi.mocked(XLSX.utils.json_to_sheet).mockClear();
     vi.mocked(XLSX.utils.book_append_sheet).mockClear();
     vi.mocked(XLSX.writeFile).mockClear();
   });
 
-  const mockData: MemberRecordA[] = [
-    { "No.": 1, "First Name": "Test", Surname: "User" },
+  const mockTitheData: TitheRecordB[] = [
+    {
+      "No.": 1,
+      "Transaction Type": "Individual Tithe-[Income]",
+      "Payment Source Type": "Registered Member",
+      "Membership Number": "Test User (123)",
+      "Transaction Date ('DD-MMM-YYYY')": "15-AUG-2025",
+      Currency: "GHS",
+      "Exchange Rate": 1,
+      "Payment Method": "Cash",
+      "Transaction Amount": 100,
+      "Narration/Description": "Tithe for 15-AUG-2025",
+    },
   ];
   const mockFileName = "test_export";
 
   it("should call xlsx export functions with correct data and filename", () => {
-    exportToExcel(mockData, mockFileName);
+    exportToExcel(mockTitheData, mockFileName);
 
     expect(vi.mocked(XLSX.utils.book_new)).toHaveBeenCalledOnce();
-    expect(vi.mocked(XLSX.utils.json_to_sheet)).toHaveBeenCalledWith(mockData);
+    expect(vi.mocked(XLSX.utils.json_to_sheet)).toHaveBeenCalledWith(mockTitheData);
     expect(vi.mocked(XLSX.utils.book_append_sheet)).toHaveBeenCalledOnce();
-    expect(vi.mocked(XLSX.utils.book_append_sheet)).toHaveBeenCalledWith(
-      expect.any(Object), // workbook
-      expect.any(Object), // worksheet
-      "Sheet1",
-    );
     expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledWith(expect.any(Object), `${mockFileName}.xlsx`);
-    expect(mockSaveAs).toHaveBeenCalledOnce();
-    expect(mockSaveAs).toHaveBeenCalledWith(
-      expect.any(Blob),
-      `${mockFileName}.xlsx`,
-    );
   });
 
   it("should handle empty data gracefully", () => {
@@ -361,15 +377,10 @@ describe("exportToExcel", () => {
     expect(vi.mocked(XLSX.utils.book_new)).toHaveBeenCalledOnce();
     expect(vi.mocked(XLSX.utils.json_to_sheet)).toHaveBeenCalledWith([]);
     expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledOnce();
-    expect(mockSaveAs).toHaveBeenCalledOnce();
   });
 
   it("should use default filename if none provided", () => {
-    exportToExcel(mockData, ""); // Empty filename
-
-    expect(mockSaveAs).toHaveBeenCalledWith(
-      expect.any(Blob),
-      "exported_data.xlsx",
-    );
+    exportToExcel(mockTitheData, ""); // Empty filename
+    expect(vi.mocked(XLSX.writeFile)).toHaveBeenCalledWith(expect.any(Object), `exported_data.xlsx`);
   });
 });

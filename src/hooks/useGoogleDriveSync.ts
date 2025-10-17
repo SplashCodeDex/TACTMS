@@ -14,22 +14,7 @@ import {
   TRANSACTION_LOG_STORAGE_KEY,
   TRANSACTION_LOG_DRIVE_FILENAME,
 } from "../constants";
-import {
-  useFindOrCreateDriveFile,
-  useReadFromDrive,
-  useSaveToDrive,
-} from "./useGoogleDriveQuery";
-
-import { gapi } from "gapi"; // Import gapi types
-import { google } from "google-one-tap"; // Import google-one-tap types (for google.accounts)
-
-declare global {
-  interface Window {
-    gapi: typeof gapi;
-    google: typeof google;
-    tokenClient: google.accounts.oauth2.TokenClient;
-  }
-}
+import { useFindOrCreateDriveFile, useReadFromDrive, useSaveToDrive } from "./useGoogleDriveQuery";
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
@@ -157,7 +142,7 @@ export const useGoogleDriveSync = (
 
   useEffect(() => {
     if (isConfigured && isGapiLoaded && isGsiLoaded && !window.tokenClient) {
-      window.tokenClient = window.google.accounts.oauth2.initTokenClient({
+      window.tokenClient = (window.google.accounts as any).oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: DRIVE_SCOPES,
         callback: (tokenResponse: any) => {

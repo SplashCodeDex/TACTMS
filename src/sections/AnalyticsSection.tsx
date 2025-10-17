@@ -17,7 +17,7 @@ import SkeletonLoader from "../components/SkeletonLoader";
 import { useGeminiChat } from "../hooks/useGemini";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useOutletContext } from "react-router-dom";
 
 interface AnalyticsSectionProps {
@@ -118,7 +118,8 @@ const AIOutreachAssistant: React.FC<{
     setMessages([]);
 
     try {
-      const ai = new GoogleGenerativeAI({ apiKey: import.meta.env.VITE_API_KEY });
+      const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
       const memberNames = newMembers
         .map((m) => `${m["First Name"] || ""} ${m.Surname || ""}`.trim())
         .filter(Boolean);
@@ -136,38 +137,39 @@ Guidelines:
 Here are the new members to welcome: ${memberNames.join(", ")}
 `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                memberName: {
-                  type: "string",
-                  description: "The full name of the new church member.",
-                },
-                message: {
-                  type: "string",
-                  description:
-                    "The personalized welcome SMS message for the member.",
+            type: SchemaType.OBJECT,
+            properties: {
+              analysis: {
+                type: SchemaType.ARRAY,
+                items: {
+                  type: SchemaType.OBJECT,
+                  properties: {
+                    memberName: { type: SchemaType.STRING, description: "The full name of the new church member." },
+                    message: { type: SchemaType.STRING, description: "The personalized welcome SMS message for the member." },
+                  },
+                  required: ["memberName", "message"],
                 },
               },
-              required: ["memberName", "message"],
             },
+            required: ["analysis"],
           },
         },
       });
 
-      if (response.text) {
-        const jsonResponse = JSON.parse(response.text);
-        if (Array.isArray(jsonResponse)) {
-          setMessages(jsonResponse);
+      const response = result.response;
+      const text = response.text();
+
+      if (text) {
+        const jsonResponse = JSON.parse(text);
+        if (jsonResponse && Array.isArray(jsonResponse.analysis)) {
+          setMessages(jsonResponse.analysis);
         } else {
-          throw new Error("AI response was not a JSON array.");
+          throw new Error("AI response was not a JSON object with an 'analysis' array.");
         }
       } else {
         throw new Error("AI response was empty.");

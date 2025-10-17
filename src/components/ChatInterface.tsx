@@ -21,7 +21,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollOfView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
   const handleSend = (e?: React.FormEvent) => {

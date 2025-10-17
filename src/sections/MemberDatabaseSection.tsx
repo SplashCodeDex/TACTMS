@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
-import Button from "./Button";
+import Button from "../components/Button";
 import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 
@@ -112,10 +112,10 @@ const MemberDatabaseSection: React.FC = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedMembers.length === filteredMembers.length) {
+    if (selectedMembers.length === sortedAndFilteredMembers.length) {
       setSelectedMembers([]);
     } else {
-      setSelectedMembers(filteredMembers);
+      setSelectedMembers(sortedAndFilteredMembers);
     }
   };
 
@@ -306,7 +306,7 @@ const MemberDatabaseSection: React.FC = () => {
               </tbody>
             </table>
           </div>
-          {filteredMembers.length > membersPerPage && (
+          {sortedAndFilteredMembers.length > membersPerPage && (
             <div className="flex justify-center mt-4">
               <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                 <button

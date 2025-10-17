@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         navigateFallbackAllowlist: [/^\/TACTMS\//],
+        swSrc: "src/sw.ts", // Explicitly define the source service worker file
       },
     }),
     ],

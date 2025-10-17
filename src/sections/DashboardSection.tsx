@@ -15,6 +15,8 @@ import {
   MemberDatabase,
   FavoriteConfig,
   GoogleUserProfile,
+  MasterListData,
+  MemberRecordA,
 } from "../types";
 import StatDisplayCard from "../components/StatDisplayCard";
 import AnimatedNumber from "../components/AnimatedNumber";

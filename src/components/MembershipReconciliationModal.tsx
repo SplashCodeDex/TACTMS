@@ -99,7 +99,7 @@ const MembershipReconciliationModal: React.FC<
       setSelectedMissingIds(new Set());
     } else {
       setSelectedMissingIds(
-        new Set(report.missingMembers.map((m) => m["No."]).filter(Boolean) as Set<string | number>),
+        new Set(report.missingMembers.map((m) => m["No."]).filter((id): id is string | number => id !== undefined && id !== null)),
       );
     }
   };

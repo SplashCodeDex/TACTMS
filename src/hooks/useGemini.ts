@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, Content } from '@google/generative-ai';
 import { MemberRecordA, TitheRecordB, ChatMessage, ChartData } from '../types';
 
 export const useGemini = (apiKey: string, addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void) => {
@@ -20,7 +20,8 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     setValidationReportContent(''); // Clear previous report
 
     try {
-      const ai = new GoogleGenerativeAI({ apiKey });
+      const ai = new GoogleGenerativeAI(apiKey);
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
       const sampleData = originalData.slice(0, 50); // Use a sample
       const prompt = `
       You are a data quality analyst reviewing a church membership list. Analyze the following JSON data sample for quality issues. Provide a concise summary in markdown format. Focus on:
@@ -33,11 +34,9 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
 
       Data Sample:\n\`\`\`json\n${JSON.stringify(sampleData, null, 2)}\n\`\`\`
       `;
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-      setValidationReportContent(response.text ?? '');
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      setValidationReportContent(response.text() ?? '');
     } catch (error) {
       console.error('Error generating validation report:', error);
       const errorMessage =
@@ -49,7 +48,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     }
   };
 
-  return { isGeneratingReport, validationReportContent, generateValidationReport, setValidationReportContent };
+  return { isGeneratingReport, validationReportContent, generateValidationReport };
 };
 
 export const useGeminiChat = () => {
@@ -73,7 +72,7 @@ export const useGeminiChat = () => {
       setChartData([]);
 
       try {
-        const ai = new GoogleGenerativeAI({ apiKey: import.meta.env.VITE_API_KEY });
+        const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
         const model = ai.getGenerativeModel({ model: "gemini-pro" });
 
         const prompt = `
@@ -118,16 +117,20 @@ export const useGeminiChat = () => {
     async (message: string) => {
       setIsLoading(true);
       setError(null);
-      setChatHistory((prev) => [...prev, { role: "user", parts: [{ text: message }] }]);
+      const updatedChatHistory = [...chatHistory, { role: "user" as const, parts: [{ text: message }] }];
+      setChatHistory(updatedChatHistory);
 
       try {
-        const ai = new GoogleGenerativeAI({ apiKey: import.meta.env.VITE_API_KEY });
+        const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
         const model = ai.getGenerativeModel({ model: "gemini-pro" });
+        
         const chat = model.startChat({
-          history: chatHistory.map((msg) => ({
-            role: msg.role,
-            parts: msg.parts.map((part) => part.text).join(""),
-          })),
+          history: updatedChatHistory
+            .filter(msg => msg.role !== 'user' || msg.parts[0].text.trim() !== '') // Filter out empty user messages
+            .map((msg) => ({
+              role: msg.role,
+              parts: msg.parts,
+            })) as Content[],
         });
 
         const result = await chat.sendMessage(message);

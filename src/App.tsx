@@ -35,7 +35,7 @@ import CreateTitheListModal from "./components/CreateTitheListModal";
 import { Save, Trash2, WifiOff } from "lucide-react";
 // import { BotMessageSquare } from "lucide-react"; // TODO: Re-introduce for AI chat features.
 import { pushAnalyticsEvent } from "./services/offline-analytics";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import { useGemini } from "./hooks/useGemini";
 
 import Sidebar from "./components/Sidebar";
@@ -249,7 +249,7 @@ const App: React.FC = () => {
     [],
   );
 
-  const { isGeneratingReport, validationReportContent, generateValidationReport, setValidationReportContent } = useGemini(
+  const { isGeneratingReport, validationReportContent, generateValidationReport } = useGemini(
     import.meta.env.VITE_API_KEY,
     addToast,
   );
