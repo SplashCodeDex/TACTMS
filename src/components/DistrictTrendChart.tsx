@@ -114,13 +114,21 @@ const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
 
         <g transform={`translate(${margin.left}, ${margin.top})`}>
           {/* Grid Lines */}
-          {titheTickValues.map((value) => (
+          {titheTickValues.map((value, i) => (
             <line
-              key={`grid-${value}`}
+              key={`grid-${value}-${i}`}
               x1="0"
-              y1={chartHeight - (value / maxTithe) * chartHeight}
+              y1={
+                maxTithe > 0
+                  ? chartHeight - (value / maxTithe) * chartHeight
+                  : chartHeight
+              }
               x2={chartWidth}
-              y2={chartHeight - (value / maxTithe) * chartHeight}
+              y2={
+                maxTithe > 0
+                  ? chartHeight - (value / maxTithe) * chartHeight
+                  : chartHeight
+              }
               className="stroke-current text-[var(--border-color)]"
               strokeDasharray="3,3"
             />
@@ -169,28 +177,50 @@ const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
               transform={`translate(${(i / 11) * chartWidth}, 0)`}
             >
               {d.totalTithe > 0 && (
-                <MotionCircle
-                  cy={chartHeight - (d.totalTithe / maxTithe) * chartHeight}
-                  r="4"
-                  fill="var(--primary-accent-start)"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.3, delay: 1.5 + i * 0.05 }}
+                <g
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Tithe for ${monthLabels[i]}: GH₵ ${d.totalTithe.toLocaleString()}`}
+                  className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-accent-start)] rounded-full"
                 >
-                  <title>GH₵ {d.totalTithe.toLocaleString()}</title>
-                </MotionCircle>
+                  <MotionCircle
+                    cy={
+                      maxTithe > 0
+                        ? chartHeight - (d.totalTithe / maxTithe) * chartHeight
+                        : chartHeight
+                    }
+                    r="4"
+                    fill="var(--primary-accent-start)"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.3, delay: 1.5 + i * 0.05 }}
+                  >
+                    <title>GH₵ {d.totalTithe.toLocaleString()}</title>
+                  </MotionCircle>
+                </g>
               )}
               {d.soulsWon > 0 && (
-                <MotionCircle
-                  cy={chartHeight - (d.soulsWon / maxSouls) * chartHeight}
-                  r="4"
-                  fill="var(--success-start)"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.3, delay: 1.7 + i * 0.05 }}
+                <g
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${d.soulsWon} souls won in ${monthLabels[i]}`}
+                  className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--success-start)] rounded-full"
                 >
-                  <title>{d.soulsWon} Souls Won</title>
-                </MotionCircle>
+                  <MotionCircle
+                    cy={
+                      maxSouls > 0
+                        ? chartHeight - (d.soulsWon / maxSouls) * chartHeight
+                        : chartHeight
+                    }
+                    r="4"
+                    fill="var(--success-start)"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.3, delay: 1.7 + i * 0.05 }}
+                  >
+                    <title>{d.soulsWon} Souls Won</title>
+                  </MotionCircle>
+                </g>
               )}
             </g>
           ))}
@@ -203,11 +233,15 @@ const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
             y2={chartHeight}
             className="stroke-current text-[var(--border-color-light)]"
           />
-          {titheTickValues.map((value) => (
+          {titheTickValues.map((value, i) => (
             <text
-              key={`y-tick-tithe-${value}`}
+              key={`y-tick-tithe-${value}-${i}`}
               x="-10"
-              y={chartHeight - (value / maxTithe) * chartHeight + 4}
+              y={
+                maxTithe > 0
+                  ? chartHeight - (value / maxTithe) * chartHeight + 4
+                  : chartHeight + 4
+              }
               textAnchor="end"
               className="fill-current text-[var(--text-secondary)] text-xs"
             >
@@ -234,7 +268,11 @@ const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
             <text
               key={`y-tick-souls-${value}`}
               x={chartWidth + 10}
-              y={chartHeight - (value / maxSouls) * chartHeight + 4}
+              y={
+                maxSouls > 0
+                  ? chartHeight - (value / maxSouls) * chartHeight + 4
+                  : chartHeight + 4
+              }
               textAnchor="start"
               className="fill-current text-[var(--text-secondary)] text-xs"
             >

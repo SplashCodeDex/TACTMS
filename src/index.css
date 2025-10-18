@@ -6,6 +6,7 @@
   --primary-hue: 262;
   --primary-saturation: 83%;
   --primary-lightness: 58%;
+  --liquid-button-color: var(--primary-accent-start);
 
   /* Dark Theme Colors */
   --bg-main-dark: #0d0e1b;

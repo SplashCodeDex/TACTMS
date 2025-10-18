@@ -1,18 +1,25 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   PieChart,
   DollarSign,
   Users,
   TrendingUp,
   LineChart,
+  Download,
 } from "lucide-react";
 import { TransactionLogEntry, MemberDatabase, ReportData } from "../types";
-import { ASSEMBLIES } from "../constants";
 import AnimatedNumber from "../components/AnimatedNumber";
 import StatDisplayCard from "../components/StatDisplayCard";
 import { motion, AnimatePresence } from "framer-motion";
 import DistrictTrendChart from "../components/DistrictTrendChart";
 import { useOutletContext } from "react-router-dom";
+import {
+  aggregateYearlySummary,
+  processDataForReports,
+  exportToCsv,
+} from "../lib/reportUtils";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { LiquidButton } from "../components/LiquidButton";
 
 interface ReportsSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -23,147 +30,47 @@ const ReportsSection: React.FC = () => {
   const { transactionLog = [], memberDatabase = {} } =
     useOutletContext<ReportsSectionProps>();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [isLoading, setIsLoading] = useState(true);
+
+  const processedData = useMemo(
+    () => processDataForReports(transactionLog, memberDatabase),
+    [transactionLog, memberDatabase],
+  );
+
+  useEffect(() => {
+    setIsLoading(true);
+    // Simulate processing time
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [processedData]);
 
   const yearOptions = useMemo(() => {
-    const years = new Set(
-      transactionLog.map((f) => new Date(f.timestamp).getFullYear()),
-    );
+    const years = new Set(Object.keys(processedData).map(Number));
     const currentYear = new Date().getFullYear();
     years.add(currentYear);
     return Array.from(years).sort((a, b) => b - a);
-  }, [transactionLog]);
-
-  const calculateMonthlyReportData = (
-    month: number,
-    selectedYear: number,
-    transactionLog: TransactionLogEntry[],
-    memberDatabase: MemberDatabase,
-  ): ReportData[] => {
-    return ASSEMBLIES.map((name) => {
-      const assemblyMasterList = memberDatabase[name]?.data || [];
-      const soulsWonForMonth = assemblyMasterList.filter((member) => {
-        if (!member.firstSeenDate) return false;
-        try {
-          const seenDate = new Date(member.firstSeenDate);
-          return (
-            seenDate.getMonth() === month &&
-            seenDate.getFullYear() === selectedYear
-          );
-        } catch (e) {
-          return false;
-        }
-      }).length;
-
-      const assemblyLogsForMonth = transactionLog.filter((log) => {
-        const logDate = new Date(log.selectedDate);
-        return (
-          log.assemblyName === name &&
-          logDate.getMonth() === month &&
-          logDate.getFullYear() === selectedYear
-        );
-      });
-
-      const monthlyTotals = assemblyLogsForMonth.reduce(
-        (acc, log) => {
-          acc.totalTithe += log.totalTitheAmount;
-          acc.titherCount += log.titherCount;
-          acc.recordCount += log.recordCount;
-          return acc;
-        },
-        { totalTithe: 0, titherCount: 0, recordCount: 0 },
-      );
-
-      return {
-        assemblyName: name,
-        totalTithe: monthlyTotals.totalTithe,
-        soulsWon: soulsWonForMonth,
-        titherCount: monthlyTotals.titherCount,
-        recordCount: monthlyTotals.recordCount,
-      };
-    });
-  };
-
-  const aggregateYearlySummary = (
-    monthlyReportData: Record<number, ReportData[]>,
-  ) => {
-    const summary = {
-      totalTithe: 0,
-      totalSouls: 0,
-      topPerformingAssembly: { name: "N/A", value: 0 },
-      topGrowthAssembly: { name: "N/A", value: 0 },
-      monthlyPerformance: Array(12)
-        .fill(0)
-        .map((_, i) => ({ month: i, totalTithe: 0, soulsWon: 0 })),
-    };
-
-    const assemblyTotals = new Map<
-      string,
-      { totalTithe: number; soulsWon: number }
-    >();
-
-    for (let month = 0; month < 12; month++) {
-      let monthTithe = 0;
-      let monthSouls = 0;
-      monthlyReportData[month].forEach((report) => {
-        monthTithe += report.totalTithe;
-        monthSouls += report.soulsWon;
-        const current = assemblyTotals.get(report.assemblyName) || {
-          totalTithe: 0,
-          soulsWon: 0,
-        };
-        assemblyTotals.set(report.assemblyName, {
-          totalTithe: current.totalTithe + report.totalTithe,
-          soulsWon: current.soulsWon + report.soulsWon,
-        });
-      });
-      summary.totalTithe += monthTithe;
-      summary.totalSouls += monthSouls;
-      summary.monthlyPerformance[month] = {
-        month,
-        totalTithe: monthTithe,
-        soulsWon: monthSouls,
-      };
-    }
-
-    const sortedByTithe = [...assemblyTotals.entries()].sort(
-      (a, b) => b[1].totalTithe - a[1].totalTithe,
-    );
-    if (sortedByTithe.length > 0 && sortedByTithe[0][1].totalTithe > 0) {
-      summary.topPerformingAssembly = {
-        name: sortedByTithe[0][0],
-        value: sortedByTithe[0][1].totalTithe,
-      };
-    }
-
-    const sortedByGrowth = [...assemblyTotals.entries()].sort(
-      (a, b) => b[1].soulsWon - a[1].soulsWon,
-    );
-    if (sortedByGrowth.length > 0 && sortedByGrowth[0][1].soulsWon > 0) {
-      summary.topGrowthAssembly = {
-        name: sortedByGrowth[0][0],
-        value: sortedByGrowth[0][1].soulsWon,
-      };
-    }
-
-    return summary;
-  };
+  }, [processedData]);
 
   const reportDataByMonth = useMemo<Record<number, ReportData[]>>(() => {
-    const monthlyData: Record<number, ReportData[]> = {};
-    for (let month = 0; month < 12; month++) {
-      monthlyData[month] = calculateMonthlyReportData(
-        month,
-        selectedYear,
-        transactionLog,
-        memberDatabase,
-      );
-    }
-    return monthlyData;
-  }, [selectedYear, transactionLog, memberDatabase]);
+    return processedData[selectedYear] || {};
+  }, [selectedYear, processedData]);
 
   const yearSummary = useMemo(() => {
     return aggregateYearlySummary(reportDataByMonth);
   }, [reportDataByMonth]);
+
+  const handleDownloadCsv = () => {
+    const csvContent = exportToCsv(yearSummary, selectedYear);
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `report_${selectedYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const hasDataForPeriod =
     yearSummary.totalTithe > 0 || yearSummary.totalSouls > 0;
@@ -177,6 +84,10 @@ const ReportsSection: React.FC = () => {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
   };
+
+  if (isLoading) {
+    return <LoadingSpinner message="Processing report data..." />;
+  }
 
   return (
     <div className="space-y-8">
@@ -201,6 +112,12 @@ const ReportsSection: React.FC = () => {
                 </option>
               ))}
             </select>
+            <LiquidButton
+              onClick={handleDownloadCsv}
+            >
+              <Download size={16} className="mr-2" />
+              Download CSV
+            </LiquidButton>
           </div>
         </div>
       </section>
@@ -234,11 +151,13 @@ const ReportsSection: React.FC = () => {
                     />
                   </>
                 }
+                ariaLabel={`District Total Tithe for ${selectedYear}: GH₵ ${yearSummary.totalTithe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               />
               <StatDisplayCard
                 icon={<Users />}
                 label={`District Souls Won (${selectedYear})`}
                 value={<AnimatedNumber n={yearSummary.totalSouls} />}
+                ariaLabel={`District Souls Won for ${selectedYear}: ${yearSummary.totalSouls}`}
               />
               <StatDisplayCard
                 icon={<TrendingUp />}
@@ -246,6 +165,7 @@ const ReportsSection: React.FC = () => {
                 value={yearSummary.topPerformingAssembly.name}
                 subValue={`GH₵ ${yearSummary.topPerformingAssembly.value.toLocaleString()}`}
                 valueClassName="text-gradient-primary"
+                ariaLabel={`Top Assembly by Tithe: ${yearSummary.topPerformingAssembly.name} with GH₵ ${yearSummary.topPerformingAssembly.value.toLocaleString()}`}
               />
               <StatDisplayCard
                 icon={<TrendingUp />}
@@ -253,6 +173,7 @@ const ReportsSection: React.FC = () => {
                 value={yearSummary.topGrowthAssembly.name}
                 subValue={`${yearSummary.topGrowthAssembly.value} souls`}
                 valueClassName="text-gradient-primary"
+                ariaLabel={`Top Assembly by Growth: ${yearSummary.topGrowthAssembly.name} with ${yearSummary.topGrowthAssembly.value} souls`}
               />
             </motion.section>
 

@@ -70,7 +70,7 @@ const NavItem: React.FC<{
       aria-current={isActive ? "page" : undefined}
       title={isCollapsed ? label : undefined}
     >
-      <Icon size={20} />
+      <Icon size={20} className="flex-shrink-0" />
       <AnimatePresence>
         {!isCollapsed && (
           <motion.span
@@ -118,81 +118,86 @@ const GoogleSyncControl: React.FC<
   isConfigured,
   isOnline,
 }) => {
-  if (!isConfigured) {
-    return (
-      <motion.div
-        initial={isCollapsed ? "hidden" : "visible"}
-        animate={isCollapsed ? "hidden" : "visible"}
-        variants={itemVariants}
-        className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
-      >
-        <h4 className="font-semibold text-[var(--text-primary)]">
-          Cloud Sync Unavailable
-        </h4>
-        <p className="text-xs text-[var(--text-muted)] mt-1">
-          This feature has not been configured.
-        </p>
-      </motion.div>
-    );
-  }
-
-  if (isLoggedIn && userProfile) {
-    return (
-      <motion.div
-        initial={isCollapsed ? "hidden" : "visible"}
-        animate={isCollapsed ? "hidden" : "visible"}
-        variants={itemVariants}
-        className="p-3 bg-[var(--bg-card)] rounded-lg"
-      >
-        <div className="flex items-center gap-3">
-          <img
-            src={userProfile.imageUrl}
-            alt={userProfile.name}
-            className="w-10 h-10 rounded-full"
-          />
-          <div className="text-left overflow-hidden flex-grow">
-            <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
-              {userProfile.name}
-            </p>
-            <p className="text-xs text-[var(--text-muted)] truncate">
-              {userProfile.email}
-            </p>
-          </div>
-          <SyncStatusIndicator status={syncStatus} isOnline={isOnline} />
-        </div>
-        <Button
-          onClick={signOut}
-          fullWidth
-          variant="danger"
-          size="sm"
-          className="mt-3 !bg-transparent !text-[var(--danger-text)] hover:!bg-[var(--danger-start)]/10"
-        >
-          Sign Out
-        </Button>
-      </motion.div>
-    );
-  }
-
   return (
-    <motion.div
-      initial={isCollapsed ? "hidden" : "visible"}
-      animate={isCollapsed ? "hidden" : "visible"}
-      variants={itemVariants}
-      className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
-    >
-      <h4 className="font-semibold text-[var(--text-primary)]">Cloud Sync</h4>
-      <p className="text-xs text-[var(--text-muted)] mt-1 mb-4">
-        Sign in to sync your favorites across devices.
-      </p>
-      <Button
-        onClick={signIn}
-        leftIcon={<LogIn size={16} />}
-        fullWidth
-        variant="primary"
-      >
-        Sign in with Google
-      </Button>
-    </motion.div>
+    <AnimatePresence>
+      {!isCollapsed &&
+        (isConfigured ? (
+          isLoggedIn && userProfile ? (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={itemVariants}
+              className="p-3 bg-[var(--bg-card)] rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <img
+                  src={userProfile.imageUrl}
+                  alt={userProfile.name}
+                  className="w-10 h-10 rounded-full flex-shrink-0"
+                />
+                <div className="text-left overflow-hidden flex-grow">
+                  <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                    {userProfile.name}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)] truncate">
+                    {userProfile.email}
+                  </p>
+                </div>
+                <SyncStatusIndicator status={syncStatus} isOnline={isOnline} />
+              </div>
+              <Button
+                onClick={signOut}
+                fullWidth
+                variant="danger"
+                size="sm"
+                className="mt-3 !bg-transparent !text-[var(--danger-text)] hover:!bg-[var(--danger-start)]/10"
+              >
+                Sign Out
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={itemVariants}
+              className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
+            >
+              <h4 className="font-semibold text-[var(--text-primary)]">
+                Cloud Sync
+              </h4>
+              <p className="text-xs text-[var(--text-muted)] mt-1 mb-4">
+                Sign in to sync your favorites across devices.
+              </p>
+              <Button
+                onClick={signIn}
+                leftIcon={<LogIn size={16} />}
+                fullWidth
+                variant="primary"
+              >
+                Sign in with Google
+              </Button>
+            </motion.div>
+          )
+        ) : (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            variants={itemVariants}
+            className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
+          >
+            <h4 className="font-semibold text-[var(--text-primary)]">
+              Cloud Sync Unavailable
+            </h4>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              This feature has not been configured.
+            </p>
+
+            </motion.div>
+        ))}
+    </AnimatePresence>
   );
 };
 
@@ -203,57 +208,62 @@ const ThemeControl: React.FC<
   >
 > = ({ theme, setTheme, accentColor, setAccentColor, isCollapsed }) => {
   return (
-    <motion.div
-      initial={isCollapsed ? "hidden" : "visible"}
-      animate={isCollapsed ? "hidden" : "visible"}
-      variants={itemVariants}
-      className="p-3 bg-[var(--bg-card)] rounded-lg"
-    >
-      <h4 className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-        Appearance
-      </h4>
-      <div className="flex items-center space-x-2 p-1 bg-[var(--input-bg)] rounded-xl shadow-inner mb-3">
-        <button
-          className={`w-full justify-center py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-1 ${theme === "dark" ? "bg-[var(--primary-accent-start)]/40 text-white" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}
-          onClick={() => setTheme("dark")}
-          aria-pressed={theme === "dark"}
+    <AnimatePresence>
+      {!isCollapsed && (
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={itemVariants}
+          className="p-3 bg-[var(--bg-card)] rounded-lg"
         >
-          <Moon size={16} /> Dark
-        </button>
-        <button
-          className={`w-full justify-center py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-1 ${theme === "light" ? "bg-slate-200 text-slate-800" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}
-          onClick={() => setTheme("light")}
-          aria-pressed={theme === "light"}
-        >
-          <Sun size={16} /> Light
-        </button>
-      </div>
-      <div className="flex items-center justify-around">
-        {THEME_OPTIONS.map((option) => (
-          <button
-            key={option.key}
-            title={option.name}
-            onClick={() => setAccentColor(option)}
-            className="w-7 h-7 rounded-full transition-all duration-200 border-2"
-            style={{
-              backgroundColor: `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`,
-              borderColor:
-                accentColor.key === option.key
-                  ? `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`
-                  : "transparent",
-              boxShadow:
-                accentColor.key === option.key
-                  ? `0 0 0 2px var(--bg-card)`
-                  : "none",
-            }}
-          >
-            {accentColor.key === option.key && (
-              <Check size={16} className="text-white/80 mx-auto" />
-            )}
-          </button>
-        ))}
-      </div>
-    </motion.div>
+     <h4 className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+            Appearance
+          </h4>
+          <div className="flex items-center space-x-2 p-1 bg-[var(--input-bg)] rounded-xl shadow-inner mb-3">
+            <button
+              className={`w-full justify-center py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-1 ${theme === "dark" ? "bg-[var(--primary-accent-start)]/40 text-white" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}
+              onClick={() => setTheme("dark")}
+              aria-pressed={theme === "dark"}
+            >
+              <Moon size={16} /> Dark
+            </button>
+            <button
+              className={`w-full justify-center py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-1 ${theme === "light" ? "bg-slate-200 text-slate-800" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}
+              onClick={() => setTheme("light")}
+              aria-pressed={theme === "light"}
+            >
+              <Sun size={16} /> Light
+            </button>
+          </div>
+          <div className="flex items-center justify-around">
+            {THEME_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                title={option.name}
+                onClick={() => setAccentColor(option)}
+                className="w-7 h-7 rounded-full transition-all duration-200 border-2"
+                style={{
+                  backgroundColor: `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`,
+                  borderColor:
+                    accentColor.key === option.key
+                      ? `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`
+                      : "transparent",
+                  boxShadow:
+                    accentColor.key === option.key
+                      ? `0 0 0 2px var(--bg-card)`
+                      : "none",
+                }}
+              >
+                {accentColor.key === option.key && (
+                  <Check size={16} className="text-white/80 mx-auto" />
+                )}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -282,10 +292,17 @@ const Sidebar: React.FC<SidebarProps> = ({
       : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`;
 
   return (
-    <aside
+    <motion.aside
       className={`sidebar glassmorphism-bg ${isCollapsed ? "collapsed" : ""}`}
+      initial={false}
+      animate={{
+        width: isCollapsed ? "6.5rem" : "17rem",
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
     >
-      <div className="flex flex-col items-center mb-10">
+      <div
+        className={`flex flex-col items-center mb-10 ${isCollapsed ? "w-full" : ""}`}
+      >
         <motion.img
           src={logoSrc}
           alt="TACTMS Logo"
@@ -296,11 +313,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         <AnimatePresence>
           {!isCollapsed && (
             <motion.p
-              variants={itemVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="text-xs text-[var(--text-muted)] mt-2 text-center"
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="text-xs text-[var(--text-muted)] text-center"
             >
               TACTMS - The Apostolic Church Tithe Made Simple
             </motion.p>
@@ -308,8 +325,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         </AnimatePresence>
       </div>
 
-      <nav className="flex-grow space-y-2">
-        <NavItem
+      <nav
+        className={`flex-grow space-y-2 ${isCollapsed ? "flex flex-col items-center" : ""}`}
+      >        <NavItem
           icon={LayoutDashboard}
           label="Dashboard"
           to="/"
@@ -347,8 +365,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
       </nav>
 
-      <div className="mt-auto flex-shrink-0">
-        <div className="flex justify-center items-center gap-2 mb-4">
+      <div className={`mt-auto flex-shrink-0 ${isCollapsed ? "w-full" : ""}`}>
+        <div
+          className={`flex justify-center items-center gap-2 mb-4 ${isCollapsed ? "w-full" : ""}`}
+        >
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-subtle-accent)] transition-all flex-grow"
@@ -362,7 +382,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 w-full">
           <GoogleSyncControl
             isCollapsed={isCollapsed}
             isLoggedIn={isLoggedIn}
@@ -375,7 +395,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 w-full">
           <ThemeControl
             theme={theme}
             setTheme={setTheme}
@@ -407,7 +427,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </AnimatePresence>
       </div>
-    </aside>
+    </motion.aside>
   );
 };
 
