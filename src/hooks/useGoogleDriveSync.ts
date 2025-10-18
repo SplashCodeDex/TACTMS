@@ -4,7 +4,7 @@ import {
   GoogleUserProfile,
   TransactionLogEntry,
 } from "../types";
-import { ToastMessage } from "../components/Toast";
+import { toast } from "sonner";
 import {
   FAVORITES_STORAGE_KEY,
   GOOGLE_API_KEY,
@@ -20,7 +20,7 @@ type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 const IS_DRIVE_CONFIGURED = !!(GOOGLE_CLIENT_ID && GOOGLE_API_KEY);
 
-const useSyncedState = <T>(storageKey: string, addToast: Function) => {
+const useSyncedState = <T>(storageKey: string) => {
   const [state, setState] = useState<T[]>([]);
 
   useEffect(() => {
@@ -31,9 +31,9 @@ const useSyncedState = <T>(storageKey: string, addToast: Function) => {
       }
     } catch (e) {
       console.error(`Failed to load ${storageKey} from localStorage`, e);
-      addToast(`Could not load local ${storageKey}.`, "error");
+      toast.error(`Could not load local ${storageKey}.`);
     }
-  }, [storageKey, addToast]);
+  }, [storageKey]);
 
   const setSyncedState = useCallback(
     (newValue: T[] | ((prevState: T[]) => T[])) => {
@@ -44,30 +44,23 @@ const useSyncedState = <T>(storageKey: string, addToast: Function) => {
           localStorage.setItem(storageKey, JSON.stringify(updatedValue));
         } catch (e) {
           console.error(`Failed to save ${storageKey} to localStorage`, e);
-          addToast(`Could not save ${storageKey} locally.`, "error");
+          toast.error(`Could not save ${storageKey} locally.`);
         }
         return updatedValue;
       });
     },
-    [storageKey, addToast],
+    [storageKey],
   );
 
   return [state, setSyncedState] as const;
 };
 
-export const useGoogleDriveSync = (
-  addToast: (
-    message: string,
-    type: ToastMessage["type"],
-    duration?: number,
-  ) => void,
-) => {
+export const useGoogleDriveSync = () => {
   const [favorites, setFavorites] = useSyncedState<FavoriteConfig>(
     FAVORITES_STORAGE_KEY,
-    addToast,
   );
   const [transactionLog, setTransactionLog] =
-    useSyncedState<TransactionLogEntry>(TRANSACTION_LOG_STORAGE_KEY, addToast);
+    useSyncedState<TransactionLogEntry>(TRANSACTION_LOG_STORAGE_KEY);
 
   const [isGapiLoaded, setIsGapiLoaded] = useState(false);
   const [isGsiLoaded, setIsGsiLoaded] = useState(false);
@@ -148,7 +141,7 @@ export const useGoogleDriveSync = (
         callback: (tokenResponse: any) => {
           if (tokenResponse.error) {
             console.error("Token error:", tokenResponse.error);
-            addToast("Authentication failed. Please try again.", "error");
+            toast.error("Authentication failed. Please try again.");
             return;
           }
           window.gapi.client.setToken(tokenResponse);
@@ -157,7 +150,7 @@ export const useGoogleDriveSync = (
         },
       });
     }
-  }, [isConfigured, isGapiLoaded, isGsiLoaded, addToast, fetchUserProfile]);
+  }, [isConfigured, isGapiLoaded, isGsiLoaded, fetchUserProfile]);
 
   const syncWithDrive = useCallback(
     async (isLocalChange = false) => {
@@ -204,12 +197,11 @@ export const useGoogleDriveSync = (
           saveLog(mergedLog);
 
           if (favUp + favAdd + logUp + logAdd > 0) {
-            addToast(
+            toast.info(
               `Sync complete. Loaded ${favAdd + logAdd} new items from Drive.`,
-              "info",
             );
           } else {
-            addToast("Data is up to date.", "success", 2000);
+            toast.success("Data is up to date.");
           }
         }
         setSyncStatus("synced");
@@ -218,7 +210,7 @@ export const useGoogleDriveSync = (
         setSyncStatus("error");
         const errorMsg =
           e.result?.error?.message || "An unknown error occurred during sync.";
-        addToast(`Google Drive sync failed: ${errorMsg}`, "error");
+        toast.error(`Google Drive sync failed: ${errorMsg}`);
       } finally {
         isSyncingRef.current = false;
       }
@@ -231,7 +223,6 @@ export const useGoogleDriveSync = (
       driveLog,
       isLoadingFavorites,
       isLoadingLog,
-      addToast,
       setFavorites,
       setTransactionLog,
       saveFavorites,
@@ -284,22 +275,20 @@ export const useGoogleDriveSync = (
 
   const signIn = () => {
     if (!isConfigured) {
-      addToast(
+      toast.error(
         "Cloud Sync feature is not configured by the administrator.",
-        "error",
       );
       return;
     }
     if (!isGapiLoaded || !isGsiLoaded) {
-      addToast("Google API is not ready. Please wait a moment.", "warning");
+      toast.warning("Google API is not ready. Please wait a moment.");
       return;
     }
     if (window.tokenClient)
       window.tokenClient.requestAccessToken({ prompt: "consent" });
     else {
-      addToast(
+      toast.warning(
         "Google authentication is not ready. Please try again in a moment.",
-        "warning",
       );
       console.error("signIn called but window.tokenClient is not initialized.");
     }
@@ -310,7 +299,7 @@ export const useGoogleDriveSync = (
     setIsLoggedIn(false);
     setUserProfile(null);
     setSyncStatus("idle");
-    addToast("Signed out from Google.", "info");
+    toast.info("Signed out from Google.");
   };
 
   return {

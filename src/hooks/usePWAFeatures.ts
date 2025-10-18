@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-
-import { ToastMessage, ToastAction } from "../components/Toast";
+import { toast } from "sonner";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
@@ -18,12 +17,6 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export const usePWAFeatures = (
-  addToast: (
-    message: string,
-    type: ToastMessage["type"],
-    duration?: number,
-    actions?: ToastAction[],
-  ) => void,
   onNewWorker: (worker: ServiceWorker) => void,
 ) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -58,23 +51,23 @@ export const usePWAFeatures = (
 
   const requestNotificationPermission = async () => {
     if (!("Notification" in window)) {
-      addToast("This browser does not support desktop notification", "error");
+      toast.error("This browser does not support desktop notification");
       return;
     }
 
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
-      addToast("Notification permission granted.", "success");
+      toast.success("Notification permission granted.");
       subscribeUserToPush();
     } else {
-      addToast("Notification permission denied.", "warning");
+      toast.warning("Notification permission denied.");
     }
   };
 
   const subscribeUserToPush = async () => {
     if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === "YOUR_PUBLIC_VAPID_KEY") {
       console.error("VAPID public key is missing or a placeholder and must be replaced.");
-      addToast("Push notification setup is incomplete by the administrator.", "error");
+      toast.error("Push notification setup is incomplete by the administrator.");
       return;
     }
     try {
@@ -92,10 +85,10 @@ export const usePWAFeatures = (
       //   headers: { 'Content-Type': 'application/json' }
       // });
       setIsSubscribed(true);
-      addToast("Successfully subscribed to push notifications!", "success");
+      toast.success("Successfully subscribed to push notifications!");
     } catch (error) {
       console.error("Failed to subscribe the user: ", error);
-      addToast("Failed to subscribe to push notifications.", "error");
+      toast.error("Failed to subscribe to push notifications.");
     }
   };
 
@@ -104,10 +97,10 @@ export const usePWAFeatures = (
       const registration = await navigator.serviceWorker.ready;
       await registration.sync.register("sync-tithe-data");
       console.log('Background sync registered for "sync-tithe-data"');
-      addToast("Offline changes will be synced in the background.", "info");
+      toast.info("Offline changes will be synced in the background.");
     } catch (error) {
       console.error("Background sync could not be registered!", error);
-      addToast("Background sync is not supported by this browser.", "error");
+      toast.error("Background sync is not supported by this browser.");
     }
   };
 
@@ -129,22 +122,20 @@ export const usePWAFeatures = (
             },
           );
           console.log('Periodic sync registered for "get-latest-updates"');
-          addToast("App will periodically sync in the background.", "info");
+          toast.info("App will periodically sync in the background.");
         } else {
-          addToast(
+          toast.warning(
             "Periodic background sync permission not granted.",
-            "warning",
           );
         }
       } else {
-        addToast(
+        toast.error(
           "Periodic background sync is not supported by this browser.",
-          "error",
         );
       }
     } catch (error) {
       console.error("Periodic sync could not be registered!", error);
-      addToast("Failed to register periodic sync.", "error");
+      toast.error("Failed to register periodic sync.");
     }
   };
 

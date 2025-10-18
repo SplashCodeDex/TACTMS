@@ -1,18 +1,19 @@
 import { useState, useCallback } from 'react';
 import { GoogleGenerativeAI, Content } from '@google/generative-ai';
 import { MemberRecordA, TitheRecordB, ChatMessage, ChartData } from '../types';
+import { toast } from 'sonner';
 
-export const useGemini = (apiKey: string, addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void) => {
+export const useGemini = (apiKey: string) => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [validationReportContent, setValidationReportContent] = useState('');
 
   const generateValidationReport = async (originalData: MemberRecordA[]) => {
     if (!originalData || originalData.length === 0) {
-      addToast('No data to analyze. Please upload a file first.', 'warning');
+      toast.warning('No data to analyze. Please upload a file first.');
       return;
     }
     if (!apiKey) {
-      addToast('AI features are not configured. Please contact support.', 'error');
+      toast.error('AI features are not configured. Please contact support.');
       return;
     }
 
@@ -42,7 +43,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
       const errorMessage =
         'Sorry, I encountered an error while generating the report. Please check your connection or API configuration and try again.';
       setValidationReportContent(`# Error\n\n${errorMessage}`);
-      addToast('Failed to generate AI report.', 'error');
+      toast.error('Failed to generate AI report.');
     } finally {
       setIsGeneratingReport(false);
     }

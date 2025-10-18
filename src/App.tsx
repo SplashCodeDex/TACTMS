@@ -18,7 +18,9 @@ import {
   TransactionLogEntry,
 } from "./types";
 import Button from "./components/Button";
-import { ToastContainer, ToastMessage, ToastAction } from "./components/Toast";
+import { Toaster } from "sonner";
+import { toast } from "sonner";
+
 import Modal from "./components/Modal";
 import {
   createTitheList,
@@ -154,8 +156,6 @@ const App: React.FC = () => {
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const storedTheme = localStorage.getItem(APP_THEME_STORAGE_KEY) as
       | "dark"
@@ -233,25 +233,8 @@ const App: React.FC = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
 
-  const addToast = useCallback(
-    (
-      message: string,
-      type: ToastMessage["type"],
-      duration?: number,
-      actions?: ToastAction[],
-    ) => {
-      const id = Math.random().toString(36).substring(2, 9);
-      setToasts((prevToasts) => [
-        ...prevToasts,
-        { id, message, type, duration, actions },
-      ]);
-    },
-    [],
-  );
-
   const { isGeneratingReport, validationReportContent, generateValidationReport } = useGemini(
     import.meta.env.VITE_API_KEY,
-    addToast,
   );
 
   const {
@@ -259,18 +242,18 @@ const App: React.FC = () => {
     requestNotificationPermission,
     // registerBackgroundSync, // TODO: Implement background sync for offline data.
     // registerPeriodicSync, // TODO: Implement periodic sync for fetching updates.
-  } = usePWAFeatures(addToast, setNewWorker);
+  } = usePWAFeatures(setNewWorker);
 
   useEffect(() => {
     if (newWorker) {
-      addToast("A new version is available!", "info", undefined, [
-        {
+      toast("A new version is available!", {
+        action: {
           label: "Reload",
           onClick: () => newWorker.postMessage({ type: "SKIP_WAITING" }),
         },
-      ]);
+      });
     }
-  }, [newWorker, addToast]);
+  }, [newWorker]);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -309,11 +292,7 @@ const App: React.FC = () => {
     signIn: driveSignIn,
     signOut: driveSignOut,
     isConfigured: isDriveConfigured,
-  } = useGoogleDriveSync(addToast);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
-  }, []);
+  } = useGoogleDriveSync();
 
   useEffect(() => {
     document.body.classList.remove("light-theme", "dark-theme");
@@ -516,7 +495,7 @@ const App: React.FC = () => {
       };
       localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(draft));
       setHasUnsavedChanges(false);
-      addToast("Draft auto-saved!", "success", 2000);
+      toast.success("Draft auto-saved!");
     }, AUTO_SAVE_DEBOUNCE_TIME);
   }, [
     titheListData,
@@ -532,7 +511,6 @@ const App: React.FC = () => {
     processedDataA.length,
     currentAssembly,
     soulsWonCount,
-    addToast,
   ]);
 
   useEffect(() => {
@@ -574,10 +552,8 @@ const App: React.FC = () => {
           }
         } else {
           if (hasUnsavedChanges) {
-            addToast(
+            toast.warning(
               "You have unsaved changes. Please save or discard them before loading a new file.",
-              "warning",
-              5000,
             );
             // setIsParsing(false); // TODO: Implement a visual indicator for when the file is being parsed.
             return;
@@ -600,12 +576,12 @@ const App: React.FC = () => {
       } catch (e: any) {
         const errorMessage =
           e.message || "An unknown error occurred during parsing.";
-        addToast(`Error parsing file: ${errorMessage}`, "error", 5000);
+        toast.error(`Error parsing file: ${errorMessage}`);
       } finally {
         // setIsParsing(false); // TODO: Implement a visual indicator for when the file is being parsed.
       }
     },
-    [hasUnsavedChanges, addToast, memberDatabase, clearWorkspace],
+    [hasUnsavedChanges, memberDatabase, clearWorkspace],
   );
 
   useEffect(() => {
@@ -637,9 +613,8 @@ const App: React.FC = () => {
         fileName: newFileName,
       },
     }));
-    addToast(
+    toast.success(
       `${assemblyName} master list has been updated with ${newData.length} records.`,
-      "success",
     );
   };
 
@@ -719,9 +694,8 @@ const App: React.FC = () => {
       }
     } else {
       setSoulsWonCount(data.length);
-      addToast(
+      toast.success(
         `${data.length} members added as the first master list for ${assembly}.`,
-        "success",
       );
       const now = new Date().toISOString();
       const enrichedData = data.map((member) => ({
@@ -765,9 +739,8 @@ const App: React.FC = () => {
     setFileNameToSave(
       `${assembly}-TitheList-${formatDateDDMMMYYYY(new Date())}`,
     );
-    addToast(
+    toast.success(
       `${assembly} data processed. ${data.length} records loaded.`,
-      "success",
     );
   };
 
@@ -790,9 +763,8 @@ const App: React.FC = () => {
 
     setProcessedDataA((prev) => [...prev, ...membersToKeep]);
 
-    addToast(
+    toast.success(
       `Kept ${membersToKeep.length} missing members in the list.`,
-      "success",
     );
   };
 
@@ -818,7 +790,7 @@ const App: React.FC = () => {
         amountMappingColumn,
       ),
     );
-    addToast(`Age filter applied. ${filtered.length} records match.`, "info");
+    toast.info(`Age filter applied. ${filtered.length} records match.`);
     setHasUnsavedChanges(true);
   }, [
     ageRangeMin,
@@ -828,7 +800,6 @@ const App: React.FC = () => {
     selectedDate,
     descriptionText,
     amountMappingColumn,
-    addToast,
   ]);
 
   const handleRemoveAgeFilter = useCallback(() => {
@@ -846,7 +817,7 @@ const App: React.FC = () => {
         amountMappingColumn,
       ),
     );
-    addToast("Age filter removed.", "info");
+    toast.info("Age filter removed.");
     setHasUnsavedChanges(true);
   }, [
     originalData,
@@ -854,7 +825,6 @@ const App: React.FC = () => {
     selectedDate,
     descriptionText,
     amountMappingColumn,
-    addToast,
   ]);
 
   const handleConcatenationConfigChange = (key: keyof ConcatenationConfig) => {
@@ -883,9 +853,8 @@ const App: React.FC = () => {
   const handleSaveFromPreview = (updatedList: TitheRecordB[]) => {
     setTitheListData(updatedList);
     setHasUnsavedChanges(true); // Mark the workspace as dirty
-    addToast(
+    toast.success(
       "Changes from list view have been saved to the workspace.",
-      "success",
     );
     setIsFullPreviewModalOpen(false);
   };
@@ -956,7 +925,7 @@ const App: React.FC = () => {
         }
         return [...prevLog, newLogEntry];
       });
-      addToast("Transaction has been logged for reporting.", "info");
+      toast.info("Transaction has been logged for reporting.");
     }
   }, [
     fileNameToSave,
@@ -967,7 +936,6 @@ const App: React.FC = () => {
     soulsWonCount,
     tithersCount,
     setTransactionLog,
-    addToast,
     concatenationConfig,
     descriptionText,
     amountMappingColumn,
@@ -981,11 +949,11 @@ const App: React.FC = () => {
 
   const handleSaveFavorite = () => {
     if (!favoriteNameInput.trim()) {
-      addToast("Favorite name cannot be empty.", "error");
+      toast.error("Favorite name cannot be empty.");
       return;
     }
     if (!currentAssembly) {
-      addToast("Cannot save favorite without an assembly.", "error");
+      toast.error("Cannot save favorite without an assembly.");
       return;
     }
 
@@ -1014,7 +982,7 @@ const App: React.FC = () => {
       newFavorite,
       ...prev.filter((f) => f.name !== newFavorite.name),
     ]);
-    addToast("Saved to favorites!", "success");
+    toast.success("Saved to favorites!");
     setIsSaveFavoriteModalOpen(false);
   };
 
@@ -1022,7 +990,7 @@ const App: React.FC = () => {
     (favId: string) => {
       const fav = favorites.find((f) => f.id === favId);
       if (!fav) {
-        addToast(`Favorite not found.`, "error");
+        toast.error(`Favorite not found.`);
         return;
       }
 
@@ -1055,10 +1023,10 @@ const App: React.FC = () => {
       setHasUnsavedChanges(false);
       clearAutoSaveDraft();
 
-      addToast(`Loaded favorite: "${fav.name}"`, "success");
+      toast.success(`Loaded favorite: "${fav.name}"`);
       navigate("/processor");
     },
-    [favorites, addToast, clearWorkspace, clearAutoSaveDraft, navigate],
+    [favorites, clearWorkspace, clearAutoSaveDraft, navigate],
   );
 
   const findLatestFavorite = useCallback(
@@ -1073,9 +1041,8 @@ const App: React.FC = () => {
   const startNewWeek = (assemblyName: string) => {
     const fav = findLatestFavorite(assemblyName);
     if (!fav) {
-      addToast(
+      toast.warning(
         `No saved data found for ${assemblyName}. Please upload a file first.`,
-        "warning",
       );
       return;
     }
@@ -1084,9 +1051,8 @@ const App: React.FC = () => {
 
     const memberSourceRecords = fav.titheListData;
     if (!memberSourceRecords || memberSourceRecords.length === 0) {
-      addToast(
+      toast.error(
         `The latest favorite for ${assemblyName} has no members.`,
-        "error",
       );
       return;
     }
@@ -1126,9 +1092,8 @@ const App: React.FC = () => {
     clearAutoSaveDraft();
 
     navigate("/processor");
-    addToast(
+    toast.success(
       `Started new week for ${assemblyName} using the latest member list.`,
-      "success",
     );
   };
 
@@ -1140,7 +1105,7 @@ const App: React.FC = () => {
   const confirmDeleteFavorite = () => {
     if (!favToDeleteId) return;
     setFavorites((prev) => prev.filter((f) => f.id !== favToDeleteId));
-    addToast("Favorite deleted.", "success");
+    toast.success("Favorite deleted.");
     setIsDeleteFavConfirmModalOpen(false);
     setFavToDeleteId(null);
   };
@@ -1158,7 +1123,7 @@ const App: React.FC = () => {
 
   const handleConfirmClearWorkspace = () => {
     clearWorkspace();
-    addToast("Workspace cleared.", "info");
+    toast.info("Workspace cleared.");
     setIsClearWorkspaceModalOpen(false);
   };
 
@@ -1195,9 +1160,8 @@ const App: React.FC = () => {
       )[0];
       setTitheListData((prev) => [...prev, newTitheRecord]);
       setSoulsWonCount((prev) => (prev || 0) + 1);
-      addToast(
+      toast.success(
         `Added new member: ${newMember["First Name"]} ${newMember.Surname}`,
-        "success",
       );
       setIsAddNewMemberModalOpen(false);
     }
@@ -1212,9 +1176,8 @@ const App: React.FC = () => {
       null,
     )[0];
     setTitheListData((prev) => [...prev, newTitheRecord]);
-    addToast(
+    toast.success(
       `Added existing member: ${member["First Name"]} ${member.Surname}`,
-      "success",
     );
   };
 
@@ -1239,9 +1202,8 @@ const App: React.FC = () => {
     );
     navigate("/processor");
     setIsCreateTitheListModalOpen(false);
-    addToast(
+    toast.success(
       `Created a new list with ${members.length} members from the database.`,
-      "success",
     );
   };
 
@@ -1262,7 +1224,7 @@ const App: React.FC = () => {
           firstSeenSource: "manual_db_add",
         };
         updatedData = [...assemblyData, finalNewMember];
-        addToast(`New member added to ${assemblyName} database.`, "success");
+        toast.success(`New member added to ${assemblyName} database.`);
       } else {
         updatedData = assemblyData.map((m) => {
           if (m["No."] === member["No."]) {
@@ -1270,9 +1232,8 @@ const App: React.FC = () => {
           }
           return m;
         });
-        addToast(
+        toast.success(
           `Member details updated in ${assemblyName} database.`,
-          "success",
         );
       }
 
@@ -1292,7 +1253,7 @@ const App: React.FC = () => {
 
   const openAddMemberToListModal = () => {
     if (!currentAssembly) {
-      addToast("An assembly must be active to add a member.", "warning");
+      toast.warning("An assembly must be active to add a member.");
       return;
     }
     setIsAddNewMemberModalOpen(true);
@@ -1380,7 +1341,7 @@ const App: React.FC = () => {
                 deleteFavorite,
                 viewFavoriteDetails,
                 updateFavoriteName,
-                addToast,
+                toast,
                 // Analytics
                 titheListData,
                 currentAssembly,
@@ -1453,7 +1414,7 @@ const App: React.FC = () => {
 
       <AnimatePresence>{isOffline && <OfflineIndicator />}</AnimatePresence>
 
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <Toaster />
 
       {isFullPreviewModalOpen && (
         <FullTithePreviewModal
@@ -1462,7 +1423,7 @@ const App: React.FC = () => {
           titheListData={titheListData}
           onSave={handleSaveFromPreview}
           itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
-          addToast={addToast}
+          addToast={toast}
           searchTerm={fullPreviewSearchTerm}
           setSearchTerm={setFullPreviewSearchTerm}
           sortConfig={fullPreviewSortConfig}
@@ -1480,7 +1441,7 @@ const App: React.FC = () => {
             setTitheListData(updatedList);
             setHasUnsavedChanges(true);
             setIsDataEntryModalOpen(false);
-            addToast("Data entry saved to workspace.", "success");
+            toast.success("Data entry saved to workspace.");
           }}
         />
       )}
