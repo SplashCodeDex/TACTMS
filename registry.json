@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "tactms",
+  "homepage": "https://github.com/SplashCodeDex/MyRegistry",
+  "items": [
+    {
+      "name": "hello-world",
+      "type": "registry:component",
+      "title": "Hello World",
+      "description": "A simple hello world component",
+      "registryDependencies": ["button"],
+      "files": [
+        {
+          "path": "registry/hello-world.tsx",
+          "type": "registry:component"
+        }
+      ]
+    }
+  ]
+}

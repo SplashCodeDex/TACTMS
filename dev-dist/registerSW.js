@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/TACTMS/dev-sw.js?dev-sw', { scope: '/TACTMS/', type: 'classic' })
