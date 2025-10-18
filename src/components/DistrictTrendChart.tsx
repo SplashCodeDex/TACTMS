@@ -2,13 +2,14 @@ import React from "react";
 import { motion } from "framer-motion";
 
 interface PerformanceData {
-  month: number;
+  key: string;
   totalTithe: number;
   soulsWon: number;
 }
 
 interface DistrictTrendChartProps {
   performanceData: PerformanceData[];
+  granularity: "yearly" | "monthly" | "weekly" | "daily";
 }
 
 const MotionPath = motion.path as React.FC<any>;
@@ -16,6 +17,7 @@ const MotionCircle = motion.circle as React.FC<any>;
 
 const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
   performanceData,
+  granularity,
 }) => {
   const width = 800;
   const height = 300;
@@ -26,27 +28,41 @@ const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
   const maxTithe = Math.max(...performanceData.map((d) => d.totalTithe), 0);
   const maxSouls = Math.max(...performanceData.map((d) => d.soulsWon), 0);
 
-  const monthLabels = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
+  const getXAxisLabels = () => {
+    switch (granularity) {
+      case "yearly":
+      case "monthly":
+        return [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+      case "weekly":
+        return performanceData.map((d) => `W${d.key}`);
+      case "daily":
+        return performanceData.map((d) => d.key);
+      default:
+        return [];
+    }
+  };
+
+  const monthLabels = getXAxisLabels();
 
   const getPath = (dataKey: "totalTithe" | "soulsWon", maxValue: number) => {
     if (maxValue === 0) return `M 0 ${chartHeight}`;
     let path = `M 0 ${chartHeight - (performanceData[0][dataKey] / maxValue) * chartHeight}`;
     performanceData.forEach((d, i) => {
       if (i > 0) {
-        const x = (i / 11) * chartWidth;
+        const x = (i / (performanceData.length - 1)) * chartWidth;
         const y = chartHeight - (d[dataKey] / maxValue) * chartHeight;
         path += ` L ${x} ${y}`;
       }
@@ -174,7 +190,7 @@ const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
           {performanceData.map((d, i) => (
             <g
               key={`point-group-${i}`}
-              transform={`translate(${(i / 11) * chartWidth}, 0)`}
+              transform={`translate(${(i / (performanceData.length - 1)) * chartWidth}, 0)`}
             >
               {d.totalTithe > 0 && (
                 <g
@@ -298,7 +314,7 @@ const DistrictTrendChart: React.FC<DistrictTrendChartProps> = ({
           {monthLabels.map((label, i) => (
             <text
               key={`x-tick-${i}`}
-              x={(i / 11) * chartWidth}
+              x={(i / (monthLabels.length - 1)) * chartWidth}
               y={chartHeight + 20}
               textAnchor="middle"
               className="fill-current text-[var(--text-secondary)] text-xs"

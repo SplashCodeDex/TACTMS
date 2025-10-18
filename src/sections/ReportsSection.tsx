@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import DistrictTrendChart from "../components/DistrictTrendChart";
 import { useOutletContext } from "react-router-dom";
 import {
-  aggregateYearlySummary,
+  aggregateReportData,
   processDataForReports,
   exportToCsv,
 } from "../lib/reportUtils";
@@ -26,10 +26,13 @@ interface ReportsSectionProps {
   memberDatabase: MemberDatabase;
 }
 
+type Granularity = "yearly" | "monthly" | "weekly" | "daily";
+
 const ReportsSection: React.FC = () => {
   const { transactionLog = [], memberDatabase = {} } =
     useOutletContext<ReportsSectionProps>();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [granularity, setGranularity] = useState<Granularity>("monthly");
   const [isLoading, setIsLoading] = useState(true);
 
   const processedData = useMemo(
@@ -53,27 +56,40 @@ const ReportsSection: React.FC = () => {
     return Array.from(years).sort((a, b) => b - a);
   }, [processedData]);
 
-  const reportDataByMonth = useMemo<Record<number, ReportData[]>>(() => {
-    return processedData[selectedYear] || {};
-  }, [selectedYear, processedData]);
+  const reportData = useMemo(() => {
+    const yearData = processedData[selectedYear];
+    if (!yearData) return {};
 
-  const yearSummary = useMemo(() => {
-    return aggregateYearlySummary(reportDataByMonth);
-  }, [reportDataByMonth]);
+    switch (granularity) {
+      case "yearly":
+        return yearData.months;
+      case "monthly":
+        return yearData.months;
+      case "weekly":
+        return yearData.weeks;
+      case "daily":
+        return yearData.days;
+      default:
+        return yearData.months;
+    }
+  }, [selectedYear, processedData, granularity]);
+
+  const summary = useMemo(() => {
+    return aggregateReportData(reportData, granularity === "daily" ? "days" : granularity);
+  }, [reportData, granularity]);
 
   const handleDownloadCsv = () => {
-    const csvContent = exportToCsv(yearSummary, selectedYear);
+    const csvContent = exportToCsv(summary, selectedYear);
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `report_${selectedYear}.csv`);
+    link.setAttribute("download", `report_${selectedYear}_${granularity}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const hasDataForPeriod =
-    yearSummary.totalTithe > 0 || yearSummary.totalSouls > 0;
+  const hasDataForPeriod = summary.totalTithe > 0 || summary.totalSouls > 0;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -112,6 +128,16 @@ const ReportsSection: React.FC = () => {
                 </option>
               ))}
             </select>
+            <select
+              value={granularity}
+              onChange={(e) => setGranularity(e.target.value as Granularity)}
+              className="form-input-light"
+            >
+              <option value="yearly">Yearly</option>
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="daily">Daily</option>
+            </select>
             <LiquidButton
               onClick={handleDownloadCsv}
             >
@@ -141,7 +167,7 @@ const ReportsSection: React.FC = () => {
                   <>
                     GH₵{" "}
                     <AnimatedNumber
-                      n={yearSummary.totalTithe}
+                      n={summary.totalTithe}
                       formatter={(n) =>
                         n.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
@@ -151,29 +177,29 @@ const ReportsSection: React.FC = () => {
                     />
                   </>
                 }
-                ariaLabel={`District Total Tithe for ${selectedYear}: GH₵ ${yearSummary.totalTithe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                ariaLabel={`District Total Tithe for ${selectedYear}: GH₵ ${summary.totalTithe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               />
               <StatDisplayCard
                 icon={<Users />}
                 label={`District Souls Won (${selectedYear})`}
-                value={<AnimatedNumber n={yearSummary.totalSouls} />}
-                ariaLabel={`District Souls Won for ${selectedYear}: ${yearSummary.totalSouls}`}
+                value={<AnimatedNumber n={summary.totalSouls} />}
+                ariaLabel={`District Souls Won for ${selectedYear}: ${summary.totalSouls}`}
               />
               <StatDisplayCard
                 icon={<TrendingUp />}
                 label="Top Assembly (Tithe)"
-                value={yearSummary.topPerformingAssembly.name}
-                subValue={`GH₵ ${yearSummary.topPerformingAssembly.value.toLocaleString()}`}
+                value={summary.topPerformingAssembly.name}
+                subValue={`GH₵ ${summary.topPerformingAssembly.value.toLocaleString()}`}
                 valueClassName="text-gradient-primary"
-                ariaLabel={`Top Assembly by Tithe: ${yearSummary.topPerformingAssembly.name} with GH₵ ${yearSummary.topPerformingAssembly.value.toLocaleString()}`}
+                ariaLabel={`Top Assembly by Tithe: ${summary.topPerformingAssembly.name} with GH₵ ${summary.topPerformingAssembly.value.toLocaleString()}`}
               />
               <StatDisplayCard
                 icon={<TrendingUp />}
                 label="Top Assembly (Growth)"
-                value={yearSummary.topGrowthAssembly.name}
-                subValue={`${yearSummary.topGrowthAssembly.value} souls`}
+                value={summary.topGrowthAssembly.name}
+                subValue={`${summary.topGrowthAssembly.value} souls`}
                 valueClassName="text-gradient-primary"
-                ariaLabel={`Top Assembly by Growth: ${yearSummary.topGrowthAssembly.name} with ${yearSummary.topGrowthAssembly.value} souls`}
+                ariaLabel={`Top Assembly by Growth: ${summary.topGrowthAssembly.name} with ${summary.topGrowthAssembly.value} souls`}
               />
             </motion.section>
 
@@ -183,7 +209,7 @@ const ReportsSection: React.FC = () => {
                 District Performance Over Time ({selectedYear})
               </h3>
               <DistrictTrendChart
-                performanceData={yearSummary.monthlyPerformance}
+                performanceData={summary.performance}
               />
             </motion.section>
           </motion.div>

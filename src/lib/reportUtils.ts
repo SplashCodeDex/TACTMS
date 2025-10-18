@@ -1,67 +1,140 @@
 import { TransactionLogEntry, MemberDatabase, ReportData } from "../types";
 import { ASSEMBLIES } from "../constants";
 
-export const calculateMonthlyReportData = (
-  month: number,
-  selectedYear: number,
-  transactionLog: TransactionLogEntry[],
-  memberDatabase: MemberDatabase,
-): ReportData[] => {
-  return ASSEMBLIES.map((name) => {
-    const assemblyMasterList = memberDatabase[name]?.data || [];
-    const soulsWonForMonth = assemblyMasterList.filter((member) => {
-      if (!member.firstSeenDate) return false;
-      try {
-        const seenDate = new Date(member.firstSeenDate);
-        return (
-          seenDate.getMonth() === month &&
-          seenDate.getFullYear() === selectedYear
-        );
-      } catch (e) {
-        return false;
-      }
-    }).length;
-
-    const assemblyLogsForMonth = transactionLog.filter((log) => {
-      const logDate = new Date(log.selectedDate);
-      return (
-        log.assemblyName === name &&
-        logDate.getMonth() === month &&
-        logDate.getFullYear() === selectedYear
-      );
-    });
-
-    const monthlyTotals = assemblyLogsForMonth.reduce(
-      (acc, log) => {
-        acc.totalTithe += log.totalTitheAmount;
-        acc.titherCount += log.titherCount;
-        acc.recordCount += log.recordCount;
-        return acc;
-      },
-      { totalTithe: 0, titherCount: 0, recordCount: 0 },
-    );
-
-    return {
-      assemblyName: name,
-      totalTithe: monthlyTotals.totalTithe,
-      soulsWon: soulsWonForMonth,
-      titherCount: monthlyTotals.titherCount,
-      recordCount: monthlyTotals.recordCount,
-    };
-  });
+const getWeekOfYear = (date: Date) => {
+  const target = new Date(date.valueOf());
+  const dayNr = (date.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+  }
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
 };
 
-export const aggregateYearlySummary = (
-  monthlyReportData: Record<number, ReportData[]>,
+export const processDataForReports = (
+  transactionLog: TransactionLogEntry[],
+  memberDatabase: MemberDatabase,
+) => {
+  const yearlyData: Record<
+    number,
+    {
+      months: Record<number, ReportData[]>;
+      weeks: Record<number, ReportData[]>;
+      days: Record<number, Record<number, ReportData[]>>;
+    }
+  > = {};
+
+  const initAssemblyData = () => ASSEMBLIES.map((name) => ({
+    assemblyName: name,
+    totalTithe: 0,
+    soulsWon: 0,
+    titherCount: 0,
+    recordCount: 0,
+  }));
+
+  transactionLog.forEach((log) => {
+    const logDate = new Date(log.selectedDate);
+    const year = logDate.getFullYear();
+    const month = logDate.getMonth();
+    const week = getWeekOfYear(logDate);
+    const day = logDate.getDate();
+
+    if (!yearlyData[year]) {
+      yearlyData[year] = { months: {}, weeks: {}, days: {} };
+    }
+    if (!yearlyData[year].months[month]) {
+      yearlyData[year].months[month] = initAssemblyData();
+    }
+    if (!yearlyData[year].weeks[week]) {
+      yearlyData[year].weeks[week] = initAssemblyData();
+    }
+    if (!yearlyData[year].days[month]) {
+      yearlyData[year].days[month] = {};
+    }
+    if (!yearlyData[year].days[month][day]) {
+      yearlyData[year].days[month][day] = initAssemblyData();
+    }
+
+    const assemblyReportMonth = yearlyData[year].months[month].find(
+      (r) => r.assemblyName === log.assemblyName,
+    );
+    const assemblyReportWeek = yearlyData[year].weeks[week].find(
+      (r) => r.assemblyName === log.assemblyName,
+    );
+    const assemblyReportDay = yearlyData[year].days[month][day].find(
+      (r) => r.assemblyName === log.assemblyName,
+    );
+
+    if (assemblyReportMonth) {
+      assemblyReportMonth.totalTithe += log.totalTitheAmount;
+      assemblyReportMonth.titherCount += log.titherCount;
+      assemblyReportMonth.recordCount += log.recordCount;
+    }
+    if (assemblyReportWeek) {
+      assemblyReportWeek.totalTithe += log.totalTitheAmount;
+      assemblyReportWeek.titherCount += log.titherCount;
+      assemblyReportWeek.recordCount += log.recordCount;
+    }
+    if (assemblyReportDay) {
+      assemblyReportDay.totalTithe += log.totalTitheAmount;
+      assemblyReportDay.titherCount += log.titherCount;
+      assemblyReportDay.recordCount += log.recordCount;
+    }
+  });
+
+  Object.keys(memberDatabase).forEach((assemblyName) => {
+    const assemblyMasterList = memberDatabase[assemblyName]?.data || [];
+    assemblyMasterList.forEach((member) => {
+      if (member.firstSeenDate) {
+        try {
+          const seenDate = new Date(member.firstSeenDate);
+          const year = seenDate.getFullYear();
+          const month = seenDate.getMonth();
+          const week = getWeekOfYear(seenDate);
+          const day = seenDate.getDate();
+
+          if (yearlyData[year]) {
+            if (yearlyData[year].months[month]) {
+              const assemblyReport = yearlyData[year].months[month].find(
+                (r) => r.assemblyName === assemblyName,
+              );
+              if (assemblyReport) assemblyReport.soulsWon += 1;
+            }
+            if (yearlyData[year].weeks[week]) {
+              const assemblyReport = yearlyData[year].weeks[week].find(
+                (r) => r.assemblyName === assemblyName,
+              );
+              if (assemblyReport) assemblyReport.soulsWon += 1;
+            }
+            if (yearlyData[year].days[month] && yearlyData[year].days[month][day]) {
+              const assemblyReport = yearlyData[year].days[month][day].find(
+                (r) => r.assemblyName === assemblyName,
+              );
+              if (assemblyReport) assemblyReport.soulsWon += 1;
+            }
+          }
+        } catch (e) {
+          // Invalid date format
+        }
+      }
+    });
+  });
+
+  return yearlyData;
+};
+
+export const aggregateReportData = (
+  data: Record<string, any>,
+  granularity: "months" | "weeks" | "days",
 ) => {
   const summary = {
     totalTithe: 0,
     totalSouls: 0,
     topPerformingAssembly: { name: "N/A", value: 0 },
     topGrowthAssembly: { name: "N/A", value: 0 },
-    monthlyPerformance: Array(12)
-      .fill(0)
-      .map((_, i) => ({ month: i, totalTithe: 0, soulsWon: 0 })),
+    performance: [] as any[],
   };
 
   const assemblyTotals = new Map<
@@ -69,13 +142,39 @@ export const aggregateYearlySummary = (
     { totalTithe: number; soulsWon: number }
   >();
 
-  for (let month = 0; month < 12; month++) {
-    let monthTithe = 0;
-    let monthSouls = 0;
-    if (monthlyReportData[month]) {
-      monthlyReportData[month].forEach((report) => {
-        monthTithe += report.totalTithe;
-        monthSouls += report.soulsWon;
+  if (granularity === "days") {
+    Object.keys(data).forEach((month) => {
+      Object.keys(data[month]).forEach((day) => {
+        let periodTithe = 0;
+        let periodSouls = 0;
+        data[month][day].forEach((report: ReportData) => {
+          periodTithe += report.totalTithe;
+          periodSouls += report.soulsWon;
+          const current = assemblyTotals.get(report.assemblyName) || {
+            totalTithe: 0,
+            soulsWon: 0,
+          };
+          assemblyTotals.set(report.assemblyName, {
+            totalTithe: current.totalTithe + report.totalTithe,
+            soulsWon: current.soulsWon + report.soulsWon,
+          });
+        });
+        summary.totalTithe += periodTithe;
+        summary.totalSouls += periodSouls;
+        summary.performance.push({
+          key: `${month}/${day}`,
+          totalTithe: periodTithe,
+          soulsWon: periodSouls,
+        });
+      });
+    });
+  } else {
+    Object.keys(data).forEach((key) => {
+      let periodTithe = 0;
+      let periodSouls = 0;
+      data[key].forEach((report: ReportData) => {
+        periodTithe += report.totalTithe;
+        periodSouls += report.soulsWon;
         const current = assemblyTotals.get(report.assemblyName) || {
           totalTithe: 0,
           soulsWon: 0,
@@ -85,14 +184,14 @@ export const aggregateYearlySummary = (
           soulsWon: current.soulsWon + report.soulsWon,
         });
       });
-    }
-    summary.totalTithe += monthTithe;
-    summary.totalSouls += monthSouls;
-    summary.monthlyPerformance[month] = {
-      month,
-      totalTithe: monthTithe,
-      soulsWon: monthSouls,
-    };
+      summary.totalTithe += periodTithe;
+      summary.totalSouls += periodSouls;
+      summary.performance.push({
+        key,
+        totalTithe: periodTithe,
+        soulsWon: periodSouls,
+      });
+    });
   }
 
   const sortedByTithe = [...assemblyTotals.entries()].sort(
@@ -118,100 +217,20 @@ export const aggregateYearlySummary = (
   return summary;
 };
 
-export const processDataForReports = (
-  transactionLog: TransactionLogEntry[],
-  memberDatabase: MemberDatabase,
-) => {
-  const yearlyData: Record<
-    number,
-    Record<number, ReportData[]>
-  > = {};
-
-  transactionLog.forEach((log) => {
-    const logDate = new Date(log.selectedDate);
-    const year = logDate.getFullYear();
-    const month = logDate.getMonth();
-
-    if (!yearlyData[year]) {
-      yearlyData[year] = {};
-    }
-    if (!yearlyData[year][month]) {
-      yearlyData[year][month] = ASSEMBLIES.map((name) => ({
-        assemblyName: name,
-        totalTithe: 0,
-        soulsWon: 0,
-        titherCount: 0,
-        recordCount: 0,
-      }));
-    }
-
-    const assemblyReport = yearlyData[year][month].find(
-      (r) => r.assemblyName === log.assemblyName,
-    );
-
-    if (assemblyReport) {
-      assemblyReport.totalTithe += log.totalTitheAmount;
-      assemblyReport.titherCount += log.titherCount;
-      assemblyReport.recordCount += log.recordCount;
-    }
-  });
-
-  Object.keys(memberDatabase).forEach((assemblyName) => {
-    const assemblyMasterList = memberDatabase[assemblyName]?.data || [];
-    assemblyMasterList.forEach((member) => {
-      if (member.firstSeenDate) {
-        try {
-          const seenDate = new Date(member.firstSeenDate);
-          const year = seenDate.getFullYear();
-          const month = seenDate.getMonth();
-
-          if (yearlyData[year] && yearlyData[year][month]) {
-            const assemblyReport = yearlyData[year][month].find(
-              (r) => r.assemblyName === assemblyName,
-            );
-            if (assemblyReport) {
-              assemblyReport.soulsWon += 1;
-            }
-          }
-        } catch (e) {
-          // Invalid date format
-        }
-      }
-    });
-  });
-
-  return yearlyData;
-};
-
-export const exportToCsv = (yearSummary: any, selectedYear: number) => {
-  const monthLabels = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-
+export const exportToCsv = (summary: any, selectedYear: number, granularity: string) => {
   let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += `Yearly Summary for ${selectedYear}\n`;
+  csvContent += `Summary for ${selectedYear}\n`;
   csvContent += `Total Tithe,Total Souls Won\n`;
-  csvContent += `${yearSummary.totalTithe},${yearSummary.totalSouls}\n\n`;
+  csvContent += `${summary.totalTithe},${summary.totalSouls}\n\n`;
 
-  csvContent += `Top Performing Assembly (Tithe),${yearSummary.topPerformingAssembly.name},${yearSummary.topPerformingAssembly.value}\n`;
-  csvContent += `Top Performing Assembly (Growth),${yearSummary.topGrowthAssembly.name},${yearSummary.topGrowthAssembly.value}\n\n`;
+  csvContent += `Top Performing Assembly (Tithe),${summary.topPerformingAssembly.name},${summary.topPerformingAssembly.value}\n`;
+  csvContent += `Top Performing Assembly (Growth),${summary.topGrowthAssembly.name},${summary.topGrowthAssembly.value}\n\n`;
 
-  csvContent += `Monthly Performance\n`;
-  csvContent += `Month,Total Tithe,Souls Won\n`;
+  csvContent += `Performance Data (${granularity})\n`;
+  csvContent += `Period,Total Tithe,Souls Won\n`;
 
-  yearSummary.monthlyPerformance.forEach((perf: any) => {
-    csvContent += `${monthLabels[perf.month]},${perf.totalTithe},${perf.soulsWon}\n`;
+  summary.performance.forEach((perf: any) => {
+    csvContent += `${perf.key},${perf.totalTithe},${perf.soulsWon}\n`;
   });
 
   return csvContent;
