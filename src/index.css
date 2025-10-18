@@ -156,18 +156,23 @@ body {
 .main-content {
   flex-grow: 1;
   padding: 2rem;
-  margin-left: 17rem; /* Default margin for expanded sidebar */
-  overflow-y: auto;
   transition: margin-left 0.3s ease-in-out;
-  min-height: 100vh; /* Ensure main content takes full height */
+  min-height: 100vh;
+  width: 100%;
+}
+
+.content-wrapper {
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sidebar:not(.collapsed) ~ .main-content {
+  margin-left: 17rem;
 }
 
 .sidebar.collapsed ~ .main-content {
   margin-left: 6rem;
-}
-
-.sidebar.collapsed + .app-container-overlay {
-  margin-left: 6rem; /* Margin for collapsed sidebar */
 }
 
 .app-container-overlay {
@@ -197,8 +202,10 @@ body {
     display: block; /* Show overlay when sidebar is open */
   }
 
-  .main-content {
-    margin-left: 0; /* No margin on mobile */
+  .main-content,
+  .sidebar:not(.collapsed) ~ .main-content,
+  .sidebar.collapsed ~ .main-content {
+    margin-left: 0;
     padding-top: 5rem; /* Adjust for mobile header */
   }
 }

@@ -84,190 +84,340 @@ const OutreachSkeleton: React.FC = () => (
   </div>
 );
 
+import { CopyButton } from "../components/CopyButton";
+
+
+
 const AIOutreachAssistant: React.FC<{
+
   reconciliationReport: MembershipReconciliationReport | null;
+
   addToast: (
+
     message: string,
+
     type: "info" | "success" | "error" | "warning",
+
   ) => void;
+
 }> = ({ reconciliationReport, addToast }) => {
+
   const [messages, setMessages] = useState<OutreachMessage[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
+
+
 
   const newMembers = reconciliationReport?.newMembers || [];
 
+
+
   const handleGenerate = async () => {
+
     if (newMembers.length === 0) {
+
       addToast(
+
         "No new members found in the current data to generate messages for.",
+
         "warning",
+
       );
+
       return;
+
     }
+
     if (!import.meta.env.VITE_API_KEY) {
+
       addToast(
+
         "AI features are not configured. Please contact support.",
+
         "error",
+
       );
+
       return;
+
     }
+
+
 
     setIsLoading(true);
+
     setError(null);
+
     setMessages([]);
 
+
+
     try {
+
       const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
+
       const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+
       const memberNames = newMembers
+
         .map((m) => `${m["First Name"] || ""} ${m.Surname || ""}`.trim())
+
         .filter(Boolean);
+
+
 
       const prompt = `You are a friendly and welcoming church administrator for The Apostolic Church. Your task is to generate a short, personalized, and encouraging SMS message for each of the following new church members.
 
+
+
 Guidelines:
+
 - Keep each message under 160 characters to fit in a standard SMS.
+
 - Start with a warm greeting addressing the member by their first name.
+
 - Express joy that they have joined the church family.
+
 - End with a warm closing, for example "God bless you." or "Welcome to the family!".
+
 - Maintain a positive and uplifting tone.
+
 - DO NOT add any extra text or explanation outside of the required JSON output.
 
-Here are the new members to welcome: ${memberNames.join(", ")}
-`;
+
+
+Here are the new members to welcome: ${memberNames.join(", ")}`;
+
+
 
       const result = await model.generateContent({
+
         contents: [{ role: "user", parts: [{ text: prompt }] }],
+
         generationConfig: {
+
           responseMimeType: "application/json",
+
           responseSchema: {
+
             type: SchemaType.OBJECT,
+
             properties: {
+
               analysis: {
+
                 type: SchemaType.ARRAY,
+
                 items: {
+
                   type: SchemaType.OBJECT,
+
                   properties: {
+
                     memberName: { type: SchemaType.STRING, description: "The full name of the new church member." },
+
                     message: { type: SchemaType.STRING, description: "The personalized welcome SMS message for the member." },
+
                   },
+
                   required: ["memberName", "message"],
+
                 },
+
               },
+
             },
+
             required: ["analysis"],
+
           },
+
         },
+
       });
+
+
 
       const response = result.response;
+
       const text = response.text();
 
+
+
       if (text) {
+
         const jsonResponse = JSON.parse(text);
+
         if (jsonResponse && Array.isArray(jsonResponse.analysis)) {
+
           setMessages(jsonResponse.analysis);
+
         } else {
+
           throw new Error("AI response was not a JSON object with an 'analysis' array.");
+
         }
+
       } else {
+
         throw new Error("AI response was empty.");
+
       }
+
     } catch (err) {
+
       console.error("Error generating outreach messages:", err);
+
       setError(
+
         "Sorry, I couldn't generate the messages. The AI might be busy. Please try again in a moment.",
+
       );
+
       addToast("Failed to generate outreach messages.", "error");
+
     } finally {
+
       setIsLoading(false);
+
     }
+
   };
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        addToast("Message copied to clipboard!", "success");
-      })
-      .catch(() => {
-        addToast("Failed to copy message.", "error");
-      });
-  };
+
 
   return (
+
     <section className="content-card">
+
       <h2 className="section-heading">
+
         <MessageSquareQuote size={22} className="mr-3 icon-primary" />
+
         AI Outreach Assistant
+
       </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+
         <div>
+
           <label htmlFor="outreach-target" className="form-label">
+
             Select Target Group
+
           </label>
+
           <select id="outreach-target" className="form-input-light w-full">
+
             <option>New Members (Souls Won) ({newMembers.length})</option>
+
           </select>
+
         </div>
+
         <div className="self-end">
+
           <Button
+
             onClick={handleGenerate}
+
             isLoading={isLoading}
+
             disabled={newMembers.length === 0 || isLoading}
+
             variant="secondary"
+
             fullWidth
+
           >
+
             Generate Welcome Messages
+
           </Button>
+
         </div>
+
       </div>
+
       <div className="mt-6 pt-6 border-t border-[var(--border-color)]">
+
         {isLoading && <OutreachSkeleton />}
+
         {error && (
+
           <div className="text-center py-6 text-[var(--danger-text)]">
+
             <AlertTriangle size={32} className="mx-auto mb-2" />
+
             <p>{error}</p>
+
           </div>
+
         )}
+
         {!isLoading && !error && messages.length > 0 && (
+
           <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+
             {messages.map((msg, index) => (
+
               <div
+
                 key={index}
+
                 className="p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-color)]"
+
               >
+
                 <div className="flex justify-between items-center mb-2">
+
                   <h4 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+
                     <Users size={16} /> {msg.memberName}
+
                   </h4>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    leftIcon={<Copy size={14} />}
-                    onClick={() => handleCopy(msg.message)}
-                  >
-                    Copy
-                  </Button>
+
+                  <CopyButton content={msg.message} />
+
                 </div>
+
                 <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">
+
                   {msg.message}
+
                 </p>
+
               </div>
+
             ))}
+
           </div>
+
         )}
+
         {!isLoading && !error && messages.length === 0 && (
+
           <div className="text-center py-6 text-[var(--text-muted)]">
+
             {newMembers.length > 0
+
               ? "Click 'Generate' to create personalized welcome messages for your new members."
+
               : "No new members found in the current workspace. Upload and reconcile a new file to identify them."}
+
           </div>
+
         )}
+
       </div>
+
     </section>
+
   );
+
 };
 
 const AnalyticsSection: React.FC = () => {
