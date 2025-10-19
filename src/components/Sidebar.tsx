@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
+import { NewsletterSignup } from "./NewsletterSignup";
 import { GoogleUserProfile } from "../types";
 import { THEME_OPTIONS } from "../constants";
 import SyncStatusIndicator from "./SyncStatusIndicator";
@@ -420,6 +421,19 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 Press <span className="kbd-hint">⌘K</span> to search
               </button>
+
+              <div className="px-2">
+                <NewsletterSignup
+                  onSubscribe={(email) => {
+                    console.log("Newsletter signup:", email);
+                    // Here you would typically send the email to your backend
+                    // For now, we'll just log it
+                  }}
+                  buttonText="Subscribe"
+                  placeholder="Get church updates..."
+                />
+              </div>
+
               <p className="text-xs text-[var(--text-muted)]">
                 &copy; {new Date().getFullYear()} Dexify by DexignMasters
               </p>

@@ -13,7 +13,7 @@ import {
   OutreachMessage,
 } from "../types";
 import Button from "../components/Button";
-import SkeletonLoader from "../components/SkeletonLoader";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useGeminiChat } from "../hooks/useGemini";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
@@ -529,7 +529,59 @@ const AnalyticsSection: React.FC = () => {
 
         {isLoading && !hasChatStarted && (
           <div className="content-card">
-            <SkeletonLoader />
+            <div className="space-y-6">
+              {/* Header skeleton */}
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-[300px]" />
+                  <Skeleton className="h-4 w-[200px]" />
+                </div>
+                <Skeleton className="h-10 w-[180px]" />
+              </div>
+
+              {/* Content skeleton */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                  {/* AI Summary Card skeleton */}
+                  <div className="content-card bg-[var(--bg-elevated)] border-l-4 border-[var(--primary-accent-start)] p-6">
+                    <div className="flex items-center mb-4">
+                      <Skeleton className="h-5 w-5 mr-3" />
+                      <Skeleton className="h-6 w-[200px]" />
+                    </div>
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-[90%]" />
+                      <Skeleton className="h-4 w-[80%]" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-[70%]" />
+                    </div>
+                  </div>
+
+                  {/* Chat interface skeleton */}
+                  <div className="content-card">
+                    <div className="flex items-center mb-4">
+                      <Skeleton className="h-5 w-5 mr-3" />
+                      <Skeleton className="h-6 w-[250px]" />
+                    </div>
+                    <div className="space-y-4">
+                      <Skeleton className="h-32 w-full" />
+                      <div className="flex gap-3">
+                        <Skeleton className="h-10 flex-1" />
+                        <Skeleton className="h-10 w-[100px]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-1">
+                  {/* Chart skeleton */}
+                  <div className="content-card">
+                    <Skeleton className="h-6 w-[200px] mb-6" />
+                    <Skeleton className="h-[300px] w-full" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

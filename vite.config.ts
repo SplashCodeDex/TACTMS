@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -11,6 +12,11 @@ export default defineConfig(({ mode }) => {
     // For GitHub Pages deployment, you may need to set this to your repository name
     // e.g., base: '/YourRepoName/',
     base: "/TACTMS/",
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
     define: {
       "process.env.VITE_API_KEY": JSON.stringify(env.VITE_API_KEY),
       "process.env.VITE_GOOGLE_CLIENT_ID": JSON.stringify(
@@ -31,7 +37,6 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         navigateFallbackAllowlist: [/^\/TACTMS\//],
-        swSrc: "src/sw.ts", // Explicitly define the source service worker file
       },
     }),
     ],
