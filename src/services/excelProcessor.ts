@@ -113,9 +113,13 @@ export const createTitheList = (
       if (typeof rawAmount === "number") {
         transactionAmount = rawAmount >= 0 ? rawAmount : "";
       } else if (typeof rawAmount === "string" && rawAmount.trim() !== "") {
-        const parsedAmount = parseFloat(rawAmount.trim().replace(/,/g, ""));
-        transactionAmount =
-          !isNaN(parsedAmount) && parsedAmount >= 0 ? parsedAmount : "";
+        // Robust parsing logic: remove non-numeric characters (except decimal point)
+        const cleanedAmountString = rawAmount.replace(/[^0-9.]/g, "");
+        if (cleanedAmountString) {
+          const parsedAmount = parseFloat(cleanedAmountString);
+          transactionAmount =
+            !isNaN(parsedAmount) && parsedAmount >= 0 ? parsedAmount : "";
+        }
       }
     }
     return transactionAmount;
@@ -142,27 +146,38 @@ export const createTitheList = (
 export const reconcileMembers = (
   newData: MemberRecordA[],
   masterData: MemberRecordA[],
-): Omit<MembershipReconciliationReport, "previousFileDate"> => {
-  const getMemberId = (m: MemberRecordA) => {
-    const membershipNumber = String(m["Membership Number"] || m["Old Membership Number"] || "").trim();
-    if (membershipNumber) return membershipNumber;
-
-    // Fallback to First Name + Surname if no membership number
-    const firstName = String(m["First Name"] || "").trim();
-    const surname = String(m.Surname || "").trim();
-    if (firstName && surname) return `${firstName}-${surname}`;
-    return ""; // No identifiable ID
+): Omit<MembershipReconciliationReport, "previousFileDate"> & {
+  invalidRecords: MemberRecordA[];
+} => {
+  // Stricter getMemberId function. It no longer falls back to name and surname.
+  // It returns the ID string or null if no valid ID is found.
+  const getMemberId = (m: MemberRecordA): string | null => {
+    const membershipNumber = String(
+      m["Membership Number"] || m["Old Membership Number"] || "",
+    ).trim();
+    return membershipNumber || null;
   };
 
-  const masterMemberIds = new Set(
-    masterData.map(getMemberId).filter((id) => id),
-  );
-  const newMemberIds = new Set(newData.map(getMemberId).filter((id) => id));
+  const invalidRecords: MemberRecordA[] = [];
+  const validNewData: { id: string; member: MemberRecordA }[] = [];
 
-  const newMembers: MemberRecordA[] = newData.filter((m) => {
-    const id = getMemberId(m);
-    return id && !masterMemberIds.has(id);
-  });
+  for (const member of newData) {
+    const id = getMemberId(member);
+    if (id) {
+      validNewData.push({ id, member });
+    } else {
+      invalidRecords.push(member);
+    }
+  }
+
+  const masterMemberIds = new Set(
+    masterData.map(getMemberId).filter((id): id is string => id !== null),
+  );
+  const newMemberIds = new Set(validNewData.map((item) => item.id));
+
+  const newMembers: MemberRecordA[] = validNewData
+    .filter((item) => !masterMemberIds.has(item.id))
+    .map((item) => item.member);
 
   const missingMembers: MemberRecordA[] = masterData.filter((m) => {
     const id = getMemberId(m);
@@ -172,6 +187,7 @@ export const reconcileMembers = (
   return {
     newMembers,
     missingMembers,
+    invalidRecords,
   };
 };
 

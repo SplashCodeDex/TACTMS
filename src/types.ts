@@ -119,9 +119,17 @@ export interface ReconciliationEntry {
   membershipId: string;
 }
 
+export interface PotentialMatch {
+  newMember: MemberRecordA;
+  existingMember: MemberRecordA;
+  score: number; // Lower score is a better match
+}
+
 export interface MembershipReconciliationReport {
-  newMembers: MemberRecordA[]; // Changed to hold full records
-  missingMembers: MemberRecordA[]; // Changed to hold full records for "keep" functionality
+  newMembers: MemberRecordA[];
+  missingMembers: MemberRecordA[];
+  invalidRecords: MemberRecordA[];
+  potentialMatches: PotentialMatch[];
   previousFileDate: string;
 }
 

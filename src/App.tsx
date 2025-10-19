@@ -647,6 +647,26 @@ const App: React.FC = () => {
     if (masterList?.data) {
       const report = reconcileMembers(data, masterList.data);
 
+      // First, check for records that failed validation
+      if (report.invalidRecords.length > 0) {
+        toast.error(
+          `${report.invalidRecords.length} records have data quality issues.`,
+          {
+            description:
+              "Each record must have a unique Membership Number. Please fix the source file and re-upload.",
+          },
+        );
+        setReconciliationReport({
+          newMembers: [],
+          missingMembers: [],
+          invalidRecords: report.invalidRecords,
+          previousFileDate: `Invalid records found in ${sourceFileName}`,
+        });
+        setIsReconciliationModalOpen(true);
+        // Stop further processing if there are invalid records
+        return;
+      }
+
       if (report.newMembers.length > 0) {
         const now = new Date().toISOString();
 
@@ -677,7 +697,9 @@ const App: React.FC = () => {
         setReconciliationReport({
           ...report,
           newMembers: enrichedNewMembers,
-          previousFileDate: `Master List (updated ${new Date(masterList.lastUpdated).toLocaleDateString()})`,
+          previousFileDate: `Master List (updated ${new Date(
+            masterList.lastUpdated,
+          ).toLocaleDateString()})`,
         });
         setSoulsWonCount(report.newMembers.length);
         setIsReconciliationModalOpen(true);
@@ -685,7 +707,9 @@ const App: React.FC = () => {
         setReconciliationReport({
           ...report,
           newMembers: [],
-          previousFileDate: `Master List (updated ${new Date(masterList.lastUpdated).toLocaleDateString()})`,
+          previousFileDate: `Master List (updated ${new Date(
+            masterList.lastUpdated,
+          ).toLocaleDateString()})`,
         });
         setIsReconciliationModalOpen(true);
         setSoulsWonCount(0);
@@ -693,6 +717,26 @@ const App: React.FC = () => {
         setSoulsWonCount(0);
       }
     } else {
+      // This logic handles the very first upload for an assembly
+      const report = reconcileMembers(data, []); // Check for invalid records even on first upload
+      if (report.invalidRecords.length > 0) {
+        toast.error(
+          `${report.invalidRecords.length} records have data quality issues.`,
+          {
+            description:
+              "Each record must have a unique Membership Number. Please fix the source file and re-upload.",
+          },
+        );
+        setReconciliationReport({
+          newMembers: [],
+          missingMembers: [],
+          invalidRecords: report.invalidRecords,
+          previousFileDate: `Invalid records found in ${sourceFileName}`,
+        });
+        setIsReconciliationModalOpen(true);
+        return;
+      }
+
       setSoulsWonCount(data.length);
       toast.success(
         `${data.length} members added as the first master list for ${assembly}.`,

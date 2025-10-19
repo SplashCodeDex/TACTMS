@@ -13,6 +13,18 @@ import {
   Check,
   Database,
   LayoutDashboard,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Settings,
+  Users,
+  FileText,
+  BarChart3,
+  Heart,
+  Calendar,
+  Music,
+  BookOpen,
+  Shield,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
@@ -20,6 +32,47 @@ import { NewsletterSignup } from "./NewsletterSignup";
 import { GoogleUserProfile } from "../types";
 import { THEME_OPTIONS } from "../constants";
 import SyncStatusIndicator from "./SyncStatusIndicator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
+import { Badge } from "./ui/badge";
+import { Separator } from "./ui/separator";
+import { ScrollArea } from "./ui/scroll-area";
+
+// Custom hook for responsive design
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = React.useState(false);
+
+  React.useEffect(() => {
+    const media = window.matchMedia(query);
+    setMatches(media.matches);
+
+    const listener = (event: MediaQueryListEvent) => setMatches(event.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [query]);
+
+  return matches;
+};
+
+// Custom hook for reduced motion preferences
+const useReducedMotion = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(media.matches);
+
+    const listener = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, []);
+
+  return prefersReducedMotion;
+};
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 type ThemeOption = (typeof THEME_OPTIONS)[0];
@@ -39,6 +92,7 @@ interface SidebarProps {
   isConfigured: boolean;
   openCommandPalette: () => void;
   isOnline: boolean;
+  onClose?: () => void; // For mobile overlay close
 }
 
 const itemVariants = {
@@ -87,6 +141,227 @@ const NavItem: React.FC<{
       </AnimatePresence>
     </Link>
   );
+};
+
+const NavigationGroup: React.FC<{
+  title: string;
+  icon: React.ElementType;
+  items: Array<{ icon: React.ElementType; label: string; to: string }>;
+  isCollapsed: boolean;
+  defaultExpanded?: boolean;
+}> = ({ title, icon: GroupIcon, items, isCollapsed, defaultExpanded = true }) => {
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+
+  if (isCollapsed) {
+    // In collapsed mode, show group icon that expands to show all items
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center justify-center p-3 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+          title={`${title} (${items.length} items)`}
+        >
+          <GroupIcon size={20} />
+        </button>
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-1 pb-2"
+            >
+              {items.map((item, index) => (
+                <NavItem
+                  key={`${item.to}-${index}`}
+                  icon={item.icon}
+                  label={item.label}
+                  to={item.to}
+                  isCollapsed={false}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // In expanded mode, show collapsible group
+  return (
+    <div className="space-y-1">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center px-4 py-2 rounded-lg text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+      >
+        <GroupIcon size={18} className="mr-3 flex-shrink-0" />
+        <span className="flex-grow text-left">{title}</span>
+        {isExpanded ? (
+          <ChevronUp size={16} className="flex-shrink-0" />
+        ) : (
+          <ChevronDown size={16} className="flex-shrink-0" />
+        )}
+      </button>
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="ml-6 space-y-1"
+          >
+            {items.map((item, index) => (
+              <NavItem
+                key={`${item.to}-${index}`}
+                icon={item.icon}
+                label={item.label}
+                to={item.to}
+                isCollapsed={false}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const SecondaryMenu: React.FC<{
+  title: string;
+  items: Array<{ icon: React.ElementType; label: string; to: string; badge?: string }>;
+  isCollapsed: boolean;
+}> = ({ title, items, isCollapsed }) => {
+  const [isVisible, setIsVisible] = React.useState(false);
+
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="space-y-1">
+            <button
+              onClick={() => setIsVisible(!isVisible)}
+              className="w-full flex items-center justify-center p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+              aria-label={`${title} menu`}
+            >
+              <Settings size={18} />
+            </button>
+            <AnimatePresence>
+              {isVisible && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-1 pb-2"
+                >
+                  {items.map((item, index) => (
+                    <Tooltip key={`${item.to}-${index}`}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          to={item.to}
+                          className="w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+                          aria-label={item.label}
+                        >
+                          <item.icon size={16} />
+                          {item.badge && (
+                            <Badge variant="secondary" className="ml-1 text-xs px-1 py-0 h-4">
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{item.label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <p>{title} features</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => setIsVisible(!isVisible)}
+            className="w-full flex items-center px-4 py-2 rounded-lg text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+            aria-label={`${title} menu`}
+          >
+            <Settings size={16} className="mr-3" />
+            <span className="flex-grow text-left">{title}</span>
+            {isVisible ? (
+              <ChevronUp size={14} />
+            ) : (
+              <ChevronDown size={14} />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <p>Additional church features and tools</p>
+        </TooltipContent>
+      </Tooltip>
+
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="ml-4 space-y-1"
+          >
+            {items.map((item, index) => (
+              <Tooltip key={`${item.to}-${index}`}>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={item.to}
+                    className="w-full flex items-center px-3 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+                    aria-label={item.label}
+                  >
+                    <item.icon size={16} className="mr-3 flex-shrink-0" />
+                    <span className="flex-grow">{item.label}</span>
+                    {item.badge && (
+                      <Badge variant="secondary" className="text-xs">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{item.label} - {getFeatureDescription(item.label)}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Helper function for feature descriptions
+const getFeatureDescription = (feature: string): string => {
+  const descriptions: Record<string, string> = {
+    "Events": "Manage church events and calendar",
+    "Worship": "Worship team resources and planning",
+    "Bible Study": "Study materials and group management",
+    "Prayer Requests": "Community prayer coordination",
+    "Small Groups": "Small group directories and schedules",
+    "Bulletin": "Weekly bulletin and announcements",
+    "Giving Trends": "Financial trends and analytics",
+  };
+  return descriptions[feature] || "Additional church feature";
 };
 
 const GoogleSyncControl: React.FC<
@@ -317,7 +592,23 @@ const Sidebar: React.FC<SidebarProps> = ({
   setAccentColor,
   openCommandPalette,
   isOnline,
+  onClose,
 }) => {
+  // Responsive design hooks
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isTablet = useMediaQuery("(max-width: 1024px)");
+  const prefersReducedMotion = useReducedMotion();
+
+  // Dynamic width based on screen size
+  const getSidebarWidth = () => {
+    if (isMobile) return "100vw"; // Full overlay on mobile
+    if (isTablet && !isCollapsed) return "14rem"; // Narrower on tablet
+    return isCollapsed ? "6.5rem" : "17rem";
+  };
+
+  // Mobile overlay behavior
+  const isMobileOverlay = isMobile && !isCollapsed;
+
   const logoSrc = isCollapsed
     ? theme === "dark"
       ? `${import.meta.env.BASE_URL}img/DarkLogoCollapsed.svg`
@@ -326,32 +617,67 @@ const Sidebar: React.FC<SidebarProps> = ({
       ? `${import.meta.env.BASE_URL}img/DarkLogoExpanded.svg`
       : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`;
 
+  // Animation config based on motion preferences
+  const animationProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: false,
+        animate: { width: getSidebarWidth() },
+        transition: { duration: 0.3, ease: "easeInOut" }
+      };
+
   return (
-    <motion.aside
-      className={`sidebar glassmorphism-bg ${isCollapsed ? "collapsed" : ""}`}
-      initial={false}
-      animate={{
-        width: isCollapsed ? "6.5rem" : "17rem",
-      }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-    >
+    <TooltipProvider>
+      <>
+        {/* Mobile Overlay Backdrop */}
+        {isMobileOverlay && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+        )}
+
+        <motion.aside
+          className={`sidebar glassmorphism-bg ${
+            isCollapsed ? "collapsed" : ""
+          } ${isMobileOverlay ? "fixed z-50 h-full" : "relative"}`}
+          {...animationProps}
+        >
       <div
         className={`flex flex-col items-center mb-10 ${isCollapsed ? "w-full" : ""}`}
       >
+        {/* Mobile Close Button */}
+        {isMobile && (
+          <div className="self-end mr-4 mb-2">
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="sm"
+              className="p-2 h-auto"
+              aria-label="Close sidebar"
+            >
+              <X size={20} />
+            </Button>
+          </div>
+        )}
+
         <motion.img
           src={logoSrc}
           alt="TACTMS Logo"
-          variants={logoVariants}
+          variants={prefersReducedMotion ? {} : logoVariants}
           animate={isCollapsed ? "collapsed" : "expanded"}
           className="w-auto"
         />
         <AnimatePresence>
           {!isCollapsed && (
             <motion.p
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            initial={prefersReducedMotion ? {} : { opacity: 0, height: 0, marginTop: 0 }}
             animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            exit={prefersReducedMotion ? {} : { opacity: 0, height: 0, marginTop: 0 }}
+            transition={prefersReducedMotion ? {} : { duration: 0.2, ease: "easeInOut" }}
             className="text-xs text-[var(--text-muted)] text-center"
             >
               TACTMS - The Apostolic Church Tithe Made Simple
@@ -360,87 +686,180 @@ const Sidebar: React.FC<SidebarProps> = ({
         </AnimatePresence>
       </div>
 
-      <nav
-        className={`flex-grow space-y-2 ${isCollapsed ? "flex flex-col items-center" : ""}`}
-      >        <NavItem
-          icon={LayoutDashboard}
-          label="Dashboard"
-          to="/"
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={Cpu}
-          label="Tithe Processor"
-          to="/processor"
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={Database}
-          label="Member Database"
-          to="/database"
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={Star}
-          label="Favorites"
-          to="/favorites"
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={PieChart}
-          label="Reports"
-          to="/reports"
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={BotMessageSquare}
-          label="AI Analytics"
-          to="/analytics"
-          isCollapsed={isCollapsed}
-        />
-      </nav>
+        <ScrollArea className="flex-grow">
+          <nav
+            className={`space-y-3 px-3 ${isCollapsed ? "flex flex-col items-center" : ""}`}
+            role="navigation"
+            aria-label="Main navigation"
+          >
+            {/* Core Section - Standalone */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <NavItem
+                    icon={LayoutDashboard}
+                    label="Dashboard"
+                    to="/"
+                    isCollapsed={isCollapsed}
+                  />
+                </div>
+              </TooltipTrigger>
+              {!isCollapsed && (
+                <TooltipContent side="right">
+                  <p>Main dashboard with overview and quick actions</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+
+            {/* Separator */}
+            {!isCollapsed && <Separator className="my-2" />}
+
+            {/* Management Group */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full">
+                  <NavigationGroup
+                    title="Management"
+                    icon={Shield}
+                    isCollapsed={isCollapsed}
+                    items={[
+                      { icon: Cpu, label: "Tithe Processor", to: "/processor" },
+                      { icon: Database, label: "Member Database", to: "/database" },
+                      { icon: PieChart, label: "Reports", to: "/reports" },
+                    ]}
+                  />
+                </div>
+              </TooltipTrigger>
+              {!isCollapsed && (
+                <TooltipContent side="right">
+                  <p>Core church management tools</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+
+            {/* Advanced Group */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full">
+                  <NavigationGroup
+                    title="Advanced"
+                    icon={BotMessageSquare}
+                    isCollapsed={isCollapsed}
+                    items={[
+                      { icon: Star, label: "Favorites", to: "/favorites" },
+                      { icon: BotMessageSquare, label: "AI Analytics", to: "/analytics" },
+                    ]}
+                  />
+                </div>
+              </TooltipTrigger>
+              {!isCollapsed && (
+                <TooltipContent side="right">
+                  <p>Advanced features and AI-powered insights</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+
+            {/* Separator */}
+            {!isCollapsed && <Separator className="my-2" />}
+
+            {/* Secondary Menu - Additional Features */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full">
+                  <SecondaryMenu
+                    title="More"
+                    isCollapsed={isCollapsed}
+                    items={[
+                      { icon: Calendar, label: "Events", to: "/events", badge: "New" },
+                      { icon: Music, label: "Worship", to: "/worship" },
+                      { icon: BookOpen, label: "Bible Study", to: "/biblestudy" },
+                      { icon: Heart, label: "Prayer Requests", to: "/prayers" },
+                      { icon: Users, label: "Small Groups", to: "/groups" },
+                      { icon: FileText, label: "Bulletin", to: "/bulletin" },
+                      { icon: BarChart3, label: "Giving Trends", to: "/giving" },
+                    ]}
+                  />
+                </div>
+              </TooltipTrigger>
+              {!isCollapsed && (
+                <TooltipContent side="right">
+                  <p>Additional church features and tools</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </nav>
+        </ScrollArea>
 
       <div className={`mt-auto flex-shrink-0 ${isCollapsed ? "w-full" : ""}`}>
+        {/* Separator */}
+        {!isCollapsed && <Separator className="my-2" />}
+
         {/* Newsletter Signup - Always visible when collapsed */}
         <div className={`mb-4 ${isCollapsed ? "flex justify-center" : "px-2"}`}>
-          <NewsletterSignup
-            onSubscribe={(email) => {
-              console.log("Newsletter signup:", email);
-              // Here you would typically send the email to your backend
-              // For now, we'll just log it
-            }}
-            buttonText="Subscribe"
-            placeholder="Get church updates..."
-            isCollapsed={isCollapsed}
-          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="w-full">
+                <NewsletterSignup
+                  onSubscribe={async (email) => {
+                    console.log("Newsletter signup:", email);
+                  }}
+                  buttonText="Subscribe"
+                  placeholder="Get church updates..."
+                  isCollapsed={isCollapsed}
+                />
+              </div>
+            </TooltipTrigger>
+            {!isCollapsed && (
+              <TooltipContent side="right">
+                <p>Subscribe to church newsletter and updates</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
 
         {/* Theme Controls - Always visible when collapsed */}
         <div className={`mb-4 ${isCollapsed ? "flex justify-center" : ""}`}>
-          <ThemeControl
-            theme={theme}
-            setTheme={setTheme}
-            accentColor={accentColor}
-            setAccentColor={setAccentColor}
-            isCollapsed={isCollapsed}
-          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="w-full">
+                <ThemeControl
+                  theme={theme}
+                  setTheme={setTheme}
+                  accentColor={accentColor}
+                  setAccentColor={setAccentColor}
+                  isCollapsed={isCollapsed}
+                />
+              </div>
+            </TooltipTrigger>
+            {!isCollapsed && (
+              <TooltipContent side="right">
+                <p>Customize appearance and theme settings</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
 
-        <div
-          className={`flex justify-center items-center gap-2 mb-4 ${isCollapsed ? "w-full" : ""}`}
-        >
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-subtle-accent)] transition-all flex-grow"
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {isCollapsed ? (
-              <ChevronRight size={20} className="mx-auto" />
-            ) : (
-              <ChevronLeft size={20} className="mx-auto" />
-            )}
-          </button>
-        </div>
+        {/* Collapse/Expand Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`flex justify-center items-center gap-2 mb-4 ${isCollapsed ? "w-full" : ""}`}>
+              <button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-subtle-accent)] transition-all flex-grow"
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {isCollapsed ? (
+                  <ChevronRight size={20} className="mx-auto" />
+                ) : (
+                  <ChevronLeft size={20} className="mx-auto" />
+                )}
+              </button>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{isCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Google Sync Control - Only when not collapsed */}
         <AnimatePresence>
@@ -452,16 +871,25 @@ const Sidebar: React.FC<SidebarProps> = ({
               exit="hidden"
               className="mb-4 w-full"
             >
-              <GoogleSyncControl
-                isCollapsed={isCollapsed}
-                isLoggedIn={isLoggedIn}
-                userProfile={userProfile}
-                syncStatus={syncStatus}
-                signIn={signIn}
-                signOut={signOut}
-                isConfigured={isConfigured}
-                isOnline={isOnline}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-full">
+                    <GoogleSyncControl
+                      isCollapsed={isCollapsed}
+                      isLoggedIn={isLoggedIn}
+                      userProfile={userProfile}
+                      syncStatus={syncStatus}
+                      signIn={signIn}
+                      signOut={signOut}
+                      isConfigured={isConfigured}
+                      isOnline={isOnline}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Google account sync and cloud backup</p>
+                </TooltipContent>
+              </Tooltip>
             </motion.div>
           )}
         </AnimatePresence>
@@ -473,26 +901,43 @@ const Sidebar: React.FC<SidebarProps> = ({
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="text-center space-y-3"
+              className="text-center space-y-2"
             >
-              <button
-                onClick={openCommandPalette}
-                className="w-full text-center text-xs text-[var(--text-muted)] p-2 rounded-md hover:bg-[var(--bg-card)] transition-colors"
-              >
-                Press <span className="kbd-hint">⌘K</span> to search
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={openCommandPalette}
+                    className="w-full text-center text-xs text-[var(--text-muted)] p-2 rounded-md hover:bg-[var(--bg-card)] transition-colors"
+                    aria-label="Open command palette"
+                  >
+                    Press <kbd className="px-1.5 py-0.5 bg-[var(--bg-card)] rounded text-xs">⌘K</kbd> to search
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Quick search and command palette</p>
+                </TooltipContent>
+              </Tooltip>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Copyright/Watermark - Always visible */}
-        <div className={`${isCollapsed ? "text-center px-2" : "text-center"}`}>
-          <p className="text-xs text-[var(--text-muted)]">
-            &copy; {new Date().getFullYear()} Dexify by DexignMasters
-          </p>
+        <div className={`${isCollapsed ? "text-center" : "text-center"}`}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-xs text-[var(--text-muted)] cursor-help">
+                &copy; {new Date().getFullYear()} TACTMS by DexignMasters
+              </p>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>The Apostolic Church Tithe Management System</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
-    </motion.aside>
+      </motion.aside>
+      </>
+    </TooltipProvider>
   );
 };
 

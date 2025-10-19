@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Square,
   Inbox,
+  AlertTriangle,
 } from "lucide-react";
 
 interface ReconciliationListProps {
@@ -146,88 +147,120 @@ const MembershipReconciliationModal: React.FC<
             .
           </p>
         </div>
-        <div className="flex flex-col md:flex-row gap-4">
-          <ReconciliationList
-            title="New Members (Souls Won)"
-            icon={<UserPlus size={20} className="text-[var(--success-text)]" />}
-            members={report.newMembers}
-            emptyText="No new members found."
-          />
-          <div className="bg-[var(--bg-card-subtle-accent)] p-4 rounded-lg flex-1">
-            <h3 className="font-semibold text-md mb-3 flex items-center text-[var(--text-primary)]">
-              <UserMinus size={20} className="mr-2 text-[var(--danger-text)]" />
-              Missing Members ({report.missingMembers.length})
-            </h3>
-            {report.missingMembers.length > 0 ? (
-              <>
-                <ul className="space-y-1.5 text-sm max-h-48 overflow-y-auto pr-2">
-                  {report.missingMembers.map((member) => (
-                    <li
-                      key={member["No."]}
-                      className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)] flex items-center gap-3 hover:bg-[var(--border-color)]/30 transition-colors"
-                    >
-                      <button
-                        onClick={() => {
-                          if (member["No."]) {
-                            handleToggleSelection(member["No."]);
-                          }
-                        }}
-                        className="flex-shrink-0 p-1"
+        <div className="flex flex-col gap-4">
+          {report.invalidRecords && report.invalidRecords.length > 0 && (
+            <div className="border-2 border-red-500/50 rounded-lg">
+              <ReconciliationList
+                title="Invalid Records (Action Required)"
+                icon={
+                  <AlertTriangle
+                    size={20}
+                    className="text-[var(--danger-text)]"
+                  />
+                }
+                members={report.invalidRecords}
+                emptyText="No invalid records."
+              />
+              <p className="text-xs text-center pb-2 text-[var(--danger-text)] px-4">
+                These records are missing a Membership Number and could not be
+                processed. Please correct the source file and re-upload.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col md:flex-row gap-4">
+            <ReconciliationList
+              title="New Members (Souls Won)"
+              icon={
+                <UserPlus size={20} className="text-[var(--success-text)]" />
+              }
+              members={report.newMembers}
+              emptyText="No new members found."
+            />
+            <div className="bg-[var(--bg-card-subtle-accent)] p-4 rounded-lg flex-1">
+              <h3 className="font-semibold text-md mb-3 flex items-center text-[var(--text-primary)]">
+                <UserMinus
+                  size={20}
+                  className="mr-2 text-[var(--danger-text)]"
+                />
+                Missing Members ({report.missingMembers.length})
+              </h3>
+              {report.missingMembers.length > 0 ? (
+                <>
+                  <ul className="space-y-1.5 text-sm max-h-48 overflow-y-auto pr-2">
+                    {report.missingMembers.map((member) => (
+                      <li
+                        key={member["No."]}
+                        className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)] flex items-center gap-3 hover:bg-[var(--border-color)]/30 transition-colors"
                       >
-                        {member["No."] && selectedMissingIds.has(member["No."]) ? (
-                          <CheckSquare
-                            size={20}
-                            className="text-[var(--primary-accent-start)]"
-                          />
-                        ) : (
-                          <Square
-                            size={20}
-                            className="text-[var(--text-muted)]"
-                          />
-                        )}
-                      </button>
-                      <div className="flex-grow overflow-hidden">
-                        <p className="font-medium text-[var(--text-primary)] truncate">
-                          {`${member.Title || ""} ${member["First Name"] || ""} ${member.Surname || ""} ${member["Other Names"] || ""}`
-                            .replace(/\s+/g, " ")
-                            .trim() || "Unnamed Member"}
-                        </p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          ID:{" "}
-                          {member["Membership Number"] ||
-                            member["Old Membership Number"] ||
-                            "N/A"}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleToggleSelectAll}
-                  >
-                    {selectedMissingIds.size === report.missingMembers.length
-                      ? "Deselect All"
-                      : "Select All"}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleKeepSelected}
-                    disabled={selectedMissingIds.size === 0}
-                  >
-                    Keep Selected in List ({selectedMissingIds.size})
-                  </Button>
+                        <button
+                          onClick={() => {
+                            if (member["No."]) {
+                              handleToggleSelection(member["No."]);
+                            }
+                          }}
+                          className="flex-shrink-0 p-1"
+                        >
+                          {member["No."] &&
+                          selectedMissingIds.has(member["No."]) ? (
+                            <CheckSquare
+                              size={20}
+                              className="text-[var(--primary-accent-start)]"
+                            />
+                          ) : (
+                            <Square
+                              size={20}
+                              className="text-[var(--text-muted)]"
+                            />
+                          )}
+                        </button>
+                        <div className="flex-grow overflow-hidden">
+                          <p className="font-medium text-[var(--text-primary)] truncate">
+                            {`${member.Title || ""} ${
+                              member["First Name"] || ""
+                            } ${member.Surname || ""} ${
+                              member["Other Names"] || ""
+                            }`
+                              .replace(/\s+/g, " ")
+                              .trim() || "Unnamed Member"}
+                          </p>
+                          <p className="text-xs text-[var(--text-muted)]">
+                            ID:{" "}
+                            {member["Membership Number"] ||
+                              member["Old Membership Number"] ||
+                              "N/A"}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleSelectAll}
+                    >
+                      {selectedMissingIds.size ===
+                      report.missingMembers.length
+                        ? "Deselect All"
+                        : "Select All"}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleKeepSelected}
+                      disabled={selectedMissingIds.size === 0}
+                    >
+                      Keep Selected in List ({selectedMissingIds.size})
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-4 flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
+                  <Inbox size={24} className="mb-2 opacity-50" />
+                  <p className="text-sm">No missing members.</p>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-4 flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
-                <Inbox size={24} className="mb-2 opacity-50" />
-                <p className="text-sm">No missing members.</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
