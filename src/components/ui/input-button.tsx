@@ -1,196 +1,243 @@
 "use client";
 
 import * as React from "react";
-import { motion, Transition } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Button } from "./button";
+import { Input } from "./input";
+import { Check, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface InputButtonContextValue {
   showInput: boolean;
   setShowInput: (show: boolean) => void;
-  transition: Transition;
-  id: string;
+  isLoading: boolean;
+  isSuccess: boolean;
 }
 
 const InputButtonContext = React.createContext<InputButtonContextValue | undefined>(
   undefined
 );
 
+const useInputButton = () => {
+  const context = React.useContext(InputButtonContext);
+  if (!context) {
+    throw new Error("InputButton components must be used within InputButtonProvider");
+  }
+  return context;
+};
+
 interface InputButtonProviderProps {
   children: React.ReactNode;
-  showInput?: boolean;
-  onShowInputChange?: (show: boolean) => void;
-  transition?: Transition;
+  showInput: boolean;
+  setShowInput: (show: boolean) => void;
 }
 
 const InputButtonProvider: React.FC<InputButtonProviderProps> = ({
   children,
-  showInput: controlledShowInput,
-  onShowInputChange,
-  transition = { type: "spring", stiffness: 300, damping: 20 },
+  showInput,
+  setShowInput,
 }) => {
-  const [internalShowInput, setInternalShowInput] = React.useState(false);
-  const id = React.useId();
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
 
-  const showInput = controlledShowInput ?? internalShowInput;
-  const setShowInput = React.useCallback((show: boolean) => {
-    if (controlledShowInput === undefined) {
-      setInternalShowInput(show);
-    }
-    onShowInputChange?.(show);
-  }, [controlledShowInput, onShowInputChange]);
+  const value = React.useMemo(
+    () => ({
+      showInput,
+      setShowInput,
+      isLoading,
+      isSuccess,
+    }),
+    [showInput, setShowInput, isLoading, isSuccess]
+  );
 
   return (
-    <InputButtonContext.Provider value={{ showInput, setShowInput, transition, id }}>
-      <div className="relative inline-flex items-center">
-        {children}
-      </div>
+    <InputButtonContext.Provider value={value}>
+      {children}
     </InputButtonContext.Provider>
   );
 };
 
-interface InputButtonActionProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface InputButtonProps {
   children: React.ReactNode;
+  className?: string;
+}
+
+const InputButton: React.FC<InputButtonProps> = ({ children, className }) => {
+  return (
+    <div className={cn("relative", className)}>
+      {children}
+    </div>
+  );
+};
+
+interface InputButtonActionProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  className?: string;
 }
 
 const InputButtonAction: React.FC<InputButtonActionProps> = ({
   children,
-  className,
   onClick,
-  ...props
+  className,
 }) => {
-  const context = React.useContext(InputButtonContext);
-  if (!context) {
-    throw new Error("InputButtonAction must be used within InputButtonProvider");
-  }
-
-  const { setShowInput, transition, id } = context;
-
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    setShowInput(true);
-    onClick?.(e);
-  };
+  const { showInput, setShowInput } = useInputButton();
 
   return (
-    <motion.button
-      layoutId={`${id}-button`}
-      transition={transition}
-      className={cn(
-        "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-        "bg-primary text-primary-foreground hover:bg-primary/90",
-        "h-10 px-4 py-2",
-        className
+    <AnimatePresence mode="wait">
+      {!showInput && (
+        <motion.div
+          key="action"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+        >
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => {
+              setShowInput(true);
+              onClick?.();
+            }}
+            className={cn("w-full", className)}
+          >
+            {children}
+          </Button>
+        </motion.div>
       )}
-      onClick={handleClick}
-      {...props}
-    >
-      {children}
-    </motion.button>
+    </AnimatePresence>
   );
 };
 
-interface InputButtonSubmitProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children?: React.ReactNode;
-  icon?: React.ElementType;
+interface InputButtonSubmitProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+  type?: "button" | "submit" | "reset";
 }
 
 const InputButtonSubmit: React.FC<InputButtonSubmitProps> = ({
   children,
-  icon: Icon = () => null,
+  onClick,
+  disabled,
   className,
-  ...props
+  type = "submit",
 }) => {
-  const context = React.useContext(InputButtonContext);
-  if (!context) {
-    throw new Error("InputButtonSubmit must be used within InputButtonProvider");
-  }
-
-  const { showInput, setShowInput, transition, id } = context;
-
-  if (!showInput) {
-    return (
-      <motion.div
-        layoutId={`${id}-icon`}
-        transition={transition}
-        className={cn(
-          "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-          "bg-primary text-primary-foreground hover:bg-primary/90",
-          "h-10 w-10",
-          className
-        )}
-      >
-        <Icon size={16} />
-      </motion.div>
-    );
-  }
+  const { showInput, isLoading, isSuccess } = useInputButton();
 
   return (
-    <motion.button
-      layoutId={`${id}-button`}
-      transition={transition}
-      className={cn(
-        "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
-        "bg-primary text-primary-foreground hover:bg-primary/90",
-        "h-10 px-4 py-2",
-        className
+    <AnimatePresence mode="wait">
+      {showInput && (
+        <motion.div
+          key="submit"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+        >
+          <Button
+            type={type}
+            variant="default"
+            size="sm"
+            disabled={disabled || isLoading || isSuccess}
+            onClick={onClick}
+            className={cn(
+              "shrink-0",
+              (isLoading || isSuccess) && "aspect-square px-0",
+              className
+            )}
+          >
+            <AnimatePresence mode="wait">
+              {isSuccess ? (
+                <motion.span
+                  key="success"
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Check className="h-4 w-4" />
+                </motion.span>
+              ) : isLoading ? (
+                <motion.span
+                  key="loading"
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="text"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {children}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </Button>
+        </motion.div>
       )}
-      {...props}
-    >
-      {children || <Icon size={16} />}
-    </motion.button>
+    </AnimatePresence>
   );
 };
 
-interface InputButtonInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
-  onChange?: (value: string) => void;
+interface InputButtonInputProps {
+  type?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  className?: string;
 }
 
 const InputButtonInput: React.FC<InputButtonInputProps> = ({
-  className,
+  type = "email",
+  placeholder = "your-email@example.com",
+  value,
   onChange,
-  ...props
+  disabled,
+  autoFocus = true,
+  className,
 }) => {
-  const context = React.useContext(InputButtonContext);
-  if (!context) {
-    throw new Error("InputButtonInput must be used within InputButtonProvider");
-  }
-
-  const { showInput, transition, id } = context;
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    if (showInput && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [showInput]);
-
-  if (!showInput) return null;
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange?.(e.target.value);
-    props.onChange?.(e);
-  };
+  const { showInput, isLoading, isSuccess } = useInputButton();
 
   return (
-    <motion.input
-      ref={inputRef}
-      layoutId={`${id}-input`}
-      transition={transition}
-      className={cn(
-        "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-        "ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium",
-        "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2",
-        "focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        className
+    <AnimatePresence>
+      {showInput && (
+        <motion.div
+          key="input"
+          initial={{ opacity: 0, width: 0 }}
+          animate={{ opacity: 1, width: "auto" }}
+          exit={{ opacity: 0, width: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex-1 min-w-0"
+        >
+          <Input
+            type={type}
+            placeholder={placeholder}
+            value={value}
+            onChange={onChange}
+            disabled={disabled || isLoading || isSuccess}
+            autoFocus={autoFocus}
+            className={cn("w-full", className)}
+          />
+        </motion.div>
       )}
-      onChange={handleChange}
-      {...props}
-    />
+    </AnimatePresence>
   );
 };
 
 export {
+  InputButton,
   InputButtonProvider,
   InputButtonAction,
   InputButtonSubmit,
   InputButtonInput,
+  useInputButton,
 };

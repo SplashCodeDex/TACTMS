@@ -209,19 +209,39 @@ const ThemeControl: React.FC<
   >
 > = ({ theme, setTheme, accentColor, setAccentColor, isCollapsed }) => {
   return (
-    <AnimatePresence>
-      {!isCollapsed && (
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
-          variants={itemVariants}
-          className="p-3 bg-[var(--bg-card)] rounded-lg"
-        >
-     <h4 className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+    <div className={`${isCollapsed ? "flex flex-col items-center space-y-2" : "p-3 bg-[var(--bg-card)] rounded-lg"}`}>
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.h4
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            variants={itemVariants}
+            className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-3"
+          >
             Appearance
-          </h4>
-          <div className="flex items-center space-x-2 p-1 bg-[var(--input-bg)] rounded-xl shadow-inner mb-3">
+          </motion.h4>
+        )}
+      </AnimatePresence>
+
+      {/* Theme Toggle - Show only active theme when collapsed */}
+      <div className={`${isCollapsed ? "flex justify-center" : "flex items-center space-x-2 p-1 bg-[var(--input-bg)] rounded-xl shadow-inner mb-3"}`}>
+        {isCollapsed ? (
+          // Show only active theme icon when collapsed
+          <button
+            className="w-11 h-11 p-0 justify-center rounded-lg text-sm font-medium transition-colors flex items-center"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
+            {theme === "dark" ? (
+              <Moon size={20} />
+            ) : (
+              <Sun size={20} />
+            )}
+          </button>
+        ) : (
+          // Show both options when expanded
+          <>
             <button
               className={`w-full justify-center py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-1 ${theme === "dark" ? "bg-[var(--primary-accent-start)]/40 text-white" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}
               onClick={() => setTheme("dark")}
@@ -236,35 +256,49 @@ const ThemeControl: React.FC<
             >
               <Sun size={16} /> Light
             </button>
-          </div>
-          <div className="flex items-center justify-around">
-            {THEME_OPTIONS.map((option) => (
-              <button
-                key={option.key}
-                title={option.name}
-                onClick={() => setAccentColor(option)}
-                className="w-7 h-7 rounded-full transition-all duration-200 border-2"
-                style={{
-                  backgroundColor: `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`,
-                  borderColor:
-                    accentColor.key === option.key
-                      ? `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`
-                      : "transparent",
-                  boxShadow:
-                    accentColor.key === option.key
-                      ? `0 0 0 2px var(--bg-card)`
-                      : "none",
-                }}
-              >
-                {accentColor.key === option.key && (
-                  <Check size={16} className="text-white/80 mx-auto" />
-                )}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </div>
+
+      {/* Accent Color Picker - Show only selected when collapsed */}
+      <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-around"}`}>
+        {isCollapsed ? (
+          // Show only selected color when collapsed
+          <div
+            className="w-8 h-8 rounded-full border-2 border-[var(--bg-card)]"
+            style={{
+              backgroundColor: `hsl(${accentColor.values.h}, ${accentColor.values.s}%, ${accentColor.values.l}%)`,
+            }}
+            title={`Current accent: ${accentColor.name}`}
+          />
+        ) : (
+          // Show all colors when expanded
+          THEME_OPTIONS.map((option) => (
+            <button
+              key={option.key}
+              title={option.name}
+              onClick={() => setAccentColor(option)}
+              className="w-7 h-7 rounded-full transition-all duration-200 border-2"
+              style={{
+                backgroundColor: `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`,
+                borderColor:
+                  accentColor.key === option.key
+                    ? `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`
+                    : "transparent",
+                boxShadow:
+                  accentColor.key === option.key
+                    ? `0 0 0 2px var(--bg-card)`
+                    : "none",
+              }}
+            >
+              {accentColor.key === option.key && (
+                <Check size={16} className="text-white/80 mx-auto" />
+              )}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -367,6 +401,31 @@ const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <div className={`mt-auto flex-shrink-0 ${isCollapsed ? "w-full" : ""}`}>
+        {/* Newsletter Signup - Always visible when collapsed */}
+        <div className={`mb-4 ${isCollapsed ? "flex justify-center" : "px-2"}`}>
+          <NewsletterSignup
+            onSubscribe={(email) => {
+              console.log("Newsletter signup:", email);
+              // Here you would typically send the email to your backend
+              // For now, we'll just log it
+            }}
+            buttonText="Subscribe"
+            placeholder="Get church updates..."
+            isCollapsed={isCollapsed}
+          />
+        </div>
+
+        {/* Theme Controls - Always visible when collapsed */}
+        <div className={`mb-4 ${isCollapsed ? "flex justify-center" : ""}`}>
+          <ThemeControl
+            theme={theme}
+            setTheme={setTheme}
+            accentColor={accentColor}
+            setAccentColor={setAccentColor}
+            isCollapsed={isCollapsed}
+          />
+        </div>
+
         <div
           className={`flex justify-center items-center gap-2 mb-4 ${isCollapsed ? "w-full" : ""}`}
         >
@@ -383,28 +442,29 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        <div className="mb-4 w-full">
-          <GoogleSyncControl
-            isCollapsed={isCollapsed}
-            isLoggedIn={isLoggedIn}
-            userProfile={userProfile}
-            syncStatus={syncStatus}
-            signIn={signIn}
-            signOut={signOut}
-            isConfigured={isConfigured}
-            isOnline={isOnline}
-          />
-        </div>
-
-        <div className="mb-4 w-full">
-          <ThemeControl
-            theme={theme}
-            setTheme={setTheme}
-            accentColor={accentColor}
-            setAccentColor={setAccentColor}
-            isCollapsed={isCollapsed}
-          />
-        </div>
+        {/* Google Sync Control - Only when not collapsed */}
+        <AnimatePresence>
+          {!isCollapsed && (
+            <motion.div
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              className="mb-4 w-full"
+            >
+              <GoogleSyncControl
+                isCollapsed={isCollapsed}
+                isLoggedIn={isLoggedIn}
+                userProfile={userProfile}
+                syncStatus={syncStatus}
+                signIn={signIn}
+                signOut={signOut}
+                isConfigured={isConfigured}
+                isOnline={isOnline}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {!isCollapsed && (
@@ -421,25 +481,16 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 Press <span className="kbd-hint">⌘K</span> to search
               </button>
-
-              <div className="px-2">
-                <NewsletterSignup
-                  onSubscribe={(email) => {
-                    console.log("Newsletter signup:", email);
-                    // Here you would typically send the email to your backend
-                    // For now, we'll just log it
-                  }}
-                  buttonText="Subscribe"
-                  placeholder="Get church updates..."
-                />
-              </div>
-
-              <p className="text-xs text-[var(--text-muted)]">
-                &copy; {new Date().getFullYear()} Dexify by DexignMasters
-              </p>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Copyright/Watermark - Always visible */}
+        <div className={`${isCollapsed ? "text-center px-2" : "text-center"}`}>
+          <p className="text-xs text-[var(--text-muted)]">
+            &copy; {new Date().getFullYear()} Dexify by DexignMasters
+          </p>
+        </div>
       </div>
     </motion.aside>
   );
