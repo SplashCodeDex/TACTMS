@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "../components/Button";
+import { DownloadButtonWithConfetti } from "../components/ui/confetti";
 import { TitheRecordB, TransactionLogEntry } from "../types";
 import AnimatedNumber from "../components/AnimatedNumber";
 import DonutChart from "../components/DonutChart";
@@ -449,7 +450,7 @@ const ListOverviewActionsSection = React.memo(
                   )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
+                  <DownloadButtonWithConfetti
                     onClick={handleDownloadExcel}
                     leftIcon={<FileSpreadsheet size={18} />}
                     disabled={!fileNameToSave.trim()}
@@ -457,7 +458,7 @@ const ListOverviewActionsSection = React.memo(
                     fullWidth
                   >
                     Download Excel
-                  </Button>
+                  </DownloadButtonWithConfetti>
                   <Button
                     onClick={openSaveFavoriteModal}
                     leftIcon={<Save size={18} />}

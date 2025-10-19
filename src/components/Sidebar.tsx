@@ -41,10 +41,80 @@ import {
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
+import SmartDismissButton from "./SmartDismissButton";
+import { cn } from "@/lib/utils";
 
-// Custom hook for responsive design
+// Sidebar Context for state management
+interface SidebarContextType {
+  theme: "dark" | "light";
+  setTheme: (theme: "dark" | "light") => void;
+  accentColor: ThemeOption;
+  setAccentColor: (option: ThemeOption) => void;
+  isCollapsed: boolean;
+  setIsCollapsed: (isCollapsed: boolean) => void;
+  isLoggedIn: boolean;
+  userProfile: GoogleUserProfile | null;
+  syncStatus: SyncStatus;
+  signIn: () => void;
+  signOut: () => void;
+  isConfigured: boolean;
+  openCommandPalette: () => void;
+  isOnline: boolean;
+  onClose?: () => void;
+}
+
+const SidebarContext = React.createContext<SidebarContextType | undefined>(undefined);
+
+// Custom hook for sidebar state management
+export const useSidebar = () => {
+  const context = React.useContext(SidebarContext);
+  if (!context) {
+    throw new Error("useSidebar must be used within a SidebarProvider");
+  }
+  return context;
+};
+
+// Error Boundary for sidebar
+class SidebarErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Sidebar error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="sidebar glassmorphism-bg collapsed" style={{ width: "4rem" }}>
+          <div className="flex flex-col items-center p-4 text-[var(--text-muted)]">
+            <p className="text-xs">Error</p>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Enhanced responsive design hook with better breakpoints
 const useMediaQuery = (query: string) => {
-  const [matches, setMatches] = React.useState(false);
+  const [matches, setMatches] = React.useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia(query).matches;
+    }
+    return false;
+  });
 
   React.useEffect(() => {
     const media = window.matchMedia(query);
@@ -58,9 +128,14 @@ const useMediaQuery = (query: string) => {
   return matches;
 };
 
-// Custom hook for reduced motion preferences
+// Enhanced reduced motion hook with performance monitoring
 const useReducedMotion = () => {
-  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    return false;
+  });
 
   React.useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -72,6 +147,35 @@ const useReducedMotion = () => {
   }, []);
 
   return prefersReducedMotion;
+};
+
+// Device capability detection
+const useDeviceCapabilities = () => {
+  const [capabilities, setCapabilities] = React.useState({
+    isLowEndDevice: false,
+    supportsIntersectionObserver: false,
+    supportsTouch: false,
+    screenWidth: 1024,
+    screenHeight: 768,
+  });
+
+  React.useEffect(() => {
+    const updateCapabilities = () => {
+      setCapabilities({
+        isLowEndDevice: navigator.hardwareConcurrency <= 2,
+        supportsIntersectionObserver: "IntersectionObserver" in window,
+        supportsTouch: "ontouchstart" in window,
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height,
+      });
+    };
+
+    updateCapabilities();
+    window.addEventListener("resize", updateCapabilities);
+    return () => window.removeEventListener("resize", updateCapabilities);
+  }, []);
+
+  return capabilities;
 };
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -121,9 +225,15 @@ const NavItem: React.FC<{
   return (
     <Link
       to={to}
-      className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? activeClass : inactiveClass} ${isCollapsed ? "justify-center" : ""}`}
+      className={`w-full flex items-center rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? activeClass : inactiveClass} ${isCollapsed ? "justify-center min-w-[44px] min-h-[44px] p-3" : "px-4 py-3"}`}
       aria-current={isActive ? "page" : undefined}
       title={isCollapsed ? label : undefined}
+      style={{
+        // Ensure minimum touch target size
+        minHeight: isCollapsed ? "44px" : "auto",
+        minWidth: isCollapsed ? "44px" : "auto",
+        touchAction: "manipulation",
+      }}
     >
       <Icon size={20} className="flex-shrink-0" />
       <AnimatePresence>
@@ -158,8 +268,13 @@ const NavigationGroup: React.FC<{
       <div className="space-y-1">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-center p-3 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+          className="w-full flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all min-w-[44px] min-h-[44px] p-3"
           title={`${title} (${items.length} items)`}
+          style={{
+            minWidth: "44px",
+            minHeight: "44px",
+            touchAction: "manipulation",
+          }}
         >
           <GroupIcon size={20} />
         </button>
@@ -242,8 +357,13 @@ const SecondaryMenu: React.FC<{
           <div className="space-y-1">
             <button
               onClick={() => setIsVisible(!isVisible)}
-              className="w-full flex items-center justify-center p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
+              className="w-full flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all min-w-[44px] min-h-[44px] p-3"
               aria-label={`${title} menu`}
+              style={{
+                minWidth: "44px",
+                minHeight: "44px",
+                touchAction: "manipulation",
+              }}
             >
               <Settings size={18} />
             </button>
@@ -504,9 +624,14 @@ const ThemeControl: React.FC<
         {isCollapsed ? (
           // Show only active theme icon when collapsed
           <button
-            className="w-11 h-11 p-0 justify-center rounded-lg text-sm font-medium transition-colors flex items-center"
+            className="justify-center rounded-lg text-sm font-medium transition-colors flex items-center min-w-[48px] min-h-[48px] p-3"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            style={{
+              minWidth: "48px",
+              minHeight: "48px",
+              touchAction: "manipulation",
+            }}
           >
             {theme === "dark" ? (
               <Moon size={20} />
@@ -594,19 +719,25 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOnline,
   onClose,
 }) => {
-  // Responsive design hooks
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  // Enhanced responsive design hooks with better breakpoints
+  const isMobile = useMediaQuery("(max-width: 640px)"); // Better mobile breakpoint
+  const isSmallMobile = useMediaQuery("(max-width: 375px)"); // iPhone SE and smaller
   const isTablet = useMediaQuery("(max-width: 1024px)");
+  const isLandscape = useMediaQuery("(orientation: landscape) and (max-height: 600px)");
   const prefersReducedMotion = useReducedMotion();
+  const { isLowEndDevice, supportsTouch } = useDeviceCapabilities();
 
-  // Dynamic width based on screen size
+  // Enhanced width calculation with better responsive behavior
   const getSidebarWidth = () => {
-    if (isMobile) return "100vw"; // Full overlay on mobile
-    if (isTablet && !isCollapsed) return "14rem"; // Narrower on tablet
-    return isCollapsed ? "6.5rem" : "17rem";
+    if (isMobile) {
+      if (isLandscape) return "16rem"; // Wider in landscape mobile
+      return "100vw"; // Full overlay on mobile
+    }
+    if (isTablet && !isCollapsed) return "15rem"; // Slightly narrower on tablet
+    return isCollapsed ? "4rem" : "17rem"; // Smaller collapsed, standard expanded
   };
 
-  // Mobile overlay behavior
+  // Enhanced mobile overlay behavior
   const isMobileOverlay = isMobile && !isCollapsed;
 
   const logoSrc = isCollapsed
@@ -627,9 +758,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       };
 
   return (
-    <TooltipProvider>
-      <>
-        {/* Mobile Overlay Backdrop */}
+    <SidebarErrorBoundary>
+      <TooltipProvider>
+        <>
+          {/* Enhanced Mobile Overlay Backdrop */}
         {isMobileOverlay && (
           <motion.div
             className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -637,32 +769,46 @@ const Sidebar: React.FC<SidebarProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              onClose?.();
+            }}
+            style={{
+              // Improve touch responsiveness
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              WebkitUserSelect: "none",
+            }}
           />
         )}
 
         <motion.aside
           className={`sidebar glassmorphism-bg ${
             isCollapsed ? "collapsed" : ""
-          } ${isMobileOverlay ? "fixed z-50 h-full" : "relative"}`}
+          } ${isMobileOverlay ? "fixed z-50 h-full" : "relative"} ${
+            isSmallMobile ? "mobile-compact" : ""
+          }`}
           {...animationProps}
+          style={{
+            // Improve touch responsiveness
+            WebkitTapHighlightColor: "transparent",
+            WebkitTouchCallout: "none",
+            WebkitUserSelect: "none",
+          }}
         >
       <div
         className={`flex flex-col items-center mb-10 ${isCollapsed ? "w-full" : ""}`}
       >
-        {/* Mobile Close Button */}
-        {isMobile && (
-          <div className="self-end mr-4 mb-2">
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              size="sm"
-              className="p-2 h-auto"
-              aria-label="Close sidebar"
-            >
-              <X size={20} />
-            </Button>
-          </div>
-        )}
+        {/* Intelligent Dismiss Button - Adapts to all contexts */}
+        <SmartDismissButton
+          isCollapsed={isCollapsed}
+          isMobile={isMobile}
+          isSmallMobile={isSmallMobile}
+          isLandscape={isLandscape}
+          onClose={onClose}
+          variant={isMobile ? "close" : isCollapsed ? "minimize" : "close"}
+          size={isSmallMobile ? "sm" : "md"}
+        />
 
         <motion.img
           src={logoSrc}
@@ -686,11 +832,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         </AnimatePresence>
       </div>
 
-        <ScrollArea className="flex-grow">
+        <ScrollArea
+          className={`flex-grow ${isSmallMobile ? "max-h-[calc(100vh-12rem)]" : "max-h-[calc(100vh-10rem)]"}`}
+        >
           <nav
             className={`space-y-3 px-3 ${isCollapsed ? "flex flex-col items-center" : ""}`}
             role="navigation"
             aria-label="Main navigation"
+            style={{
+              // Ensure proper touch scrolling on mobile
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
+            }}
           >
             {/* Core Section - Standalone */}
             <Tooltip>
@@ -839,27 +992,42 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Tooltip>
         </div>
 
-        {/* Collapse/Expand Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={`flex justify-center items-center gap-2 mb-4 ${isCollapsed ? "w-full" : ""}`}>
+        {/* Intelligent Collapse/Expand Button */}
+        <div className={`mb-4 ${isCollapsed ? "w-full" : ""}`}>
+          <Tooltip>
+            <TooltipTrigger asChild>
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-subtle-accent)] transition-all flex-grow"
-                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                {isCollapsed ? (
-                  <ChevronRight size={20} className="mx-auto" />
-                ) : (
-                  <ChevronLeft size={20} className="mx-auto" />
+                className={cn(
+                  "w-full rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-subtle-accent)] transition-all flex items-center justify-center",
+                  isSmallMobile ? "min-h-[48px] p-3" : "min-h-[44px] p-3"
                 )}
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                style={{
+                  minHeight: isSmallMobile ? "48px" : "44px",
+                  touchAction: "manipulation",
+                }}
+              >
+                <motion.div
+                  key={isCollapsed ? "expand" : "collapse"}
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight size={isSmallMobile ? 18 : 20} />
+                  ) : (
+                    <ChevronLeft size={isSmallMobile ? 18 : 20} />
+                  )}
+                </motion.div>
               </button>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>{isCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
-          </TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>{isCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
         {/* Google Sync Control - Only when not collapsed */}
         <AnimatePresence>
@@ -938,6 +1106,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </motion.aside>
       </>
     </TooltipProvider>
+    </SidebarErrorBoundary>
   );
 };
 

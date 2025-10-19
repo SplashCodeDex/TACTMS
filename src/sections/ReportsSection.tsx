@@ -20,6 +20,7 @@ import {
 } from "../lib/reportUtils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { LiquidButton } from "../components/LiquidButton";
+import { DownloadButtonWithConfetti } from "../components/ui/confetti";
 
 interface ReportsSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -138,12 +139,12 @@ const ReportsSection: React.FC = () => {
               <option value="weekly">Weekly</option>
               <option value="daily">Daily</option>
             </select>
-            <LiquidButton
+            <LiquidDownloadButtonWithConfetti
               onClick={handleDownloadCsv}
             >
               <Download size={16} className="mr-2" />
               Download CSV
-            </LiquidButton>
+            </LiquidDownloadButtonWithConfetti>
           </div>
         </div>
       </section>
