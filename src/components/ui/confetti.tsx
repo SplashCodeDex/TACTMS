@@ -16,7 +16,7 @@ import type {
 import confetti from "canvas-confetti"
 
 import { Button } from "@/components/ui/button"
-import { LiquidButton } from "../components/LiquidButton"
+import { LiquidButton } from "../../components/LiquidButton"
 
 type Api = {
   fire: (options?: ConfettiOptions) => void
@@ -154,7 +154,7 @@ interface DownloadButtonWithConfettiProps {
   className?: string;
 }
 
-export const DownloadButtonWithConfetti: React.FC<DownloadButtonWithConfettiProps> = ({
+const DownloadButtonWithConfetti: React.FC<DownloadButtonWithConfettiProps> = ({
   onClick,
   children,
   ...props
@@ -199,7 +199,7 @@ interface LiquidDownloadButtonWithConfettiProps {
   size?: string;
 }
 
-export const LiquidDownloadButtonWithConfetti: React.FC<LiquidDownloadButtonWithConfettiProps> = ({
+const LiquidDownloadButtonWithConfetti: React.FC<LiquidDownloadButtonWithConfettiProps> = ({
   onClick,
   children,
   ...props

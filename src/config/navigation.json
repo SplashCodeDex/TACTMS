@@ -1,0 +1,96 @@
+{
+  "main": [
+    {
+      "type": "item",
+      "label": "Dashboard",
+      "icon": "LayoutDashboard",
+      "to": "/"
+    }
+  ],
+  "groups": [
+    {
+      "title": "Management",
+      "icon": "Shield",
+      "items": [
+        {
+          "label": "Tithe Processor",
+          "icon": "Cpu",
+          "to": "/processor"
+        },
+        {
+          "label": "Member Database",
+          "icon": "Database",
+          "to": "/database"
+        },
+        {
+          "label": "Reports",
+          "icon": "PieChart",
+          "to": "/reports"
+        }
+      ]
+    },
+    {
+      "title": "Advanced",
+      "icon": "BotMessageSquare",
+      "items": [
+        {
+          "label": "Favorites",
+          "icon": "Star",
+          "to": "/favorites"
+        },
+        {
+          "label": "AI Analytics",
+          "icon": "BotMessageSquare",
+          "to": "/analytics"
+        }
+      ]
+    }
+  ],
+  "secondary": {
+    "title": "More",
+    "items": [
+      {
+        "label": "Events",
+        "icon": "Calendar",
+        "to": "/events",
+        "badge": "New"
+      },
+      {
+        "label": "Worship",
+        "icon": "Music",
+        "to": "/worship"
+      },
+      {
+        "label": "Bible Study",
+        "icon": "BookOpen",
+        "to": "/biblestudy"
+      },
+      {
+        "label": "Prayer Requests",
+        "icon": "Heart",
+        "to": "/prayers"
+      },
+      {
+        "label": "Small Groups",
+        "icon": "Users",
+        "to": "/groups"
+      },
+      {
+        "label": "Bulletin",
+        "icon": "FileText",
+        "to": "/bulletin"
+      },
+      {
+        "label": "Giving Trends",
+        "icon": "BarChart3",
+        "to": "/giving"
+      },
+      {
+        "label": "Keyboard Shortcuts",
+        "icon": "Keyboard",
+        "to": "#",
+        "onClick": "openKeyboardShortcuts"
+      }
+    ]
+  }
+}

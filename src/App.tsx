@@ -40,7 +40,7 @@ import { pushAnalyticsEvent } from "./services/offline-analytics";
 
 import { useGemini } from "./hooks/useGemini";
 
-import Sidebar from "./components/Sidebar";
+import Sidebar, { SidebarProvider } from "./components/Sidebar";
 import { useGoogleDriveSync } from "./hooks/useGoogleDriveSync";
 import { usePWAFeatures } from "./hooks/usePWAFeatures";
 
@@ -177,9 +177,17 @@ const App: React.FC = () => {
   const autoSaveTimerRef = useRef<number | null>(null);
   // const listOverviewRef = useRef<HTMLElement>(null); // TODO: Use to scroll to the list overview section.
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
-    window.innerWidth < 768,
-  );
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    if (saved !== null) {
+      return JSON.parse(saved);
+    }
+    return window.innerWidth < 768;
+  });
+
+  const handleSidebarToggle = useCallback(() => {
+    setIsSidebarCollapsed((prev) => !prev);
+  }, []);
 
   const [currentAssembly, setCurrentAssembly] = useState<string | null>(null);
   const [isAssemblySelectionModalOpen, setIsAssemblySelectionModalOpen] =
@@ -275,11 +283,17 @@ const App: React.FC = () => {
         setIsCommandPaletteOpen((p) => !p);
       } else if (e.key === "Escape" && isCommandPaletteOpen) {
         setIsCommandPaletteOpen(false);
+      } else if (e.key === "Escape" && !isSidebarCollapsed) {
+        e.preventDefault();
+        setIsSidebarCollapsed(true);
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        setIsSidebarCollapsed((p) => !p);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isCommandPaletteOpen]);
+  }, [isCommandPaletteOpen, isSidebarCollapsed]);
 
   const {
     favorites,
@@ -472,6 +486,10 @@ const App: React.FC = () => {
     handleResize();
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   const saveDraft = useCallback(() => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -1319,22 +1337,26 @@ const App: React.FC = () => {
     <div
       className={`app-container ${!isSidebarCollapsed && window.innerWidth < 768 ? "sidebar-open" : ""}`}
     >
-      <Sidebar
-        theme={theme}
-        setTheme={setTheme}
-        accentColor={accentColor}
-        setAccentColor={setAccentColor}
-        isCollapsed={isSidebarCollapsed}
-        setIsCollapsed={setIsSidebarCollapsed}
-        isLoggedIn={isDriveLoggedIn}
-        userProfile={driveUserProfile}
-        syncStatus={driveSyncStatus}
-        signIn={driveSignIn}
-        signOut={driveSignOut}
-        isConfigured={isDriveConfigured}
-        openCommandPalette={() => setIsCommandPaletteOpen(true)}
-        isOnline={!isOffline}
-      />
+      <SidebarProvider
+        value={{
+          theme,
+          setTheme,
+          accentColor,
+          setAccentColor,
+          isCollapsed: isSidebarCollapsed,
+          setIsCollapsed: setIsSidebarCollapsed,
+          isLoggedIn: isDriveLoggedIn,
+          userProfile: driveUserProfile,
+          syncStatus: driveSyncStatus,
+          signIn: driveSignIn,
+          signOut: driveSignOut,
+          isConfigured: isDriveConfigured,
+          openCommandPalette: () => setIsCommandPaletteOpen(true),
+          isOnline: !isOffline,
+        }}
+      >
+        <Sidebar onClose={handleSidebarToggle} />
+      </SidebarProvider>
       <AnimatePresence>
         {isCommandPaletteOpen && (
         <CommandPalette
@@ -1350,12 +1372,14 @@ const App: React.FC = () => {
       </AnimatePresence>
       <div
         className="app-container-overlay"
-        onClick={() => setIsSidebarCollapsed(true)}
+        onClick={handleSidebarToggle}
+        aria-hidden="true"
       />
       <main className="main-content">
         <MobileHeader
           onMenuClick={() => setIsSidebarCollapsed(false)}
           title={viewTitles[location.pathname] || "TACTMS"}
+          isSidebarOpen={!isSidebarCollapsed}
         />
         <AnimatePresence mode="wait">
           <MotionDiv

@@ -20,7 +20,7 @@ import {
 } from "../lib/reportUtils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { LiquidButton } from "../components/LiquidButton";
-import { DownloadButtonWithConfetti } from "../components/ui/confetti";
+import { DownloadButtonWithConfetti, LiquidDownloadButtonWithConfetti } from "../components/ui/confetti";
 
 interface ReportsSectionProps {
   transactionLog: TransactionLogEntry[];

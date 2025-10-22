@@ -1,12 +1,11 @@
 "use client";
 
 import React from "react";
-import { X, ArrowLeft, Minimize2 } from "lucide-react";
+import { X, ArrowLeft, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,14 +39,11 @@ export const SmartDismissButton: React.FC<SmartDismissButtonProps> = ({
   // Intelligent icon selection based on context
   const getIcon = () => {
     if (isMobile) {
-      if (isLandscape && !isCollapsed) {
-        return <ArrowLeft size={getIconSize()} />; // Suggest going back in landscape
-      }
-      return <X size={getIconSize()} />; // Standard close on mobile
+      return <X size={getIconSize()} />; // Always use X for close on mobile
     }
 
     if (isCollapsed) {
-      return <Minimize2 size={getIconSize()} />; // Minimize icon when collapsed
+      return <ChevronLeft size={getIconSize()} />; // Collapse icon when collapsed
     }
 
     return <X size={getIconSize()} />; // Standard close when expanded
@@ -71,17 +67,14 @@ export const SmartDismissButton: React.FC<SmartDismissButtonProps> = ({
   // Context-aware aria label
   const getAriaLabel = () => {
     if (isMobile) {
-      if (isLandscape) {
-        return "Return to main content";
-      }
-      return "Close sidebar menu";
+      return "Close sidebar";
     }
 
     if (isCollapsed) {
-      return "Minimize sidebar";
+      return "Expand sidebar";
     }
 
-    return "Close sidebar";
+    return "Collapse sidebar";
   };
 
   // Intelligent positioning and styling
@@ -107,12 +100,14 @@ export const SmartDismissButton: React.FC<SmartDismissButtonProps> = ({
 
   // Animation variants based on device and state
   const getAnimationVariants = () => {
+    const baseTransition = { duration: 0.2, ease: "easeInOut" };
+
     if (isMobile) {
       return {
         initial: { opacity: 0, scale: 0.8, x: 20 },
         animate: { opacity: 1, scale: 1, x: 0 },
         exit: { opacity: 0, scale: 0.8, x: 20 },
-        transition: { duration: 0.2, ease: "easeOut" }
+        transition: baseTransition
       };
     }
 
@@ -120,7 +115,7 @@ export const SmartDismissButton: React.FC<SmartDismissButtonProps> = ({
       initial: { opacity: 0, scale: 0.9 },
       animate: { opacity: 1, scale: 1 },
       exit: { opacity: 0, scale: 0.9 },
-      transition: { duration: 0.15 }
+      transition: baseTransition
     };
   };
 
@@ -140,8 +135,15 @@ export const SmartDismissButton: React.FC<SmartDismissButtonProps> = ({
     >
       <AnimatePresence mode="wait">
         <motion.div
-          key={`${isCollapsed}-${isMobile}-${variant}`}
+          key={`${isMobile}-${variant}`}
           {...getAnimationVariants()}
+          animate={{
+            ...getAnimationVariants().animate,
+            rotate: isCollapsed ? 0 : 180
+          }}
+          style={{
+            transition: 'transform 0.2s ease-in-out'
+          }}
         >
           {getIcon()}
         </motion.div>
@@ -164,16 +166,9 @@ export const SmartDismissButton: React.FC<SmartDismissButtonProps> = ({
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="self-end mr-4 mb-2">
-          {buttonContent}
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="right">
-        <p>{getAriaLabel()}</p>
-      </TooltipContent>
-    </Tooltip>
+    <div className={`mb-2 ${isCollapsed ? "self-center" : "self-end mr-4"}`}>
+      {buttonContent}
+    </div>
   );
 };
 

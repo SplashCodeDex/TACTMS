@@ -140,7 +140,7 @@ body {
   z-index: 50;
   display: flex;
   flex-direction: column;
-  padding: 1.25rem;
+  padding: 1rem;
   width: 17rem; /* Default expanded width */
   border-right: 1px solid var(--border-color);
   transition:
@@ -149,8 +149,8 @@ body {
 }
 
 .sidebar.collapsed {
-  width: 6rem; /* Collapsed width */
-  padding: 1rem;
+  width: 5rem; /* Collapsed width */
+  padding: 0.5rem;
 }
 
 .main-content {
@@ -172,7 +172,7 @@ body {
 }
 
 .sidebar.collapsed ~ .main-content {
-  margin-left: 6rem;
+  margin-left: 5rem;
 }
 
 .app-container-overlay {
