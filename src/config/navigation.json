@@ -44,53 +44,19 @@
           "to": "/analytics"
         }
       ]
+    },
+    {
+      "title": "Settings",
+      "icon": "Settings",
+      "items": [
+        {
+          "label": "Keyboard Shortcuts",
+          "icon": "Keyboard",
+          "to": "#",
+          "onClick": "openKeyboardShortcuts"
+        }
+      ]
     }
-  ],
-  "secondary": {
-    "title": "More",
-    "items": [
-      {
-        "label": "Events",
-        "icon": "Calendar",
-        "to": "/events",
-        "badge": "New"
-      },
-      {
-        "label": "Worship",
-        "icon": "Music",
-        "to": "/worship"
-      },
-      {
-        "label": "Bible Study",
-        "icon": "BookOpen",
-        "to": "/biblestudy"
-      },
-      {
-        "label": "Prayer Requests",
-        "icon": "Heart",
-        "to": "/prayers"
-      },
-      {
-        "label": "Small Groups",
-        "icon": "Users",
-        "to": "/groups"
-      },
-      {
-        "label": "Bulletin",
-        "icon": "FileText",
-        "to": "/bulletin"
-      },
-      {
-        "label": "Giving Trends",
-        "icon": "BarChart3",
-        "to": "/giving"
-      },
-      {
-        "label": "Keyboard Shortcuts",
-        "icon": "Keyboard",
-        "to": "#",
-        "onClick": "openKeyboardShortcuts"
-      }
-    ]
-  }
+  ]
 }
+

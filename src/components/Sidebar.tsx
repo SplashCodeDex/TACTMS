@@ -42,7 +42,6 @@ import KeyboardShortcutsModal from "./KeyboardShortcutsModal";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import NavItem from "./sidebar/NavItem";
 import NavigationGroup from "./sidebar/NavigationGroup";
-import SecondaryMenu from "./sidebar/SecondaryMenu";
 import GoogleSyncControl from "./sidebar/GoogleSyncControl";
 import ThemeControl from "./sidebar/ThemeControl";
 import navigationConfig from "../config/navigation.json";
@@ -64,6 +63,7 @@ const iconMap: { [key: string]: React.ElementType } = {
   FileText,
   BarChart3,
   Keyboard,
+  Settings,
 };
 
 // Sidebar Context for state management
@@ -241,9 +241,43 @@ interface SidebarProps {
   onClose?: () => void; // For mobile overlay close
 }
 
-const logoVariants = {
-  collapsed: { height: "64px", transition: { duration: 0.3 } }, // h-16
-  expanded: { height: "96px", transition: { duration: 0.3 } }, // h-24
+const sidebarVariants = {
+  expanded: {
+    width: "17rem",
+    transition: {
+      duration: 0.4,
+      ease: "easeInOut",
+      staggerChildren: 0.07,
+    },
+  },
+  collapsed: {
+    width: "5rem",
+    transition: {
+      duration: 0.4,
+      ease: "easeInOut",
+      staggerChildren: 0.05,
+      staggerDirection: -1,
+    },
+  },
+};
+
+const childVariants = {
+  expanded: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.25,
+      ease: "easeOut",
+    },
+  },
+  collapsed: {
+    opacity: 0,
+    x: -20,
+    transition: {
+      duration: 0.25,
+      ease: "easeIn",
+    },
+  },
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
@@ -286,21 +320,37 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const focusableElements = sidebarRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])'
+      );
+
+      if (!isCollapsed && focusableElements) {
+        const activeElement = document.activeElement as HTMLElement;
+        const currentIndex = Array.from(focusableElements).indexOf(activeElement);
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const nextIndex = (currentIndex + 1) % focusableElements.length;
+          focusableElements[nextIndex]?.focus();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prevIndex = (currentIndex - 1 + focusableElements.length) % focusableElements.length;
+          focusableElements[prevIndex]?.focus();
+        }
+      }
+
       if (!isCollapsed && e.key === 'Tab' && sidebarRef.current) {
-        const focusableElements = sidebarRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])'
-        );
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
+        const firstElement = focusableElements?.[0];
+        const lastElement = focusableElements?.[focusableElements.length - 1];
 
         if (e.shiftKey) {
           if (document.activeElement === firstElement) {
-            lastElement.focus();
+            lastElement?.focus();
             e.preventDefault();
           }
         } else {
           if (document.activeElement === lastElement) {
-            firstElement.focus();
+            firstElement?.focus();
             e.preventDefault();
           }
         }
@@ -357,16 +407,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     touchStartY.current = null;
   };
 
-  // Enhanced width calculation with better responsive behavior
-  const getSidebarWidth = () => {
-    if (isMobile) {
-      if (isLandscape) return "16rem"; // Wider in landscape mobile
-      return "100vw"; // Full overlay on mobile
-    }
-    if (isTablet && !isCollapsed) return "15rem"; // Slightly narrower on tablet
-    return isCollapsed ? "4rem" : "17rem"; // Smaller collapsed, standard expanded
-  };
-
   // Enhanced mobile overlay behavior
   const isMobileOverlay = isMobile && !isCollapsed;
 
@@ -377,15 +417,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     : theme === "dark"
       ? `${import.meta.env.BASE_URL}img/DarkLogoExpanded.svg`
       : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`;
-
-  // Animation config based on motion preferences
-  const animationProps = prefersReducedMotion
-    ? {}
-    : {
-        initial: false,
-        animate: { width: getSidebarWidth() },
-        transition: { duration: 0.3, ease: "easeInOut" }
-      };
 
   return (
     <SidebarErrorBoundary>
@@ -415,12 +446,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           ref={sidebarRef}
           className={`sidebar glassmorphism-bg ${
             isCollapsed ? "collapsed" : ""
-          } ${isMobileOverlay ? "fixed z-50 h-full" : "relative"} ${
-            isSmallMobile ? "mobile-compact" : ""
-          }`}
-          {...animationProps}
+          } ${isMobileOverlay ? "fixed z-50 h-full" : "relative"}`}
+          variants={sidebarVariants}
+          initial={false}
+          animate={isCollapsed ? "collapsed" : "expanded"}
           style={{
-            // Improve touch responsiveness
+            overflow: "hidden",
             WebkitTapHighlightColor: "transparent",
             WebkitTouchCallout: "none",
             WebkitUserSelect: "none",
@@ -431,10 +462,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           aria-expanded={!isCollapsed}
           role="navigation"
         >
-          <div
-            className={`flex flex-col items-center mb-10 ${isCollapsed ? "w-full" : ""}`}
-          >
-            {/* Intelligent Dismiss Button - Adapts to all contexts */}
+          <motion.div className={`flex flex-col items-center mb-10 ${isCollapsed ? "w-full" : ""}`}>
             <SmartDismissButton
               isCollapsed={isCollapsed}
               isMobile={isMobile}
@@ -448,32 +476,31 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             <motion.img
               src={logoSrc}
               alt="TACTMS Logo"
-              variants={prefersReducedMotion ? {} : logoVariants}
-              animate={isCollapsed ? "collapsed" : "expanded"}
-              className="w-auto"
+              animate={isCollapsed ? { height: "48px", width: "48px" } : { height: "80px", width: "auto" }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className={`object-contain ${isCollapsed ? "max-w-[48px]" : "max-w-[200px]"}`}
             />
             <AnimatePresence>
               {!isCollapsed && (
                 <motion.p
-                  initial={prefersReducedMotion ? {} : { opacity: 0, height: 0, marginTop: 0 }}
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
                   animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
-                  exit={prefersReducedMotion ? {} : { opacity: 0, height: 0, marginTop: 0 }}
-                  transition={prefersReducedMotion ? {} : { duration: 0.2, ease: "easeInOut" }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
                   className="text-xs text-[var(--text-muted)] text-center"
                 >
                   TACTMS - The Apostolic Church Tithe Made Simple
                 </motion.p>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
 
           <ScrollArea className="flex-1 min-h-0">
-            <nav
+            <motion.nav
               className={`space-y-3 ${isCollapsed ? "flex flex-col items-center justify-center px-0" : "px-4"}`}
               role="navigation"
               aria-label="Main navigation"
               style={{
-                // Ensure proper touch scrolling on mobile
                 WebkitOverflowScrolling: "touch",
                 overscrollBehavior: "contain",
               }}
@@ -498,28 +525,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                     title={group.title}
                     icon={iconMap[group.icon]}
                     isCollapsed={isCollapsed}
-                    items={group.items.map(item => ({ ...item, icon: iconMap[item.icon] }))}
+                    items={group.items.map(item => ({ ...item, icon: iconMap[item.icon], onClick: item.onClick ? () => setIsKeyboardShortcutsModalOpen(true) : undefined }))}
                   />
+                  {group.title === 'Settings' && !isCollapsed && <ThemeControl />}
                 </div>
               ))}
-
-              {!isCollapsed && <Separator className="my-2" />}
-
-              <div className="w-full">
-                <SecondaryMenu
-                  title={navigationConfig.secondary.title}
-                  isCollapsed={isCollapsed}
-                  items={navigationConfig.secondary.items.map(item => ({ ...item, icon: iconMap[item.icon], onClick: item.onClick ? () => setIsKeyboardShortcutsModalOpen(true) : undefined }))}
-                />
-              </div>
-            </nav>
+            </motion.nav>
           </ScrollArea>
 
-          <div className={`mt-auto flex-shrink-0 ${isCollapsed ? "w-full space-y-3" : "space-y-4"}`}>
-            {/* Separator */}
+          <motion.div className={`mt-auto flex-shrink-0 ${isCollapsed ? "w-full space-y-3" : "space-y-4"}`}>
             {!isCollapsed && <Separator className="my-4" />}
 
-            {/* Newsletter Signup - Always visible when collapsed */}
             <div className={`${isCollapsed ? "px-3" : "px-4"}`}>
               <div className="w-full">
                 <NewsletterSignup
@@ -533,15 +549,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
               </div>
             </div>
 
-            {/* Theme Controls - Always visible when collapsed */}
-            <div className={`${isCollapsed ? "px-3" : "px-4"}`}>
-              <div className="w-full">
-                <ThemeControl />
-              </div>
-            </div>
-
-
-            {/* Google Sync Control - Only when not collapsed */}
             <AnimatePresence>
               {!isCollapsed && (
                 <motion.div
@@ -550,9 +557,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                   exit="hidden"
                   className="px-4 w-full"
                 >
-                  <div className="w-full">
-                    <GoogleSyncControl />
-                  </div>
+                  <GoogleSyncControl />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -576,7 +581,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
               )}
             </AnimatePresence>
 
-            {/* Copyright/Watermark - Hidden when collapsed */}
             <AnimatePresence>
               {!isCollapsed && (
                 <motion.div
@@ -591,7 +595,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
+
         </motion.aside>
         <KeyboardShortcutsModal
           isOpen={isKeyboardShortcutsModalOpen}
