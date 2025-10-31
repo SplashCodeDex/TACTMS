@@ -13,9 +13,8 @@ export default defineConfig(({ mode }) => {
     base: "/TACTMS/",
     define: {
       "process.env.VITE_API_KEY": JSON.stringify(env.VITE_API_KEY),
-      "process.env.VITE_GOOGLE_CLIENT_ID": JSON.stringify(
-        env.VITE_GOOGLE_CLIENT_ID,
-      ),
+      "process.env.VITE_CLIENT_ID": JSON.stringify(env.VITE_CLIENT_ID),
+      "process.env.VITE_VAPID_PUBLIC_KEY": JSON.stringify(env.VITE_VAPID_PUBLIC_KEY),
     },
     plugins: [
       react(),
