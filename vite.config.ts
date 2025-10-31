@@ -20,18 +20,11 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
     VitePWA({
+      strategy: "injectManifest",
       registerType: "autoUpdate",
-      // Use a custom service worker
-      srcDir: "src",
-      filename: "sw.ts",
-      strategies: "injectManifest",
-      injectRegister: "auto",
+      swSrc: "src/sw.ts",
       devOptions: {
         enabled: true,
-      },
-      workbox: {
-        navigateFallbackAllowlist: [/^\/TACTMS\//],
-        swSrc: "src/sw.ts", // Explicitly define the source service worker file
       },
     }),
     ],
