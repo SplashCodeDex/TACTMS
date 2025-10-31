@@ -163,12 +163,6 @@ self.addEventListener("periodicsync", (event) => {
   }
 });
 
-// --- WIDGETS ---
-self.addEventListener("widgetclick", (event: any) => {
-  if (event.action === "open-app") {
-    event.waitUntil(self.clients.openWindow("./"));
-  }
-});
 
 // --- CLEANUP ---
 self.addEventListener("activate", (event) => {
