@@ -18,12 +18,7 @@
           "@modelcontextprotocol/server-puppeteer"
         ]
       },
-      "time": {
-        "command": "uvx",
-        "args": [
-          "mcp-server-time"
-        ]
-      },
+     
       "memory": {
         "command": "npx",
         "args": [
@@ -43,15 +38,7 @@
           "DISABLE_CONSOLE_OUTPUT": "true"
         }
       },
-      "context7": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@upstash/context7-mcp",
-          "--api-key",
-          "YOUR_API_KEY"
-        ]
-      },
+     
       "firebase": {
         "command": "npx",
         "args": [

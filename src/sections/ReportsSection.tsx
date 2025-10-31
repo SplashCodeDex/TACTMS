@@ -7,7 +7,7 @@ import {
   LineChart,
   Download,
 } from "lucide-react";
-import { TransactionLogEntry, MemberDatabase, ReportData } from "../types";
+import { TransactionLogEntry, MemberDatabase } from "../types";
 import AnimatedNumber from "../components/AnimatedNumber";
 import StatDisplayCard from "../components/StatDisplayCard";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +27,20 @@ interface ReportsSectionProps {
 }
 
 type Granularity = "yearly" | "monthly" | "weekly" | "daily";
+
+const getGranularityForAggregation = (
+  granularity: Granularity,
+): "months" | "weeks" | "days" => {
+  switch (granularity) {
+    case "yearly":
+    case "monthly":
+      return "months";
+    case "weekly":
+      return "weeks";
+    case "daily":
+      return "days";
+  }
+};
 
 const ReportsSection: React.FC = () => {
   const { transactionLog = [], memberDatabase = {} } =
@@ -75,11 +89,11 @@ const ReportsSection: React.FC = () => {
   }, [selectedYear, processedData, granularity]);
 
   const summary = useMemo(() => {
-    return aggregateReportData(reportData, granularity === "daily" ? "days" : granularity);
+    return aggregateReportData(reportData, getGranularityForAggregation(granularity));
   }, [reportData, granularity]);
 
   const handleDownloadCsv = () => {
-    const csvContent = exportToCsv(summary, selectedYear);
+    const csvContent = exportToCsv(summary, selectedYear, granularity);
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -102,7 +116,7 @@ const ReportsSection: React.FC = () => {
   };
 
   if (isLoading) {
-    return <LoadingSpinner message="Processing report data..." />;
+    return <LoadingSpinner text="Processing report data..." />;
   }
 
   return (
@@ -210,6 +224,7 @@ const ReportsSection: React.FC = () => {
               </h3>
               <DistrictTrendChart
                 performanceData={summary.performance}
+                granularity={granularity}
               />
             </motion.section>
           </motion.div>

@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cva, type VariantProps } from 'class-variance-authority';
 
@@ -30,7 +29,8 @@ const buttonVariants = cva(
   },
 );
 
-type LiquidButtonProps = HTMLMotionProps<'button'> & _buttonVariants;
+type LiquidButtonProps = HTMLMotionProps<'button'> &
+  VariantProps<typeof buttonVariants>;
 
 function LiquidButton({
   className,

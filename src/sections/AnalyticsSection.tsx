@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Lightbulb,
   MessageSquareQuote,
-  Copy,
   Users,
 } from "lucide-react";
 import {
