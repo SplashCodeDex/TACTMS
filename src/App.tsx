@@ -555,6 +555,16 @@ const App: React.FC = () => {
       }
       setUploadedFile(file);
 
+      // Check for unsaved changes before processing any file
+      if (hasUnsavedChanges) {
+        addToast(
+          "You have unsaved changes. Please save or discard them before loading a new file.",
+          "warning",
+          5000,
+        );
+        return;
+      }
+
       // setIsParsing(true); // TODO: Implement a visual indicator for when the file is being parsed.
 
       try {
@@ -573,16 +583,6 @@ const App: React.FC = () => {
             handleMasterListUpdate(assemblyName, parsedData, file.name);
           }
         } else {
-          if (hasUnsavedChanges) {
-            addToast(
-              "You have unsaved changes. Please save or discard them before loading a new file.",
-              "warning",
-              5000,
-            );
-            // setIsParsing(false); // TODO: Implement a visual indicator for when the file is being parsed.
-            return;
-          }
-
           const detectedAssembly =
             ASSEMBLIES.find((name) =>
               file.name.toLowerCase().includes(name.toLowerCase()),
@@ -690,9 +690,9 @@ const App: React.FC = () => {
             ...prev,
             [assembly]: {
               ...(prev[assembly] || {
-                fileName: "Initial Data",
                 lastUpdated: Date.now(),
               }),
+              fileName: sourceFileName, // Always update with the latest source file name
               data: updatedData,
               lastUpdated: Date.now(),
             },
@@ -931,10 +931,10 @@ const App: React.FC = () => {
     // Log the transaction
     if (currentAssembly && titheListData.length > 0) {
       const newLogEntry: TransactionLogEntry = {
-        id: `${currentAssembly}-${selectedDate.toISOString().split("T")[0]}`,
+        id: `${currentAssembly}-${formatDateDDMMMYYYY(selectedDate)}`, // Use formatted date for ID
         assemblyName: currentAssembly,
         timestamp: Date.now(),
-        selectedDate: selectedDate.toISOString(),
+        selectedDate: formatDateDDMMMYYYY(selectedDate), // Use formatted date for selectedDate
         totalTitheAmount: totalTitheAmount,
         soulsWonCount: soulsWonCount ?? 0,
         titherCount: tithersCount,
@@ -999,7 +999,7 @@ const App: React.FC = () => {
       ageRangeMin: Number(ageRangeMin) || undefined,
       ageRangeMax: Number(ageRangeMax) || undefined,
       concatenationConfig,
-      selectedDate: selectedDate.toISOString(),
+      selectedDate: formatDateDDMMMYYYY(selectedDate), // Use formatted date for selectedDate
       descriptionText,
       amountMappingColumn,
       originalData: originalData.length > 0 ? originalData : undefined,
@@ -1043,11 +1043,11 @@ const App: React.FC = () => {
       setIsAgeFilterActive(!!(fav.ageRangeMin || fav.ageRangeMax));
 
       setConcatenationConfig(fav.concatenationConfig);
-      setSelectedDate(new Date(fav.selectedDate));
+      setSelectedDate(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
       setDescriptionText(fav.descriptionText);
       setAmountMappingColumn(fav.amountMappingColumn || null);
 
-      const formattedDate = formatDateDDMMMYYYY(new Date(fav.selectedDate));
+      const formattedDate = formatDateDDMMMYYYY(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
       setFileNameToSave(`${fav.assemblyName}-TitheList-${formattedDate}`);
       setCurrentAssembly(fav.assemblyName);
       setSoulsWonCount(fav.soulsWonCount ?? 0);
@@ -1063,9 +1063,10 @@ const App: React.FC = () => {
 
   const findLatestFavorite = useCallback(
     (assemblyName: string) => {
-      return favorites
+      const sortedFavorites = favorites
         .filter((f) => f.assemblyName === assemblyName)
-        .sort((a, b) => b.timestamp - a.timestamp)[0];
+        .sort((a, b) => b.timestamp - a.timestamp);
+      return sortedFavorites.length > 0 ? sortedFavorites[0] : null;
     },
     [favorites],
   );
@@ -1083,14 +1084,14 @@ const App: React.FC = () => {
     clearWorkspace();
 
     const memberSourceRecords = masterList.data;
-    const newDate = new Date(); // Today's date for the new week
-    const formattedDate = formatDateDDMMMYYYY(newDate);
+    const sundayDate = getMostRecentSunday(new Date()); // Use the helper function
+    const formattedDate = formatDateDDMMMYYYY(sundayDate);
     const newDescription = `Tithe for ${formattedDate}`;
 
     const freshTitheList = createTitheList(
       memberSourceRecords,
       concatenationConfig,
-      newDate,
+      sundayDate, // Use sundayDate here
       newDescription,
       amountMappingColumn,
     ).map((record) => ({ ...record, "Transaction Amount": "" }));
@@ -1103,7 +1104,7 @@ const App: React.FC = () => {
     setCurrentAssembly(assemblyName);
     setFileNameToSave(`${assemblyName}-TitheList-${formattedDate}`);
     setSoulsWonCount(0);
-    setSelectedDate(newDate);
+    setSelectedDate(sundayDate); // Set the Sunday date
     setHasUnsavedChanges(false);
     clearAutoSaveDraft();
 
@@ -1159,9 +1160,9 @@ const App: React.FC = () => {
           ...prev,
           [currentAssembly]: {
             ...(prev[currentAssembly] || {
-              fileName: "Mixed Source",
               lastUpdated: Date.now(),
             }),
+            fileName: "Mixed Source", // Always set to Mixed Source on manual add
             data: updatedAssemblyData,
             lastUpdated: Date.now(),
           },
@@ -1208,16 +1209,23 @@ const App: React.FC = () => {
     setCurrentAssembly(assembly);
     setOriginalData(members);
     setProcessedDataA(members);
+
+    const sundayDate = getMostRecentSunday(new Date()); // Use the helper function
+    const formattedDate = formatDateDDMMMYYYY(sundayDate);
+    const defaultDescription = `Tithe for ${formattedDate}`;
+    setDescriptionText(defaultDescription);
+    setSelectedDate(sundayDate); // Set the Sunday date
+
     const list = createTitheList(
       members,
       concatenationConfig,
-      selectedDate,
-      descriptionText,
+      sundayDate, // Use sundayDate here
+      defaultDescription,
       null,
     );
     setTitheListData(list);
     setFileNameToSave(
-      `${assembly}-TitheList-${formatDateDDMMMYYYY(new Date())}`,
+      `${assembly}-TitheList-${formattedDate}`,
     );
     navigate("/processor");
     setIsCreateTitheListModalOpen(false);
@@ -1261,7 +1269,8 @@ const App: React.FC = () => {
       return {
         ...prev,
         [assemblyName]: {
-          ...(prev[assemblyName] || { fileName: "Mixed Source" }),
+          ...(prev[assemblyName] || {}), // Removed fileName: "Mixed Source" from here
+          fileName: "Mixed Source", // Always set to Mixed Source on edit/add via this function
           data: updatedData,
           lastUpdated: Date.now(),
         },
@@ -1280,7 +1289,13 @@ const App: React.FC = () => {
     setIsAddNewMemberModalOpen(true);
   };
 
-
+  const getMostRecentSunday = (date: Date): Date => {
+    const day = date.getDay(); // Sunday - 0, Monday - 1, ..., Saturday - 6
+    const diff = date.getDate() - day; // Calculate difference to get to Sunday
+    const sunday = new Date(date.setDate(diff));
+    sunday.setHours(0, 0, 0, 0); // Set to the beginning of the day to normalize
+    return sunday;
+  };
 
   const location = useLocation();
   const viewTitles: Record<string, string> = {
