@@ -32,8 +32,7 @@ import FullTithePreviewModal from "./components/FullTithePreviewModal";
 import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";
 
-import { Save, Trash2, WifiOff } from "lucide-react";
-// import { BotMessageSquare } from "lucide-react"; // TODO: Re-introduce for AI chat features.
+import { Save, Trash2, WifiOff, BotMessageSquare } from "lucide-react";
 import { pushAnalyticsEvent } from "./services/offline-analytics";
 
 import { useGemini } from "./hooks/useGemini";
@@ -63,6 +62,7 @@ import EditMemberModal from "./components/EditMemberModal";
 import MobileHeader from "./components/MobileHeader";
 import ValidationReportModal from "./components/ValidationReportModal";
 import CommandPalette from "./components/CommandPalette";
+import ParsingIndicator from "./components/ParsingIndicator";
 
 interface PendingData {
   data: MemberRecordA[];
@@ -212,7 +212,7 @@ const App: React.FC = () => {
     }
   });
 
-  // const [isParsing, setIsParsing] = useState(false); // TODO: Implement a visual indicator for when the file is being parsed.
+  const [isParsing, setIsParsing] = useState(false);
 
   const [pendingUpdate, setPendingUpdate] =
     useState<PendingMasterListUpdate | null>(null);
@@ -562,7 +562,7 @@ const App: React.FC = () => {
         return;
       }
 
-      // setIsParsing(true); // TODO: Implement a visual indicator for when the file is being parsed.
+      setIsParsing(true); // Set isParsing to true
 
       try {
         const parsedData = await parseExcelFile(file);
@@ -599,7 +599,7 @@ const App: React.FC = () => {
           e.message || "An unknown error occurred during parsing.";
         addToast(`Error parsing file: ${errorMessage}`, "error", 5000);
       } finally {
-        // setIsParsing(false); // TODO: Implement a visual indicator for when the file is being parsed.
+        setIsParsing(false); // Set isParsing to false
       }
     },
     [hasUnsavedChanges, addToast, memberDatabase, clearWorkspace],
@@ -1650,6 +1650,8 @@ const App: React.FC = () => {
           isLoading={isGeneratingReport}
         />
       )}
+
+      <ParsingIndicator isOpen={isParsing} />
     </div>
   );
 };
