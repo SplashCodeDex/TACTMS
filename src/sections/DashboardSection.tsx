@@ -38,10 +38,9 @@ const DashboardSection: React.FC = () => {
   const {
     transactionLog = [],
     memberDatabase = {},
-    favorites = [],
     onStartNewWeek,
-    userProfile,
     onUploadFile,
+    userProfile,
   } = useOutletContext<DashboardSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);

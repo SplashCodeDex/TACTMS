@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const findOrCreateDriveFile = async (fileName: string) => {
+  const sanitizedFileName = fileName.replace(/'/g, "\\'");
   const res = await window.gapi.client.drive.files.list({
-    q: `name='${fileName}' and trashed=false`,
+    q: `name='${sanitizedFileName}' and trashed=false`,
     spaces: "drive",
     fields: "files(id, name)",
   });
@@ -28,7 +29,7 @@ const readFromDrive = async <T>(fileId: string): Promise<T[]> => {
     return [];
   } catch (e) {
     console.error("readFromDrive: Error reading or parsing file", e);
-    return [];
+    throw e; // Re-throw the error
   }
 };
 

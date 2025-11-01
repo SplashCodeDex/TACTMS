@@ -114,37 +114,39 @@ export const usePWAFeatures = (
   const registerPeriodicSync = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      // Use a type guard to ensure the 'periodicSync' property exists
-      if ("periodicSync" in registration) {
-        // Assert the permission name as a string to bypass the TS error
-        const status = await navigator.permissions.query({
-          name: "periodic-background-sync" as PermissionName,
-        });
-        if (status.state === "granted") {
-          // Assert the registration object to use the periodicSync API
-          await (registration as ServiceWorkerRegistration & { periodicSync: any }).periodicSync.register(
-            "get-latest-updates",
-            {
+      if ('periodicSync' in registration) {
+        const periodicSync = (registration as any).periodicSync;
+        if (periodicSync) {
+          const status = await navigator.permissions.query({
+            name: 'periodic-background-sync' as PermissionName,
+          });
+          if (status.state === 'granted') {
+            await periodicSync.register('get-latest-updates', {
               minInterval: 24 * 60 * 60 * 1000, // 24 hours
-            },
-          );
-          console.log('Periodic sync registered for "get-latest-updates"');
-          addToast("App will periodically sync in the background.", "info");
+            });
+            console.log('Periodic sync registered for "get-latest-updates"');
+            addToast('App will periodically sync in the background.', 'info');
+          } else {
+            addToast(
+              'Periodic background sync permission not granted.',
+              'warning',
+            );
+          }
         } else {
           addToast(
-            "Periodic background sync permission not granted.",
-            "warning",
+            'Periodic background sync is not supported by this browser.',
+            'error',
           );
         }
       } else {
         addToast(
-          "Periodic background sync is not supported by this browser.",
-          "error",
+          'Periodic background sync is not supported by this browser.',
+          'error',
         );
       }
     } catch (error) {
-      console.error("Periodic sync could not be registered!", error);
-      addToast("Failed to register periodic sync.", "error");
+      console.error('Periodic sync could not be registered!', error);
+      addToast('Failed to register periodic sync.', 'error');
     }
   };
 

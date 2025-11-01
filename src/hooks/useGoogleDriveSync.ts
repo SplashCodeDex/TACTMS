@@ -15,6 +15,7 @@ import {
   TRANSACTION_LOG_DRIVE_FILENAME,
 } from "../constants";
 import { useFindOrCreateDriveFile, useReadFromDrive, useSaveToDrive } from "./useGoogleDriveQuery";
+import { useDebounce } from "./useDebounce";
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
@@ -269,6 +270,9 @@ export const useGoogleDriveSync = (
     };
   };
 
+  const debouncedFavorites = useDebounce(favorites, 1500);
+  const debouncedTransactionLog = useDebounce(transactionLog, 1500);
+
   useEffect(() => {
     if (isLoggedIn && favFileId && logFileId) {
       syncWithDrive();
@@ -277,10 +281,9 @@ export const useGoogleDriveSync = (
 
   useEffect(() => {
     if (isLoggedIn && favFileId && logFileId) {
-      const t = setTimeout(() => syncWithDrive(true), 1500);
-      return () => clearTimeout(t);
+      syncWithDrive(true);
     }
-  }, [favorites, transactionLog, isLoggedIn, favFileId, logFileId, syncWithDrive]);
+  }, [debouncedFavorites, debouncedTransactionLog, isLoggedIn, favFileId, logFileId, syncWithDrive]);
 
   const signIn = () => {
     if (!isConfigured) {

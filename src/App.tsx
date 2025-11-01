@@ -32,7 +32,7 @@ import FullTithePreviewModal from "./components/FullTithePreviewModal";
 import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";
 
-import { Save, Trash2, WifiOff, BotMessageSquare } from "lucide-react";
+import { Save, Trash2, WifiOff } from "lucide-react";
 import { pushAnalyticsEvent } from "./services/offline-analytics";
 
 import { useGemini } from "./hooks/useGemini";
@@ -491,9 +491,16 @@ const App: React.FC = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const draftDataRef = useRef({ titheListData, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, currentAssembly, soulsWonCount });
+
+  useEffect(() => {
+    draftDataRef.current = { titheListData, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, currentAssembly, soulsWonCount };
+  }, [titheListData, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, currentAssembly, soulsWonCount]);
+
   const saveDraft = useCallback(() => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = window.setTimeout(() => {
+      const { titheListData, currentAssembly, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, soulsWonCount } = draftDataRef.current;
       if (titheListData.length === 0 || !currentAssembly) return;
       const draft: AutoSaveDraft = {
         timestamp: Date.now(),
@@ -515,22 +522,7 @@ const App: React.FC = () => {
       setHasUnsavedChanges(false);
       addToast("Draft auto-saved!", "success", 2000);
     }, AUTO_SAVE_DEBOUNCE_TIME);
-  }, [
-    titheListData,
-    selectedDate,
-    descriptionText,
-    concatenationConfig,
-    ageRangeMin,
-    ageRangeMax,
-    fileNameToSave,
-    amountMappingColumn,
-    uploadedFile,
-    originalData.length,
-    processedDataA.length,
-    currentAssembly,
-    soulsWonCount,
-    addToast,
-  ]);
+  }, [addToast]);
 
   useEffect(() => {
     if (hasUnsavedChanges && titheListData.length > 0) {
@@ -1058,15 +1050,7 @@ const App: React.FC = () => {
     [favorites, addToast, clearWorkspace, clearAutoSaveDraft, navigate],
   );
 
-  const findLatestFavorite = useCallback(
-    (assemblyName: string) => {
-      const sortedFavorites = favorites
-        .filter((f) => f.assemblyName === assemblyName)
-        .sort((a, b) => b.timestamp - a.timestamp);
-      return sortedFavorites.length > 0 ? sortedFavorites[0] : null;
-    },
-    [favorites],
-  );
+
 
   const startNewWeek = (assemblyName: string) => {
     const masterList = memberDatabase[assemblyName];
@@ -1127,7 +1111,9 @@ const App: React.FC = () => {
 
   const updateFavoriteName = (favId: string, newName: string) => {
     setFavorites((prev) =>
-      prev.map((f) => (f.id === favId ? { ...f, name: newName } : f)),
+      prev.map((f) =>
+        f.id === favId ? { ...f, name: newName, timestamp: Date.now() } : f
+      ),
     );
   };
 
@@ -1447,6 +1433,7 @@ const App: React.FC = () => {
                 setAccentColor,
                 isSubscribed,
                 requestNotificationPermission,
+                onDateChange: handleDateChange, // Add this line
               }}
             />
           </MotionDiv>

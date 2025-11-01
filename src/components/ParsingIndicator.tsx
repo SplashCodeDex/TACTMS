@@ -22,7 +22,7 @@ const ParsingIndicator: React.FC<ParsingIndicatorProps> = ({ isOpen }) => {
             exit={{ scale: 0.9, opacity: 0 }}
             className="flex flex-col items-center justify-center p-8 bg-[var(--bg-elevated)] rounded-lg shadow-xl"
           >
-            <Spinner variant="ellipsis" size={48} className="text-[var(--brand)]" />
+            <Spinner className="h-12 w-12 text-[var(--brand)]" />
             <p className="mt-4 text-lg font-semibold text-[var(--text-primary)]">
               Parsing file...
             </p>

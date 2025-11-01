@@ -11,7 +11,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0D0E1B",
-  "theme_color": "#1A1B29",
+  "theme_color": "#6A44D4",
   "categories": ["productivity", "utilities", "business"],
   "prefer_related_applications": false,
   "related_applications": [],

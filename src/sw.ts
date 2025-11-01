@@ -87,12 +87,12 @@ registerRoute(
 interface SyncEvent extends Event {
   readonly tag: string;
   readonly lastChance: boolean;
-  waitUntil(f: any): void;
+  waitUntil(f: Promise<any>): void;
 }
 
 interface PeriodicSyncEvent extends Event {
   readonly tag: string;
-  waitUntil(f: any): void;
+  waitUntil(f: Promise<any>): void;
 }
 
 // --- PUSH NOTIFICATIONS ---
@@ -143,9 +143,7 @@ self.addEventListener("sync", (event) => {
   const syncEvent = event as SyncEvent;
   if (syncEvent.tag === "sync-tithe-data") {
     syncEvent.waitUntil(
-      // Here you would typically send pending data to your server
-      // For example, fetch('/api/sync-data', { method: 'POST', ... })
-      console.log("Background sync for tithe data triggered!"),
+      Promise.resolve(console.log("Background sync for tithe data triggered!"))
     );
   }
 });
@@ -156,9 +154,7 @@ self.addEventListener("periodicsync", (event) => {
   const periodicSyncEvent = event as PeriodicSyncEvent;
   if (periodicSyncEvent.tag === "get-latest-updates") {
     periodicSyncEvent.waitUntil(
-      // Fetch latest data from the server and update caches
-      console.log("Periodic sync for latest updates triggered!"),
-      // e.g., fetch('/api/updates').then(response => response.json()).then(data => caches.open('api-cache').then(cache => cache.put('/api/updates', new Response(JSON.stringify(data)))))
+      Promise.resolve(console.log("Periodic sync for latest updates triggered!"))
     );
   }
 });
@@ -202,25 +198,28 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "QUEUE_ANALYTICS_EVENT") {
     const { payload } = event.data;
 
-    const promiseChain = fetch("api/analytics", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }).catch(() => {
-      // The request failed, so we'll queue it for later.
-      return analyticsSyncQueue.pushRequest({
-        request: new Request("api/analytics", {
+    const promiseChain = async () => {
+      try {
+        await fetch("api/analytics", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
-        }),
-      });
-    });
+        });
+      } catch (error) {
+        await analyticsSyncQueue.pushRequest({
+          request: new Request("api/analytics", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }),
+        });
+      }
+    };
 
-    event.waitUntil(promiseChain);
+    event.waitUntil(promiseChain());
   }
 });

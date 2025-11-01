@@ -23,6 +23,7 @@ import AnimatedNumber from "../components/AnimatedNumber";
 import DonutChart from "../components/DonutChart";
 import InfoTooltip from "../components/InfoTooltip";
 import StatDisplayCard from "../components/StatDisplayCard";
+import DatePicker from "../components/DatePicker";
 import { useOutletContext } from "react-router-dom";
 
 interface ListOverviewActionsSectionProps {
@@ -47,6 +48,7 @@ interface ListOverviewActionsSectionProps {
   onClearWorkspace: () => void;
   transactionLog: TransactionLogEntry[];
   soulsWonCount: number | null;
+  onDateChange: (date: Date) => void; // Add this line
 }
 
 const MotionSection = motion.section;
@@ -133,6 +135,7 @@ const ListOverviewActionsSection = React.memo(
       onClearWorkspace,
       transactionLog = [],
       soulsWonCount,
+      onDateChange,
     } = useOutletContext<ListOverviewActionsSectionProps>();
 
     const getMinMaxTitheStats = (titheListData: TitheRecordB[]) => {
@@ -308,6 +311,7 @@ const ListOverviewActionsSection = React.memo(
               >
                 Data Entry Mode
               </Button>
+              <DatePicker selectedDate={selectedDate} onDateChange={onDateChange} />
               <Button
                 onClick={() => setIsFullPreviewModalOpen(true)}
                 variant={"secondary"}
