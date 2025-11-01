@@ -402,6 +402,20 @@ const App: React.FC = () => {
     setSoulsWonCount(0);
     setReconciliationReport(null);
     setAmountMappingColumn(null);
+    // Close all modals
+    setIsReconciliationModalOpen(false);
+    setIsFavDetailsModalOpen(false);
+    setIsDeleteFavConfirmModalOpen(false);
+    setIsFullPreviewModalOpen(false);
+    setIsDataEntryModalOpen(false);
+    setIsAddNewMemberModalOpen(false);
+    setIsCreateTitheListModalOpen(false);
+    setIsSaveFavoriteModalOpen(false);
+    setIsAssemblySelectionModalOpen(false);
+    setIsUpdateConfirmModalOpen(false);
+    setIsEditMemberModalOpen(false);
+    setIsValidationModalOpen(false);
+    setIsCommandPaletteOpen(false);
   }, [clearAutoSaveDraft]);
 
       const handleDateChange = useCallback(
@@ -1168,6 +1182,7 @@ const App: React.FC = () => {
     clearWorkspace();
     addToast("Workspace cleared.", "info");
     setIsClearWorkspaceModalOpen(false);
+    navigate("/"); // Navigate to dashboard after clearing workspace
   };
 
   const handleAddNewMemberToList = (newMember: MemberRecordA) => {
@@ -1486,7 +1501,7 @@ const App: React.FC = () => {
 
 
 
-      <Toaster richColors theme={theme} />
+      <Toaster richColors theme={theme} accentColor={accentColor} />
 
       {isFullPreviewModalOpen && (
         <FullTithePreviewModal
