@@ -3,6 +3,7 @@ import { Send, Sparkles } from "lucide-react";
 import Button from "./Button";
 import { ChatMessage } from "../types";
 import { formatMarkdown } from "../lib/markdown";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ChatInterfaceProps {
   chatHistory: ChatMessage[];
@@ -38,7 +39,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className="flex flex-col h-[60vh] md:h-[calc(100vh-250px)]">
-      <div className="flex-grow overflow-y-auto pr-4 space-y-6">
+      <ScrollArea className="flex-grow pr-4 space-y-6">
         {chatHistory.map((msg, index) => (
           <div key={index} className={`chat-message ${msg.role}`}>
             <div className={`chat-bubble ${msg.role}`}>
@@ -60,7 +61,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         ))}
         <div ref={chatEndRef} />
-      </div>
+      </ScrollArea>
       <div className="pt-4 mt-auto">
         <div className="flex flex-wrap gap-2 mb-3">
           {suggestedPrompts.map((prompt) => (
