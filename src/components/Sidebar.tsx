@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GoogleUserProfile } from "../types";
 import { THEME_OPTIONS } from "../constants";
 import SyncStatusIndicator from "./SyncStatusIndicator";
@@ -131,11 +132,10 @@ const GoogleSyncControl: React.FC<
               className="p-3 bg-[var(--bg-card)] rounded-lg"
             >
               <div className="flex items-center gap-3">
-                <img
-                  src={userProfile.imageUrl}
-                  alt={userProfile.name}
-                  className="w-10 h-10 rounded-full flex-shrink-0"
-                />
+                <Avatar className="w-10 h-10 flex-shrink-0">
+                  <AvatarImage src={userProfile.imageUrl} alt={userProfile.name} />
+                  <AvatarFallback>{userProfile.name.split(" ").map((n) => n[0]).join("")}</AvatarFallback>
+                </Avatar>
                 <div className="text-left overflow-hidden flex-grow">
                   <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
                     {userProfile.name}
