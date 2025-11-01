@@ -306,7 +306,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   const prevListLengthRef = useRef(0);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 1 } }),
   );
 
   // Initialize internal state when modal opens

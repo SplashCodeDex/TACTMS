@@ -18,7 +18,8 @@ import {
   TransactionLogEntry,
 } from "./types";
 import Button from "./components/Button";
-import { toast, Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import Modal from "./components/Modal";
 import {
   createTitheList,
@@ -78,6 +79,14 @@ interface PendingMasterListUpdate {
   newFileName: string;
 }
 
+export interface Notification {
+  id: string;
+  message: string;
+  type: "info" | "success" | "error" | "warning";
+  action?: { label: string; onClick: () => void };
+  icon?: React.ReactNode;
+}
+
 const MotionDiv = motion.div;
 
 const App: React.FC = () => {
@@ -85,6 +94,8 @@ const App: React.FC = () => {
   const [originalData, setOriginalData] = useState<MemberRecordA[]>([]);
   const [processedDataA, setProcessedDataA] = useState<MemberRecordA[]>([]);
   const [titheListData, setTitheListData] = useState<TitheRecordB[]>([]);
+
+  const [globalNotifications, setGlobalNotifications] = useState<Notification[]>([]);
 
   const [inputErrors, setInputErrors] = useState<{ [key: string]: string }>({});
 
@@ -267,27 +278,56 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (newWorker) {
-      toast.info("A new version is available!", {
-        duration: Infinity,
-        action: {
-          label: "Reload",
-          onClick: () => newWorker.postMessage({ type: "SKIP_WAITING" }),
+      setGlobalNotifications((prev) => [
+        ...prev,
+        {
+          id: "new-version-available",
+          message: "A new version is available!",
+          type: "info",
+          action: {
+            label: "Reload",
+            onClick: () => newWorker.postMessage({ type: "SKIP_WAITING" }),
+          },
         },
-      });
+      ]);
     }
   }, [newWorker]);
 
   useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     const OFFLINE_TOAST_ID = "offline-indicator";
+    const OfflineIcon = <WifiOff size={18} />;
     if (isOffline) {
-      toast.error("You are currently offline.", {
-        id: OFFLINE_TOAST_ID,
-        duration: Infinity,
-        icon: <WifiOff size={18} />,
-        position: "bottom-left",
+      setGlobalNotifications((prev) => {
+        if (!prev.some((n) => n.id === OFFLINE_TOAST_ID)) {
+          return [
+            ...prev,
+            {
+              id: OFFLINE_TOAST_ID,
+              message: "You are currently offline.",
+              type: "error",
+              icon: OfflineIcon,
+            },
+          ];
+        }
+        return prev;
       });
     } else {
-      toast.dismiss(OFFLINE_TOAST_ID);
+      setGlobalNotifications((prev) =>
+        prev.filter((n) => n.id !== OFFLINE_TOAST_ID),
+      );
     }
   }, [isOffline]);
 
@@ -1341,6 +1381,8 @@ const App: React.FC = () => {
         <MobileHeader
           onMenuClick={() => setIsSidebarCollapsed(false)}
           title={viewTitles[location.pathname] || "TACTMS"}
+          globalNotifications={globalNotifications}
+          accentColor={accentColor}
         />
         <AnimatePresence mode="wait">
           <MotionDiv

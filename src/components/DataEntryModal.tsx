@@ -322,7 +322,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
             <caption className="sr-only">
               Table for rapid data entry of tithe amounts.
             </caption>
-            <thead className="bg-[var(--bg-card-subtle-accent)] sticky top-0 z-10">
+            <thead className="bg-[var(--bg-card-subtle-accent)] backdrop-blur-lg sticky top-0 z-10">
               <tr>
                 <th
                   scope="col"

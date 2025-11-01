@@ -6,6 +6,7 @@ import { formatMarkdown } from "../lib/markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BotMessageSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ChatInterfaceProps {
   chatHistory: ChatMessage[];
@@ -46,6 +47,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <div key={index} className={cn("flex items-start gap-3", msg.role === "user" ? "justify-end" : "justify-start")}>
             {msg.role === "model" && (
               <Avatar className="h-8 w-8">
+                <AvatarImage src="/img/ai-avatar.png" alt="AI Avatar" /> {/* Placeholder for AI avatar image */}
                 <AvatarFallback><BotMessageSquare className="h-5 w-5" /></AvatarFallback>
               </Avatar>
             )}
@@ -67,6 +69,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
             {msg.role === "user" && (
               <Avatar className="h-8 w-8">
+                <AvatarImage src="/img/user-avatar.png" alt="User Avatar" /> {/* Placeholder for user avatar image */}
                 <AvatarFallback>You</AvatarFallback>
               </Avatar>
             )}

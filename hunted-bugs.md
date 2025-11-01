@@ -44,4 +44,12 @@ The drag-and-drop feature isn't working.
 
 the clear workspace feature logic needs attention.
 
-Which assembly does the file FanteMayera-Tithers-Synced.xlsx belong to? needs 2x color vibrant. it is too dim.
+Which assembly does the file <<FanteMayera-Tithers-Synced.xlsx(any file name)>> belong to? text needs 2x color vibrant. it is too dim.
+
+Comparing current file with the Master List logic
+
+the cloud sync after a successful sign in still shows "Cloud Sync
+Sign in to sync your favorites across devices.
+Sign in with Google"
+
+in "Full Tithe List Preview & Edit", some of the table columns should be hidden by default (Transaction Type, Payment Source Type, Transaction Date	Currency, Exchange Rate) as it main purpse is to organize the members in a preferred order. The preferred ordered list must be persistent(under no circumstance should  anything ruin the preffered ordered list).
