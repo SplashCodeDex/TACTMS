@@ -18,7 +18,7 @@ import {
   TransactionLogEntry,
 } from "./types";
 import Button from "./components/Button";
-import { ToastContainer, ToastMessage, ToastAction } from "./components/Toast";
+import { toast, Toaster } from "@/components/ui/sonner";
 import Modal from "./components/Modal";
 import {
   createTitheList,
@@ -79,18 +79,6 @@ interface PendingMasterListUpdate {
 }
 
 const MotionDiv = motion.div;
-
-const OfflineIndicator = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: 20 }}
-    className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-[1000]"
-  >
-    <WifiOff size={18} />
-    <span>You are currently offline.</span>
-  </motion.div>
-);
 
 const App: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -153,8 +141,6 @@ const App: React.FC = () => {
   } | null>(null);
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const storedTheme = localStorage.getItem(APP_THEME_STORAGE_KEY) as
@@ -236,15 +222,33 @@ const App: React.FC = () => {
   const addToast = useCallback(
     (
       message: string,
-      type: ToastMessage["type"],
+      type: "info" | "success" | "error" | "warning",
       duration?: number,
-      actions?: ToastAction[],
+      actions?: { label: string; onClick: () => void }[],
     ) => {
-      const id = Math.random().toString(36).substring(2, 9);
-      setToasts((prevToasts) => [
-        ...prevToasts,
-        { id, message, type, duration, actions },
-      ]);
+      const toastOptions: Parameters<typeof toast>[1] = {
+        duration,
+        action: actions && actions.length > 0 ? { 
+          label: actions[0].label,
+          onClick: actions[0].onClick
+        } : undefined,
+      };
+
+      switch (type) {
+        case "success":
+          toast.success(message, toastOptions);
+          break;
+        case "error":
+          toast.error(message, toastOptions);
+          break;
+        case "warning":
+          toast.warning(message, toastOptions);
+          break;
+        case "info":
+        default:
+          toast.info(message, toastOptions);
+          break;
+      }
     },
     [],
   );
@@ -263,27 +267,29 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (newWorker) {
-      addToast("A new version is available!", "info", undefined, [
-        {
+      toast.info("A new version is available!", {
+        duration: Infinity,
+        action: {
           label: "Reload",
           onClick: () => newWorker.postMessage({ type: "SKIP_WAITING" }),
         },
-      ]);
+      });
     }
-  }, [newWorker, addToast]);
+  }, [newWorker]);
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
+    const OFFLINE_TOAST_ID = "offline-indicator";
+    if (isOffline) {
+      toast.error("You are currently offline.", {
+        id: OFFLINE_TOAST_ID,
+        duration: Infinity,
+        icon: <WifiOff size={18} />,
+        position: "bottom-left",
+      });
+    } else {
+      toast.dismiss(OFFLINE_TOAST_ID);
+    }
+  }, [isOffline]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -310,10 +316,6 @@ const App: React.FC = () => {
     signOut: driveSignOut,
     isConfigured: isDriveConfigured,
   } = useGoogleDriveSync(addToast);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
-  }, []);
 
   useEffect(() => {
     document.body.classList.remove("light-theme", "dark-theme");
@@ -1440,9 +1442,9 @@ const App: React.FC = () => {
         </AnimatePresence>
       </main>
 
-      <AnimatePresence>{isOffline && <OfflineIndicator />}</AnimatePresence>
 
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      <Toaster richColors theme={theme} />
 
       {isFullPreviewModalOpen && (
         <FullTithePreviewModal

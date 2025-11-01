@@ -38,3 +38,10 @@ The parseAgeStringToYears function, which is likely intended to be a more robust
 
 The Issue: The regex /^(\\d+)\\s*years?/i will correctly parse "30 years" but will ignore the "5 months" in "30 years 5 months".
 The Impact: This can lead to a loss of precision in age calculations and could be considered a regression if a previous version of the code handled this more accurately.
+
+
+The drag-and-drop feature isn't working.
+
+the clear workspace feature logic needs attention.
+
+Which assembly does the file FanteMayera-Tithers-Synced.xlsx belong to? needs 2x color vibrant. it is too dim.
