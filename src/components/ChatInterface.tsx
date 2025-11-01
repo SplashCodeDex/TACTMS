@@ -4,6 +4,8 @@ import Button from "./Button";
 import { ChatMessage } from "../types";
 import { formatMarkdown } from "../lib/markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BotMessageSquare } from "lucide-react";
 
 interface ChatInterfaceProps {
   chatHistory: ChatMessage[];
@@ -41,8 +43,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     <div className="flex flex-col h-[60vh] md:h-[calc(100vh-250px)]">
       <ScrollArea className="flex-grow pr-4 space-y-6">
         {chatHistory.map((msg, index) => (
-          <div key={index} className={`chat-message ${msg.role}`}>
-            <div className={`chat-bubble ${msg.role}`}>
+          <div key={index} className={cn("flex items-start gap-3", msg.role === "user" ? "justify-end" : "justify-start")}>
+            {msg.role === "model" && (
+              <Avatar className="h-8 w-8">
+                <AvatarFallback><BotMessageSquare className="h-5 w-5" /></AvatarFallback>
+              </Avatar>
+            )}
+            <div className={cn("chat-bubble p-3 rounded-lg max-w-[70%]", msg.role === "user" ? "bg-[var(--primary-accent-start)] text-white rounded-br-none" : "bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-none")}>
               {msg.isLoading && msg.parts[0].text === "" ? (
                 <div className="typing-indicator px-2 py-1">
                   <span></span>
@@ -58,6 +65,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 />
               )}
             </div>
+            {msg.role === "user" && (
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>You</AvatarFallback>
+              </Avatar>
+            )}
           </div>
         ))}
         <div ref={chatEndRef} />
