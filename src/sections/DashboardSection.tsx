@@ -93,9 +93,13 @@ const DashboardSection: React.FC = () => {
     return { ytdTithe, ytdSouls, totalMembers, recentActivities };
   }, [transactionLog, memberDatabase]);
 
-  const assembliesWithFavorites = useMemo(() => {
-    return new Set(favorites.map((f: FavoriteConfig) => f.assemblyName));
-  }, [favorites]);
+  const assembliesWithData = useMemo(() => {
+    return new Set(
+      Object.keys(memberDatabase).filter(
+        (name) => memberDatabase[name]?.data?.length > 0,
+      ),
+    );
+  }, [memberDatabase]);
 
   const handleStartWeek = () => {
     if (selectedAssembly) {
@@ -213,7 +217,7 @@ const DashboardSection: React.FC = () => {
                     value={selectedAssembly}
                     onChange={(e) => setSelectedAssembly(e.target.value)}
                     className="form-input-light w-full"
-                    disabled={favorites.length === 0}
+                    disabled={Object.keys(memberDatabase).length === 0}
                   >
                     <option value="" disabled>
                       -- Select Assembly --
@@ -222,12 +226,12 @@ const DashboardSection: React.FC = () => {
                       <option
                         key={assembly}
                         value={assembly}
-                        disabled={!assembliesWithFavorites.has(assembly)}
+                        disabled={!assembliesWithData.has(assembly)}
                       >
                         {assembly}{" "}
-                        {assembliesWithFavorites.has(assembly)
+                        {assembliesWithData.has(assembly)
                           ? ""
-                          : "(No saved data)"}
+                          : "(No member data)"}
                       </option>
                     ))}
                   </select>

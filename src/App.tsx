@@ -1071,10 +1071,10 @@ const App: React.FC = () => {
   );
 
   const startNewWeek = (assemblyName: string) => {
-    const fav = findLatestFavorite(assemblyName);
-    if (!fav) {
+    const masterList = memberDatabase[assemblyName];
+    if (!masterList || !masterList.data || masterList.data.length === 0) {
       addToast(
-        `No saved data found for ${assemblyName}. Please upload a file first.`,
+        `No member data found for ${assemblyName} in the database. Please upload a master list first.`,
         "warning",
       );
       return;
@@ -1082,52 +1082,34 @@ const App: React.FC = () => {
 
     clearWorkspace();
 
-    const memberSourceRecords = fav.titheListData;
-    if (!memberSourceRecords || memberSourceRecords.length === 0) {
-      addToast(
-        `The latest favorite for ${assemblyName} has no members.`,
-        "error",
-      );
-      return;
-    }
-
+    const memberSourceRecords = masterList.data;
     const newDate = new Date(); // Today's date for the new week
     const formattedDate = formatDateDDMMMYYYY(newDate);
-    const newDescription = fav.descriptionText.replace(
-      /{DD-MMM-YYYY}/gi,
-      formattedDate,
-    );
+    const newDescription = `Tithe for ${formattedDate}`;
 
-    const freshTitheList = memberSourceRecords.map((record) => ({
-      ...record,
-      "Transaction Amount": "",
-      "Transaction Date ('DD-MMM-YYYY')": formattedDate,
-      "Narration/Description": newDescription,
-    }));
+    const freshTitheList = createTitheList(
+      memberSourceRecords,
+      concatenationConfig,
+      newDate,
+      newDescription,
+      amountMappingColumn,
+    ).map((record) => ({ ...record, "Transaction Amount": "" }));
+
     setTitheListData(freshTitheList);
 
-    setOriginalData(fav.originalData || []);
-    setProcessedDataA(fav.processedDataA || []);
-    setConcatenationConfig(fav.concatenationConfig);
-    setDescriptionText(fav.descriptionText);
-    setAmountMappingColumn(fav.amountMappingColumn || null);
-    setCurrentAssembly(fav.assemblyName);
-    if (fav.originalFileName) {
-      setUploadedFile(
-        new File([], fav.originalFileName, { type: "text/plain" }),
-      );
-    }
-    setFileNameToSave(`${fav.assemblyName}-TitheList-${formattedDate}`);
-
+    setOriginalData(memberSourceRecords);
+    setProcessedDataA(memberSourceRecords);
+    setDescriptionText(newDescription);
+    setCurrentAssembly(assemblyName);
+    setFileNameToSave(`${assemblyName}-TitheList-${formattedDate}`);
     setSoulsWonCount(0);
     setSelectedDate(newDate);
-
     setHasUnsavedChanges(false);
     clearAutoSaveDraft();
 
     navigate("/processor");
     addToast(
-      `Started new week for ${assemblyName} using the latest member list.`,
+      `Started new week for ${assemblyName} using the master member list.`,
       "success",
     );
   };
