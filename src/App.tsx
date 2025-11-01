@@ -362,100 +362,97 @@ const App: React.FC = () => {
     setAmountMappingColumn(null);
   }, [clearAutoSaveDraft]);
 
-  // const handleDateChange = useCallback( // TODO: Re-implement date change logic.
-  //   (date: Date) => {
-  //     const isSameDay =
-  //       new Date(date).setHours(0, 0, 0, 0) ===
-  //       new Date(selectedDate).setHours(0, 0, 0, 0);
-  //     if (isSameDay) {
-  //       return;
-  //     }
-
-  //     if (currentAssembly) {
-  //       const startOfDay = new Date(date).setHours(0, 0, 0, 0);
-  //       const logsForDay = transactionLog
-  //         .filter((log) => {
-  //           if (log.assemblyName !== currentAssembly) return false;
-  //           const logDate = new Date(log.selectedDate).setHours(0, 0, 0, 0);
-  //           return logDate === startOfDay;
-  //         })
-  //         .sort((a, b) => b.timestamp - a.timestamp);
-
-  //       const latestLogForDate = logsForDay[0];
-
-  //       if (latestLogForDate && latestLogForDate.titheListData) {
-  //         addToast(
-  //           `Loading saved record for ${formatDateDDMMMYYYY(date)}.`,
-  //           "info",
-  //           3000,
-  //         );
-
-  //         setTitheListData(latestLogForDate.titheListData);
-  //         setConcatenationConfig(latestLogForDate.concatenationConfig);
-  //         setDescriptionText(latestLogForDate.descriptionText);
-  //         setAmountMappingColumn(latestLogForDate.amountMappingColumn);
-  //         setSoulsWonCount(latestLogForDate.soulsWonCount);
-  //         setSelectedDate(new Date(latestLogForDate.selectedDate));
-
-  //         setOriginalData([]);
-  //         setProcessedDataA([]);
-  //         setAgeRangeMin("");
-  //         setAgeRangeMax("");
-  //         setIsAgeFilterActive(false);
-  //         setUploadedFile(
-  //           new File(
-  //             [],
-  //             `Record from ${formatDateDDMMMYYYY(new Date(latestLogForDate.selectedDate))}`,
-  //             { type: "text/plain" },
-  //           ),
-  //         );
-  //         setFileNameToSave(
-  //           `${latestLogForDate.assemblyName}-TitheList-${formatDateDDMMMYYYY(new Date(latestLogForDate.selectedDate))}`,
-  //         );
-
-  //         setHasUnsavedChanges(false);
-  //         clearAutoSaveDraft();
-  //         return;
-  //       }
-  //     }
-
-  //     // If no log found, prepare the current list for the new date by resetting amounts.
-  //     setSelectedDate(date);
-  //     if (titheListData.length > 0) {
-  //       const formattedDate = formatDateDDMMMYYYY(date);
-  //       const newDescription = descriptionText.replace(
-  //         /{DD-MMM-YYYY}/gi,
-  //         formattedDate,
-  //       );
-
-  //       const freshList = titheListData.map((record) => ({
-  //         ...record,
-  //         "Transaction Amount": "", // Reset amount for the new date
-  //         "Transaction Date ('DD-MMM-YYYY')": formattedDate,
-  //         "Narration/Description": newDescription,
-  //       }));
-
-  //       setTitheListData(freshList);
-  //       setSoulsWonCount(0); // Reset souls won for the new period
-  //       setHasUnsavedChanges(true); // Mark as unsaved
-  //     }
-
-  //     if (currentAssembly) {
-  //       const newFileName = `${currentAssembly}-TitheList-${formatDateDDMMMYYYY(date)}`;
-  //       setFileNameToSave(newFileName);
-  //     }
-  //   },
-  //   [
-  //     currentAssembly,
-  //     selectedDate,
-  //     transactionLog,
-  //     addToast,
-  //     descriptionText,
-  //     titheListData,
-  //     clearAutoSaveDraft,
-  //   ],
-  // );
-
+      const handleDateChange = useCallback(
+        (date: Date) => {
+          const sundayDate = getMostRecentSunday(date); // Adjust input date to Sunday
+          const isSameDay =
+            sundayDate.setHours(0, 0, 0, 0) ===
+            selectedDate.setHours(0, 0, 0, 0);        if (isSameDay) {
+          return;
+        }
+  
+        if (currentAssembly) {
+                  const startOfDay = sundayDate.setHours(0, 0, 0, 0); // Use sundayDate here
+                  const logsForDay = transactionLog
+                    .filter((log) => {
+                      if (log.assemblyName !== currentAssembly) return false;
+                      const logDate = getMostRecentSunday(new Date(log.selectedDate)).setHours(0, 0, 0, 0); // Adjust logDate to Sunday
+                      return logDate === startOfDay;
+                    })            .sort((a, b) => b.timestamp - a.timestamp);
+  
+          const latestLogForDate = logsForDay[0];
+  
+                  if (latestLogForDate && latestLogForDate.titheListData) {
+                    const sundayDate = getMostRecentSunday(new Date(latestLogForDate.selectedDate));
+                    addToast(
+                      `Loading saved record for ${formatDateDDMMMYYYY(sundayDate)}.`, 
+                      "info",
+                      3000,
+                    );
+          
+                    setTitheListData(latestLogForDate.titheListData);
+                    setConcatenationConfig(latestLogForDate.concatenationConfig);
+                    setDescriptionText(latestLogForDate.descriptionText);
+                    setAmountMappingColumn(latestLogForDate.amountMappingColumn);
+                    setSoulsWonCount(latestLogForDate.soulsWonCount);
+                    setSelectedDate(sundayDate);
+          
+                    setOriginalData([]);
+                    setProcessedDataA([]);
+                    setAgeRangeMin("");
+                    setAgeRangeMax("");
+                    setIsAgeFilterActive(false);
+                    setUploadedFile(
+                      new File(
+                        [],
+                        `Record from ${formatDateDDMMMYYYY(sundayDate)}`,
+                        { type: "text/plain" },
+                      ),
+                    );
+                    setFileNameToSave(
+                      `${latestLogForDate.assemblyName}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`,
+                    );
+          
+                    setHasUnsavedChanges(false);
+                    clearAutoSaveDraft();
+                    return;
+                  }        }
+  
+              // If no log found, prepare the current list for the new date by resetting amounts.
+              setSelectedDate(sundayDate);
+              if (titheListData.length > 0) {
+                const formattedDate = formatDateDDMMMYYYY(sundayDate);
+                const newDescription = descriptionText.replace(
+                  /{DD-MMM-YYYY}/gi,
+                  formattedDate,
+                );
+        
+                const freshList = titheListData.map((record) => ({
+                  ...record,
+                  "Transaction Amount": "", // Reset amount for the new date
+                  "Transaction Date ('DD-MMM-YYYY')": formattedDate,
+                  "Narration/Description": newDescription,
+                }));
+        
+                setTitheListData(freshList);
+                setSoulsWonCount(0); // Reset souls won for the new period
+                setHasUnsavedChanges(true); // Mark as unsaved
+              }
+        
+              if (currentAssembly) {
+                const newFileName = `${currentAssembly}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`;
+                setFileNameToSave(newFileName);
+              }      },
+      [
+        currentAssembly,
+        selectedDate,
+        transactionLog,
+        addToast,
+        descriptionText,
+        titheListData,
+        clearAutoSaveDraft,
+      ],
+    );
   const handleDescriptionChange = useCallback(
     (text: string) => {
       setDescriptionText(text);
@@ -1169,11 +1166,15 @@ const App: React.FC = () => {
         };
       });
 
+      const sundayDate = getMostRecentSunday(new Date());
+      const formattedDate = formatDateDDMMMYYYY(sundayDate);
+      const defaultDescription = `Tithe for ${formattedDate}`;
+
       const newTitheRecord = createTitheList(
         [enrichedMember],
         concatenationConfig,
-        selectedDate,
-        descriptionText,
+        sundayDate, // Use sundayDate here
+        defaultDescription, // Use defaultDescription here
         null,
       )[0];
       setTitheListData((prev) => [...prev, newTitheRecord]);
@@ -1187,11 +1188,15 @@ const App: React.FC = () => {
   };
 
   const handleAddExistingMemberToList = (member: MemberRecordA) => {
+    const sundayDate = getMostRecentSunday(new Date());
+    const formattedDate = formatDateDDMMMYYYY(sundayDate);
+    const defaultDescription = `Tithe for ${formattedDate}`;
+
     const newTitheRecord = createTitheList(
       [member],
       concatenationConfig,
-      selectedDate,
-      descriptionText,
+      sundayDate, // Use sundayDate here
+      defaultDescription, // Use defaultDescription here
       null,
     )[0];
     setTitheListData((prev) => [...prev, newTitheRecord]);
