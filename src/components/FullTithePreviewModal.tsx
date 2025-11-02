@@ -328,29 +328,41 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   const [columnVisibility, setColumnVisibility] = useState<
     Record<string, boolean>
   >(() => {
+    // Define columns that should be hidden by default for a cleaner initial view.
+    const hiddenByDefault = [
+      "Transaction Type",
+      "Payment Source Type",
+      "Transaction Date", // To be safe
+      "Transaction Date ('DD-MMM-YYYY')",
+      "Currency",
+      "Exchange Rate",
+    ];
+
     try {
       const saved = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         const fullConfig: Record<string, boolean> = {};
         ALL_TABLE_COLUMNS.forEach((col) => {
-          fullConfig[col] = parsed[col] ?? false; // Default new columns to hidden
+          // If a setting exists for the column, use it.
+          if (col in parsed) {
+            fullConfig[col] = parsed[col];
+          } else {
+            // Otherwise, fall back to the default visibility logic.
+            // This ensures new columns respect the default visibility settings.
+            fullConfig[col] = !hiddenByDefault.includes(col);
+          }
         });
         return fullConfig;
       }
     } catch (e) {
       console.error("Failed to parse column visibility settings", e);
     }
-    // No saved settings or error, apply new defaults
+
+    // No saved settings or error, apply new defaults from scratch.
     const defaultVisibility: Record<string, boolean> = {};
     ALL_TABLE_COLUMNS.forEach((col) => {
-      defaultVisibility[col] = ![
-        "Transaction Type",
-        "Payment Source Type",
-        "Transaction Date ('DD-MMM-YYYY')",
-        "Currency",
-        "Exchange Rate",
-      ].includes(col);
+      defaultVisibility[col] = !hiddenByDefault.includes(col);
     });
     return defaultVisibility;
   });
