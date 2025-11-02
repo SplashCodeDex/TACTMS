@@ -36,13 +36,10 @@ const icons: Record<ToastType, React.ReactNode> = {
 };
 
 const toastColors: Record<ToastType, string> = {
-  success:
-    "border-[var(--success-border)] bg-[var(--bg-card)] text-[var(--success-text)]",
-  error:
-    "border-[var(--danger-border)] bg-[var(--bg-card)] text-[var(--danger-text)]",
-  info: "border-[var(--secondary-accent-end)] bg-[var(--bg-card)] text-[var(--text-primary)]",
-  warning:
-    "border-[var(--warning-border)] bg-[var(--bg-card)] text-[var(--warning-text)]",
+  success: "border-[var(--success-border)]",
+  error: "border-[var(--danger-border)]",
+  info: "border-[var(--secondary-accent-end)]",
+  warning: "border-[var(--warning-border)]",
 };
 
 const Toast: React.FC<ToastProps> = ({
@@ -80,8 +77,7 @@ const Toast: React.FC<ToastProps> = ({
       aria-live={
         type === "error" || type === "warning" ? "assertive" : "polite"
       }
-      className={`w-full max-w-md p-4 rounded-xl shadow-xl border-l-4 flex flex-col mb-3 ${toastColors[type]}`}
-      style={{ backdropFilter: "blur(5px)" }}
+      className={`w-full max-w-md p-4 rounded-xl shadow-xl border-l-4 flex flex-col mb-3 glassmorphism-bg text-white ${toastColors[type]}`}
     >
       <div className="flex items-start space-x-3.5">
         <div className="flex-shrink-0 mt-0.5">{icons[type]}</div>

@@ -36,6 +36,7 @@ const Modal: React.FC<ModalProps> = ({
 
       if (focusableElements.length > 0) {
         const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
         // Set focus only if no element in the modal is already focused
         if (modalRef.current && !modalRef.current.contains(document.activeElement)) {
           firstElement.focus();
