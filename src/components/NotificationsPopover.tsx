@@ -47,7 +47,10 @@ const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
           <div className="flex items-center justify-between">
             <h4 className="font-semibold">Notifications</h4>
             {pendingNotifications > 0 && (
-              <Button size="sm" variant="ghost">
+              <Button
+                size="sm"
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-subtle-accent)] transition-all"
+              >
                 Mark all as read
               </Button>
             )}
@@ -75,7 +78,7 @@ const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
                         size="sm"
                         variant="link"
                         onClick={notification.action.onClick}
-                        className="p-0 h-auto text-xs !text-current hover:underline"
+                        className="p-0 h-auto text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-subtle-accent)] transition-all rounded-md px-2 py-1"
                       >
                         {notification.action.label}
                       </Button>

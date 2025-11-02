@@ -289,13 +289,22 @@ const App: React.FC = () => {
             label: "Reload",
             onClick: () => {
               newWorker.postMessage({ type: "SKIP_WAITING" });
-              window.location.reload();
             },
           },
         },
       ]);
     }
   }, [newWorker]);
+
+  useEffect(() => {
+    const handleControllerChange = () => {
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
