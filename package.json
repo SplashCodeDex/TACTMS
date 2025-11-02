@@ -6,7 +6,7 @@
   "homepage": "https://SplashCodeDex.github.io/TACTMS",
   "scripts": {
     "dev": "vite",
-    "build": "npx tsc && vite build",
+    "build": "npx tsc && npx vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
