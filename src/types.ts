@@ -119,10 +119,20 @@ export interface ReconciliationEntry {
   membershipId: string;
 }
 
+export interface ChangedMemberDetail {
+  memberId: string;
+  oldRecord: MemberRecordA;
+  newRecord: MemberRecordA;
+  changes: { field: string; oldValue: any; newValue: any }[];
+}
+
 export interface MembershipReconciliationReport {
   newMembers: MemberRecordA[]; // Changed to hold full records
   missingMembers: MemberRecordA[]; // Changed to hold full records for "keep" functionality
-  previousFileDate: string;
+  changedMembers: ChangedMemberDetail[]; // Add this line
+  unidentifiableNewMembers: MemberRecordA[]; // Members from new data without identifiable ID
+  unidentifiableMasterMembers: MemberRecordA[]; // Members from master data without identifiable ID
+  previousFileDate?: string;
 }
 
 export type ViewType =

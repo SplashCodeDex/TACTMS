@@ -40,15 +40,3 @@ The Issue: The regex /^(\\d+)\\s*years?/i will correctly parse "30 years" but wi
 The Impact: This can lead to a loss of precision in age calculations and could be considered a regression if a previous version of the code handled this more accurately.
 
 
-The drag-and-drop feature isn't working.
-
-
-"Which assembly does the file <<FanteMayera-Tithers-Synced.xlsx(any file name)>> belong to? text needs 2x color vibrant. it is too dim.""
-
-Comparing current file with the Master List logic
-
-the cloud sync after a successful sign in still shows "Cloud Sync
-Sign in to sync your favorites across devices.
-Sign in with Google"
-
-in "Full Tithe List Preview & Edit", some of the table columns should be hidden by default (Transaction Type, Payment Source Type, Transaction Date	Currency, Exchange Rate) as it main purpse is to organize the members in a preferred order. The preferred ordered list must be persistent(under no circumstance should  anything ruin the preffered ordered list).

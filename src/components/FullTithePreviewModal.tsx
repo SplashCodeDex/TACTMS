@@ -344,14 +344,17 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     // No saved settings or error, apply new defaults
     const defaultVisibility: Record<string, boolean> = {};
     ALL_TABLE_COLUMNS.forEach((col) => {
-      defaultVisibility[col] = [
-        "Membership Number",
+      defaultVisibility[col] = ![
+        "Transaction Type",
+        "Payment Source Type",
         "Transaction Date ('DD-MMM-YYYY')",
-        "Transaction Amount",
+        "Currency",
+        "Exchange Rate",
       ].includes(col);
     });
     return defaultVisibility;
   });
+
 
   const visibleTableHeaders = useMemo(() => {
     return ALL_TABLE_COLUMNS.filter((key) => columnVisibility[key] ?? true);

@@ -4,6 +4,7 @@ import {
   TitheRecordB,
   ConcatenationConfig,
   MembershipReconciliationReport,
+  ChangedMemberDetail,
 } from "../types";
 
 export const parseAgeStringToYears = (
@@ -147,31 +148,73 @@ export const reconcileMembers = (
     const membershipNumber = String(m["Membership Number"] || m["Old Membership Number"] || "").trim();
     if (membershipNumber) return membershipNumber;
 
-    // Fallback to First Name + Surname if no membership number
-    const firstName = String(m["First Name"] || "").trim();
-    const surname = String(m.Surname || "").trim();
+    // Fallback to First Name + Surname if no membership number, now case-insensitive
+    const firstName = String(m["First Name"] || "").trim().toLowerCase();
+    const surname = String(m.Surname || "").trim().toLowerCase();
     if (firstName && surname) return `${firstName}-${surname}`;
     return ""; // No identifiable ID
   };
 
-  const masterMemberIds = new Set(
-    masterData.map(getMemberId).filter((id) => id),
-  );
-  const newMemberIds = new Set(newData.map(getMemberId).filter((id) => id));
-
-  const newMembers: MemberRecordA[] = newData.filter((m) => {
+  const masterMemberMap = new Map<string, MemberRecordA>();
+  const unidentifiableMasterMembers: MemberRecordA[] = [];
+  masterData.forEach((m) => {
     const id = getMemberId(m);
-    return id && !masterMemberIds.has(id);
+    if (id) masterMemberMap.set(id, m);
+    else unidentifiableMasterMembers.push(m);
   });
 
-  const missingMembers: MemberRecordA[] = masterData.filter((m) => {
+  const newMemberMap = new Map<string, MemberRecordA>();
+  const unidentifiableNewMembers: MemberRecordA[] = [];
+  newData.forEach((m) => {
     const id = getMemberId(m);
-    return id && !newMemberIds.has(id);
+    if (id) newMemberMap.set(id, m);
+    else unidentifiableNewMembers.push(m);
+  });
+
+  const newMembers: MemberRecordA[] = [];
+  const missingMembers: MemberRecordA[] = [];
+  const changedMembers: ChangedMemberDetail[] = [];
+
+  // Identify new members and changed members
+  newMemberMap.forEach((newRecord, id) => {
+    if (!masterMemberMap.has(id)) {
+      newMembers.push(newRecord);
+    } else {
+      const oldRecord = masterMemberMap.get(id)!;
+      const changes: { field: string; oldValue: any; newValue: any }[] = [];
+
+      // Compare all keys present in MemberRecordA
+      const allKeys = new Set([...Object.keys(oldRecord), ...Object.keys(newRecord)]);
+
+      allKeys.forEach((key) => {
+        const oldValue = oldRecord[key];
+        const newValue = newRecord[key];
+
+        // Simple comparison for now, can be enhanced for specific types (e.g., date parsing)
+        if (String(oldValue) !== String(newValue)) {
+          changes.push({ field: key, oldValue, newValue });
+        }
+      });
+
+      if (changes.length > 0) {
+        changedMembers.push({ memberId: id, oldRecord, newRecord, changes });
+      }
+    }
+  });
+
+  // Identify missing members
+  masterMemberMap.forEach((oldRecord, id) => {
+    if (!newMemberMap.has(id)) {
+      missingMembers.push(oldRecord);
+    }
   });
 
   return {
     newMembers,
     missingMembers,
+    changedMembers,
+    unidentifiableNewMembers,
+    unidentifiableMasterMembers,
   };
 };
 
