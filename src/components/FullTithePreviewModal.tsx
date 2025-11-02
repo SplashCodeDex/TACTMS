@@ -16,6 +16,7 @@ import {
   UserPlus,
   Search,
   GripVertical,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MagicCard } from "./MagicCard";
@@ -929,23 +930,39 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
                   aria-label="Target position for reorder"
                 />
               </div>
-              <Search size={20} className="text-[var(--text-muted)]" />
-              <input
-                type="text"
-                placeholder={`Search ${filteredAndSortedTitheList.length} records...`}
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && pendingSmartMove) {
-                    e.preventDefault();
-                    handleSmartMoveConfirm();
-                  } else if (e.key === "Escape") {
-                    setPendingSmartMove(null);
-                  }
-                }}
-                className="form-input-light text-sm w-full sm:w-auto sm:flex-grow py-1.5"
-                aria-label="Search tithe list records"
-              />
+              <div className="relative flex-grow">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search size={18} className="text-[var(--text-muted)]" />
+                </div>
+                <input
+                  type="text"
+                  placeholder={`Search ${filteredAndSortedTitheList.length} records...`}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && pendingSmartMove) {
+                      e.preventDefault();
+                      handleSmartMoveConfirm();
+                    } else if (e.key === "Escape") {
+                      setPendingSmartMove(null);
+                      setSearchInput(""); 
+                    }
+                  }}
+                  className="form-input-light text-sm w-full py-1.5 pl-10 pr-10"
+                  aria-label="Search tithe list records"
+                />
+                {searchInput && (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button
+                      onClick={() => setSearchInput("")}
+                      className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-full hover:bg-white/10"
+                      aria-label="Clear search"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
