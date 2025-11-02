@@ -61,6 +61,7 @@ import ClearWorkspaceModal from "./components/ClearWorkspaceModal";
 import UpdateMasterListConfirmModal from "./components/UpdateMasterListConfirmModal";
 import EditMemberModal from "./components/EditMemberModal";
 import MobileHeader from "./components/MobileHeader";
+import DesktopNotifications from "./components/DesktopNotifications";
 import ValidationReportModal from "./components/ValidationReportModal";
 import CommandPalette from "./components/CommandPalette";
 import ParsingIndicator from "./components/ParsingIndicator";
@@ -1396,6 +1397,10 @@ const App: React.FC = () => {
         <MobileHeader
           onMenuClick={() => setIsSidebarCollapsed(false)}
           title={viewTitles[location.pathname] || "TACTMS"}
+          globalNotifications={globalNotifications}
+          accentColor={accentColor}
+        />
+        <DesktopNotifications
           globalNotifications={globalNotifications}
           accentColor={accentColor}
         />

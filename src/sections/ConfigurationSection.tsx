@@ -185,7 +185,7 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
                       Cloud Sync
                     </h3>
                     {props.isConfigured ? (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background-modifier-hover)]">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background-modifier-hover)] border border-[var(--border-color)]">
                         {props.isLoggedIn && props.userProfile ? (
                           <div className="flex items-center gap-3">
                             <img
@@ -234,7 +234,7 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center p-4 bg-[var(--background-modifier-hover)] rounded-lg">
+                      <div className="text-center p-4 bg-[var(--background-modifier-hover)] rounded-lg border border-[var(--border-color)]">
                         <p className="text-[var(--text-muted)]">
                           Cloud Sync is not configured. Add your credentials to
                           the <code>.env.local</code> file.

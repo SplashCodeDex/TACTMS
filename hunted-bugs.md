@@ -42,9 +42,8 @@ The Impact: This can lead to a loss of precision in age calculations and could b
 
 The drag-and-drop feature isn't working.
 
-the notification bell icon isn't visible for all screen sizes?
 
-Which assembly does the file <<FanteMayera-Tithers-Synced.xlsx(any file name)>> belong to? text needs 2x color vibrant. it is too dim.
+"Which assembly does the file <<FanteMayera-Tithers-Synced.xlsx(any file name)>> belong to? text needs 2x color vibrant. it is too dim.""
 
 Comparing current file with the Master List logic
 

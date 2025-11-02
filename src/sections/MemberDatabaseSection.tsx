@@ -341,7 +341,7 @@ const MemberDatabaseSection: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="text-center py-12">
+        <div className="text-center py-12 content-card">
           <p className="text-gray-500 dark:text-gray-400">
             No member databases found.
           </p>
