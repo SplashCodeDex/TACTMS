@@ -9,6 +9,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Notification } from "../App"; // Assuming Notification type is defined in App.tsx
 import { THEME_OPTIONS } from "../constants";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface NotificationsPopoverProps {
   notifications: Notification[];
@@ -57,19 +58,30 @@ const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
               <p className="text-sm text-muted-foreground text-center">No new notifications.</p>
             ) : (
               notifications.map((notification) => (
-                <div key={notification.id} className="text-sm">
-                  <p className="font-medium">{notification.message}</p>
-                  {notification.action && (
-                    <Button
-                      size="sm"
-                      variant="link"
-                      onClick={notification.action.onClick}
-                      className="p-0 h-auto text-xs"
-                    >
-                      {notification.action.label}
-                    </Button>
+                <Alert
+                  key={notification.id}
+                  variant={notification.type === "error" || notification.type === "warning" ? "destructive" : "default"}
+                  className={`flex items-start gap-2 ${notification.type === "info" ? "bg-blue-100 text-blue-800 border-blue-200" : notification.type === "success" ? "bg-green-100 text-green-800 border-green-200" : ""}`}
+                >
+                  {notification.icon && (
+                    <span className="flex-shrink-0 mt-0.5">
+                      {notification.icon}
+                    </span>
                   )}
-                </div>
+                  <AlertDescription className="flex-grow">
+                    <p className="font-medium text-sm">{notification.message}</p>
+                    {notification.action && (
+                      <Button
+                        size="sm"
+                        variant="link"
+                        onClick={notification.action.onClick}
+                        className="p-0 h-auto text-xs !text-current hover:underline"
+                      >
+                        {notification.action.label}
+                      </Button>
+                    )}
+                  </AlertDescription>
+                </Alert>
               ))
             )}
           </div>

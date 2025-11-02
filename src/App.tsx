@@ -287,7 +287,10 @@ const App: React.FC = () => {
           type: "info",
           action: {
             label: "Reload",
-            onClick: () => newWorker.postMessage({ type: "SKIP_WAITING" }),
+            onClick: () => {
+              newWorker.postMessage({ type: "SKIP_WAITING" });
+              window.location.reload();
+            },
           },
         },
       ]);

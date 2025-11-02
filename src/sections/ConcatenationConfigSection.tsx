@@ -1,9 +1,9 @@
 import React from "react";
 import { Layers } from "lucide-react";
-import CheckboxButton from "../components/CheckboxButton";
 import InfoTooltip from "../components/InfoTooltip";
 import { ConcatenationConfig } from "../types.ts";
 import { DEFAULT_CONCAT_CONFIG } from "../constants.ts";
+import { Toggle } from "@/components/ui/toggle";
 
 interface ConcatenationConfigSectionProps {
   concatenationConfig: ConcatenationConfig;
@@ -48,13 +48,15 @@ const ConcatenationConfigSection: React.FC<ConcatenationConfigSectionProps> =
                   keyof ConcatenationConfig
                 >
               ).map((key) => (
-                <CheckboxButton
-                  key={key}
-                  id={`concat-${key.replace(/\s/g, "-")}`}
-                  label={key}
-                  checked={concatenationConfig[key]}
-                  onChange={() => handleConcatenationConfigChange(key)}
-                />
+                <div key={key} className="flex items-center space-x-2">
+                  <Toggle
+                    pressed={concatenationConfig[key]}
+                    onPressedChange={() => handleConcatenationConfigChange(key)}
+                    aria-label={`Toggle ${key}`}
+                  >
+                    {key}
+                  </Toggle>
+                </div>
               ))}
             </div>
             <p className="mt-3 text-xs text-[var(--text-muted)]">
