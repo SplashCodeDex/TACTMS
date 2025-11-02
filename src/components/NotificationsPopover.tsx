@@ -41,7 +41,7 @@ const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 border rounded-xl">
+      + <PopoverContent className="w-80 border-1 border-[var(--border-color)]">  
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold">Notifications</h4>
