@@ -39,4 +39,8 @@ The parseAgeStringToYears function, which is likely intended to be a more robust
 The Issue: The regex /^(\\d+)\\s*years?/i will correctly parse "30 years" but will ignore the "5 months" in "30 years 5 months".
 The Impact: This can lead to a loss of precision in age calculations and could be considered a regression if a previous version of the code handled this more accurately.
 
+In "Advanced Data Entry Mode" there is a lot of bug. when lose focus, the disappear and resets every entry done. When using the Enter/tab to advanced/highlight to the next input field (say 8) and use the pointer or mouse cursor to select previous input field (2), using the Enter/Tab again should continue from 2 to 3 not 9. 
 
+prioritize order of members
+
+the logic for member reconcillation.
