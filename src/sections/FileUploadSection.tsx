@@ -1,5 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { ListPlus, UploadCloud, Building2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import FileUploader from "../components/FileUploader";
 import { FavoriteConfig } from "../types";
 import Button from "../components/Button";
@@ -46,29 +53,32 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = React.memo(
                 <label htmlFor="assembly-start-select" className="form-label">
                   Select Assembly
                 </label>
-                <select
-                  id="assembly-start-select"
+                <Select
                   value={selectedAssemblyForStart}
-                  onChange={(e) => setSelectedAssemblyForStart(e.target.value)}
-                  className="form-input-light w-full"
+                  onValueChange={setSelectedAssemblyForStart}
                   disabled={favorites.length === 0}
                 >
-                  <option value="" disabled>
-                    -- Select Assembly --
-                  </option>
-                  {ASSEMBLIES.map((assembly) => (
-                    <option
-                      key={assembly}
-                      value={assembly}
-                      disabled={!assembliesWithFavorites.has(assembly)}
-                    >
-                      {assembly} Assembly{" "}
-                      {assembliesWithFavorites.has(assembly)
-                        ? ""
-                        : "(No saved data)"}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="assembly-start-select"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="-- Select Assembly --" />
+                  </SelectTrigger>
+                  <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                    {ASSEMBLIES.map((assembly) => (
+                      <SelectItem
+                        key={assembly}
+                        value={assembly}
+                        disabled={!assembliesWithFavorites.has(assembly)}
+                      >
+                        {assembly} Assembly{" "}
+                        {assembliesWithFavorites.has(assembly)
+                          ? ""
+                          : "(No saved data)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button
                 onClick={handleStartClick}

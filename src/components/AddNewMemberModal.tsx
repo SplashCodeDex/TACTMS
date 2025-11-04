@@ -3,6 +3,7 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { UserPlus, Search, PlusCircle } from "lucide-react";
 import { MemberRecordA, TitheRecordB } from "../types";
+import { ScrollArea } from "./ui/scroll-area";
 
 const FormField: React.FC<{
   name: keyof MemberRecordA;
@@ -184,29 +185,31 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
             />
           </div>
           {searchTerm && searchResults.length > 0 && (
-            <ul className="space-y-2 max-h-64 overflow-y-auto pr-2">
-              {searchResults.map((member) => (
-                <li
-                  key={member["No."]}
-                  className="p-2 flex items-center justify-between bg-[var(--bg-elevated)] rounded-md border border-[var(--border-color)]"
-                >
-                  <div>
-                    <p className="font-semibold text-[var(--text-primary)]">{`${member["First Name"] || ""} ${member.Surname || ""}`}</p>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      ID: {member["Membership Number"]}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleAddExisting(member)}
-                    leftIcon={<PlusCircle size={14} />}
+            <ScrollArea className="h-64">
+              <ul className="space-y-2 pr-2">
+                {searchResults.map((member) => (
+                  <li
+                    key={member["No."]}
+                    className="p-2 flex items-center justify-between bg-[var(--bg-elevated)] rounded-md border border-[var(--border-color)]"
                   >
-                    Add to list
-                  </Button>
-                </li>
-              ))}
-            </ul>
+                    <div>
+                      <p className="font-semibold text-[var(--text-primary)]">{`${member["First Name"] || ""} ${member.Surname || ""}`}</p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        ID: {member["Membership Number"]}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleAddExisting(member)}
+                      leftIcon={<PlusCircle size={14} />}
+                    >
+                      Add to list
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
           )}
           {searchTerm && searchResults.length === 0 && (
             <p className="text-center text-sm text-[var(--text-muted)] pt-8">

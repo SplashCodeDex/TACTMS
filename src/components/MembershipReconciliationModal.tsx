@@ -10,6 +10,7 @@ import {
   Square,
   Inbox,
 } from "lucide-react";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface ReconciliationListProps {
   title: string;
@@ -30,34 +31,36 @@ const ReconciliationList: React.FC<ReconciliationListProps> = ({
       {title} ({members.length})
     </h3>
     {members.length > 0 ? (
-      <ul className="space-y-2 text-sm max-h-48 overflow-y-auto pr-2">
-        {members.map((member, index) => {
-          const name =
-            `${member.Title || ""} ${member["First Name"] || ""} ${member.Surname || ""} ${member["Other Names"] || ""}`
-              .replace(/\s+/g, " ")
-              .trim() || "Unnamed Member";
-          const membershipId =
-            member["Membership Number"] ||
-            member["Old Membership Number"] ||
-            "N/A";
-          return (
-            <li
-              key={member["No."] || index}
-              className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)]"
-            >
-              <p
-                className="font-medium text-[var(--text-primary)] truncate"
-                title={name}
+      <ScrollArea className="h-48">
+        <ul className="space-y-2 text-sm pr-2">
+          {members.map((member, index) => {
+            const name =
+              `${member.Title || ""} ${member["First Name"] || ""} ${member.Surname || ""} ${member["Other Names"] || ""}`
+                .replace(/\s+/g, " ")
+                .trim() || "Unnamed Member";
+            const membershipId =
+              member["Membership Number"] ||
+              member["Old Membership Number"] ||
+              "N/A";
+            return (
+              <li
+                key={member["No."] || index}
+                className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)]"
               >
-                {name}
-              </p>
-              <p className="text-xs text-[var(--text-muted)]">
-                ID: {membershipId}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
+                <p
+                  className="font-medium text-[var(--text-primary)] truncate"
+                  title={name}
+                >
+                  {name}
+                </p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  ID: {membershipId}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      </ScrollArea>
     ) : (
       <div className="text-center py-4 flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
         <Inbox size={24} className="mb-2 opacity-50" />
@@ -161,48 +164,50 @@ const MembershipReconciliationModal: React.FC<
             </h3>
             {report.missingMembers.length > 0 ? (
               <>
-                <ul className="space-y-1.5 text-sm max-h-48 overflow-y-auto pr-2">
-                  {report.missingMembers.map((member) => (
-                    <li
-                      key={member["No."]}
-                      className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)] flex items-center gap-3 hover:bg-[var(--border-color)]/30 transition-colors"
-                    >
-                      <button
-                        onClick={() => {
-                          if (member["No."]) {
-                            handleToggleSelection(member["No."]);
-                          }
-                        }}
-                        className="flex-shrink-0 p-1"
+                <ScrollArea className="h-48">
+                  <ul className="space-y-1.5 text-sm pr-2">
+                    {report.missingMembers.map((member) => (
+                      <li
+                        key={member["No."]}
+                        className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)] flex items-center gap-3 hover:bg-[var(--border-color)]/30 transition-colors"
                       >
-                        {member["No."] && selectedMissingIds.has(member["No."]) ? (
-                          <CheckSquare
-                            size={20}
-                            className="text-[var(--primary-accent-start)]"
-                          />
-                        ) : (
-                          <Square
-                            size={20}
-                            className="text-[var(--text-muted)]"
-                          />
-                        )}
-                      </button>
-                      <div className="flex-grow overflow-hidden">
-                        <p className="font-medium text-[var(--text-primary)] truncate">
-                          {`${member.Title || ""} ${member["First Name"] || ""} ${member.Surname || ""} ${member["Other Names"] || ""}`
-                            .replace(/\s+/g, " ")
-                            .trim() || "Unnamed Member"}
-                        </p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          ID:{" "}
-                          {member["Membership Number"] ||
-                            member["Old Membership Number"] ||
-                            "N/A"}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                        <button
+                          onClick={() => {
+                            if (member["No."]) {
+                              handleToggleSelection(member["No."]);
+                            }
+                          }}
+                          className="flex-shrink-0 p-1"
+                        >
+                          {member["No."] && selectedMissingIds.has(member["No."]) ? (
+                            <CheckSquare
+                              size={20}
+                              className="text-[var(--primary-accent-start)]"
+                            />
+                          ) : (
+                            <Square
+                              size={20}
+                              className="text-[var(--text-muted)]"
+                            />
+                          )}
+                        </button>
+                        <div className="flex-grow overflow-hidden">
+                          <p className="font-medium text-[var(--text-primary)] truncate">
+                            {`${member.Title || ""} ${member["First Name"] || ""} ${member.Surname || ""} ${member["Other Names"] || ""}`
+                              .replace(/\s+/g, " ")
+                              .trim() || "Unnamed Member"}
+                          </p>
+                          <p className="text-xs text-[var(--text-muted)]">
+                            ID:{" "}
+                            {member["Membership Number"] ||
+                              member["Old Membership Number"] ||
+                              "N/A"}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
                 <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center gap-3">
                   <Button
                     variant="outline"

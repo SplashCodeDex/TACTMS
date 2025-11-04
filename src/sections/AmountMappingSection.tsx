@@ -1,5 +1,12 @@
 import React, { useMemo } from "react";
 import { WalletCards } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import InfoTooltip from "../components/InfoTooltip";
 import { MemberRecordA } from "../types";
 
@@ -57,21 +64,30 @@ const AmountMappingSection: React.FC<AmountMappingSectionProps> = React.memo(
             <label htmlFor="amount-column-select" className="form-label">
               Map Amount from Excel Column
             </label>
-            <select
-              id="amount-column-select"
+            <Select
               value={amountMappingColumn || "none"}
-              onChange={handleChange}
+              onValueChange={(value) => {
+                setAmountMappingColumn(value === "none" ? null : value);
+                setHasUnsavedChanges(true);
+              }}
               disabled={isDisabled}
-              className="form-input-light w-full"
-              aria-label="Select column to map transaction amount from"
             >
-              <option value="none">Do not map amount</option>
-              {headers.map((header) => (
-                <option key={header} value={header}>
-                  {header}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id="amount-column-select"
+                className="w-full"
+                aria-label="Select column to map transaction amount from"
+              >
+                <SelectValue placeholder="Do not map amount" />
+              </SelectTrigger>
+              <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                <SelectItem value="none">Do not map amount</SelectItem>
+                {headers.map((header) => (
+                  <SelectItem key={header} value={header}>
+                    {header}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {isDisabled && (
               <p className="text-xs text-[var(--text-muted)] mt-2">
                 Upload a file to see available columns for mapping.

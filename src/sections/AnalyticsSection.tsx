@@ -7,6 +7,13 @@ import {
   Users,
 } from "lucide-react";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
   TitheRecordB,
   MembershipReconciliationReport,
   OutreachMessage,
@@ -63,10 +70,12 @@ const AISummaryCard: React.FC<{ summary: string }> = ({ summary }) => {
         <Lightbulb size={18} className="mr-3 icon-primary" />
         AI-Generated Summary
       </h3>
-      <ul
-        className="text-sm space-y-2 text-[var(--text-secondary)]"
-        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-      />
+      <ScrollArea className="h-48">
+        <ul
+          className="text-sm space-y-2 text-[var(--text-secondary)] pr-2"
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        />
+      </ScrollArea>
     </div>
   );
 };
@@ -312,11 +321,33 @@ Here are the new members to welcome: ${memberNames.join(", ")}`;
 
           </label>
 
-          <select id="outreach-target" className="form-input-light w-full">
+          <Select
 
-            <option>New Members (Souls Won) ({newMembers.length})</option>
+            value="new-members"
 
-          </select>
+            onValueChange={() => {}}
+
+            disabled={true}
+
+          >
+
+            <SelectTrigger id="outreach-target" className="w-full">
+
+              <SelectValue placeholder="Select Target Group" />
+
+            </SelectTrigger>
+
+            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+
+              <SelectItem value="new-members">
+
+                New Members (Souls Won) ({newMembers.length})
+
+              </SelectItem>
+
+            </SelectContent>
+
+          </Select>
 
         </div>
 

@@ -2,6 +2,13 @@ import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
 import { ASSEMBLIES } from "../constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface AssemblySelectionModalProps {
   isOpen: boolean;
@@ -46,21 +53,27 @@ const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({
           <label htmlFor="assembly-select" className="form-label">
             Assembly
           </label>
-          <select
-            id="assembly-select"
+          <Select
             value={selectedAssembly}
-            onChange={(e) => setSelectedAssembly(e.target.value)}
-            className="form-input-light w-full"
+            onValueChange={setSelectedAssembly}
           >
-            <option value="" disabled>
-              -- Select an assembly --
-            </option>
-            {ASSEMBLIES.map((assembly) => (
-              <option key={assembly} value={assembly}>
-                {assembly}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              id="assembly-select"
+              className="w-full"
+            >
+              <SelectValue placeholder="-- Select an assembly --" />
+            </SelectTrigger>
+            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+              {ASSEMBLIES.map((assembly) => (
+                <SelectItem
+                  key={assembly}
+                  value={assembly}
+                >
+                  {assembly}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-3">

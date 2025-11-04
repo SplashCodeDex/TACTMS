@@ -9,14 +9,15 @@ import {
   UploadCloud,
   Building2,
   User,
-  ChevronDown,
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { ScrollArea } from "../components/ui/scroll-area";
 import {
   TransactionLogEntry,
   MemberDatabase,
@@ -115,7 +116,7 @@ const DashboardSection: React.FC = () => {
         (a: TransactionLogEntry, b: TransactionLogEntry) =>
           b.timestamp - a.timestamp,
       )
-      .slice(0, 10);
+      .slice(0, 20);
 
     return { ytdTithe, ytdSouls, totalMembers, recentActivities };
   }, [transactionLog, memberDatabase]);
@@ -203,7 +204,7 @@ const DashboardSection: React.FC = () => {
           return 0;
         }
       })
-      .slice(0, 3);
+      .slice(0, 20);
   }, [memberDatabase]);
 
   const greeting = useMemo(() => {
@@ -289,33 +290,32 @@ const DashboardSection: React.FC = () => {
                   >
                     Select Assembly
                   </label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        id="assembly-start-select-dash"
-                        variant="outline"
-                        className="w-full justify-between"
-                        disabled={Object.keys(memberDatabase).length === 0}
-                        rightIcon={<ChevronDown size={16} />}
-                      >
-                        {selectedAssembly || "-- Select Assembly --"}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                  <Select
+                    value={selectedAssembly}
+                    onValueChange={setSelectedAssembly}
+                    disabled={Object.keys(memberDatabase).length === 0}
+                  >
+                    <SelectTrigger
+                      id="assembly-start-select-dash"
+                      className="w-full"
+                    >
+                      <SelectValue placeholder="-- Select Assembly --" />
+                    </SelectTrigger>
+                    <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
                       {ASSEMBLIES.map((assembly) => (
-                        <DropdownMenuItem
+                        <SelectItem
                           key={assembly}
+                          value={assembly}
                           disabled={!assembliesWithData.has(assembly)}
-                          onSelect={() => setSelectedAssembly(assembly)}
                         >
                           {assembly}{" "}
                           {assembliesWithData.has(assembly)
                             ? ""
                             : "(No member data)"}
-                        </DropdownMenuItem>
+                        </SelectItem>
                       ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button
                   onClick={handleStartWeek}
@@ -374,34 +374,36 @@ const DashboardSection: React.FC = () => {
               <Users size={22} className="mr-3 icon-primary" />
               Recently Added Members
             </h2>
-            {recentlyAddedMembers.length > 0 ? (
-              <ul className="space-y-3">
-                {recentlyAddedMembers.map((member) => (
-                  <li
-                    key={member["No."]}
-                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                  >
-                    <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--accent-purple)] to-[var(--accent-blue)] rounded-lg flex items-center justify-center text-white">
-                      <User size={20} />
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
-                        {member["First Name"]} {member.Surname}
-                      </p>
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        {member.firstSeenSource}
-                        <span className="text-[var(--text-muted)] mx-1">•</span>
-                        {formatDateDDMMMYYYY(new Date(member.firstSeenDate!))}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-center py-8 text-[var(--text-muted)]">
-                No new members recorded recently.
-              </p>
-            )}
+                        {recentlyAddedMembers.length > 0 ? (
+                          <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
+                            <ul className="space-y-3 pr-4">
+                              {recentlyAddedMembers.map((member) => (
+                                <li
+                                  key={member["No."]}
+                                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
+                                >
+                                  <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--accent-purple)] to-[var(--accent-blue)] rounded-lg flex items-center justify-center text-white">
+                                    <User size={20} />
+                                  </div>
+                                  <div className="overflow-hidden">
+                                    <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                                      {member["First Name"]} {member.Surname}
+                                    </p>
+                                    <p className="text-xs text-[var(--text-secondary)]">
+                                      {member.firstSeenSource}
+                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
+                                      {formatDateDDMMMYYYY(new Date(member.firstSeenDate!))}
+                                    </p>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </ScrollArea>
+                        ) : (
+                          <p className="text-sm text-center py-8 text-[var(--text-muted)]">
+                            No new members recorded recently.
+                          </p>
+                        )}
           </motion.section>
 
           <motion.section variants={itemVariants} className="content-card">
@@ -409,44 +411,46 @@ const DashboardSection: React.FC = () => {
               <Activity size={22} className="mr-3 icon-primary" />
               Recent Activity
             </h2>
-            {stats.recentActivities.length > 0 ? (
-              <ul className="space-y-3">
-                {stats.recentActivities.map((log) => (
-                  <li
-                    key={log.id + log.timestamp}
-                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                  >
-                    <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] rounded-lg flex items-center justify-center text-white">
-                      <User size={20} />
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
-                        {log.assemblyName} Assembly
-                      </p>
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        {formatDateDDMMMYYYY(new Date(log.selectedDate))}
-                        <span className="text-[var(--text-muted)] mx-1">•</span>
-                        <span className="font-medium text-[var(--success-text)]">
-                          GH₵ {log.totalTitheAmount.toLocaleString()}
-                        </span>
-                        <span className="text-[var(--text-muted)] mx-1">•</span>
-                        <span className="font-medium text-[var(--text-primary)]">
-                          {log.titherCount} Tithers
-                        </span>
-                        <span className="text-[var(--text-muted)] mx-1">•</span>
-                        <span className="font-medium text-[var(--accent-purple)]">
-                          {log.soulsWonCount} Souls Won
-                        </span>
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-center py-8 text-[var(--text-muted)]">
-                No recent transactions logged.
-              </p>
-            )}
+                        {stats.recentActivities.length > 0 ? (
+                          <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
+                            <ul className="space-y-3 pr-4">
+                              {stats.recentActivities.map((log) => (
+                                <li
+                                  key={log.id + log.timestamp}
+                                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
+                                >
+                                  <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] rounded-lg flex items-center justify-center text-white">
+                                    <User size={20} />
+                                  </div>
+                                  <div className="overflow-hidden">
+                                    <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                                      {log.assemblyName} Assembly
+                                    </p>
+                                    <p className="text-xs text-[var(--text-secondary)]">
+                                      {formatDateDDMMMYYYY(new Date(log.selectedDate))}
+                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
+                                      <span className="font-medium text-[var(--success-text)]">
+                                        GH₵ {log.totalTitheAmount.toLocaleString()}
+                                      </span>
+                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
+                                      <span className="font-medium text-[var(--text-primary)]">
+                                        {log.titherCount} Tithers
+                                      </span>
+                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
+                                      <span className="font-medium text-[var(--accent-purple)]">
+                                        {log.soulsWonCount} Souls Won
+                                      </span>
+                                    </p>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </ScrollArea>
+                        ) : (
+                          <p className="text-sm text-center py-8 text-[var(--text-muted)]">
+                            No recent transactions logged.
+                          </p>
+                        )}
           </motion.section>
         </div>
       </div>

@@ -7,6 +7,13 @@ import {
   LineChart,
   Download,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { TransactionLogEntry, MemberDatabase } from "../types";
 import AnimatedNumber from "../components/AnimatedNumber";
 import StatDisplayCard from "../components/StatDisplayCard";
@@ -133,27 +140,35 @@ const ReportsSection: React.FC = () => {
             Annual Performance Dashboard
           </h2>
           <div className="flex items-center gap-4">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="form-input-light"
+            <Select
+              value={String(selectedYear)}
+              onValueChange={(value) => setSelectedYear(Number(value))}
             >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-            <select
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={String(year)}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
               value={granularity}
-              onChange={(e) => setGranularity(e.target.value as Granularity)}
-              className="form-input-light"
+              onValueChange={(value) => setGranularity(value as Granularity)}
             >
-              <option value="yearly">Yearly</option>
-              <option value="monthly">Monthly</option>
-              <option value="weekly">Weekly</option>
-              <option value="daily">Daily</option>
-            </select>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Granularity" />
+              </SelectTrigger>
+              <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                <SelectItem value="yearly">Yearly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+              </SelectContent>
+            </Select>
             <LiquidButton
               onClick={handleDownloadCsv}
             >
