@@ -38,11 +38,6 @@ const AmountMappingSection: React.FC<AmountMappingSectionProps> = React.memo(
 
     const isDisabled = headers.length === 0;
 
-    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setAmountMappingColumn(e.target.value === "none" ? null : e.target.value);
-      setHasUnsavedChanges(true);
-    };
-
     return (
       <div className="bg-[var(--bg-elevated)] p-6 rounded-xl border border-[var(--border-color)] h-full">
         <div aria-labelledby="amount-map-heading">

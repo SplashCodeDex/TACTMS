@@ -96,6 +96,7 @@ const OutreachSkeleton: React.FC = () => (
 );
 
 import { CopyButton } from "../components/CopyButton";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 
 

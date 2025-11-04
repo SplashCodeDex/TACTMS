@@ -1545,7 +1545,7 @@ const App: React.FC = () => {
 
 
 
-      <Toaster richColors theme={theme} accentColor={accentColor} />
+      <Toaster richColors theme={theme} />
 
       {isFullPreviewModalOpen && (
         <FullTithePreviewModal

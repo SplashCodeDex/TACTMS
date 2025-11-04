@@ -16,11 +16,9 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import PopoverProfile from "./PopoverProfile";
 import { GoogleUserProfile } from "../types";
 import { THEME_OPTIONS } from "../constants";
-import SyncStatusIndicator from "./SyncStatusIndicator";
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 type ThemeOption = (typeof THEME_OPTIONS)[0];
@@ -122,8 +120,17 @@ const GoogleSyncControl: React.FC<
 }) => {
   return (
     <AnimatePresence>
-      {!isCollapsed &&
-        (isConfigured ? (
+      {isCollapsed ? (
+        isConfigured && isLoggedIn && userProfile && (
+          <PopoverProfile
+            userProfile={userProfile}
+            signOut={signOut}
+            syncStatus={syncStatus}
+            isOnline={isOnline}
+          />
+        )
+      ) : (
+        isConfigured ? (
           isLoggedIn && userProfile ? (
             <PopoverProfile
               userProfile={userProfile}
@@ -171,7 +178,8 @@ const GoogleSyncControl: React.FC<
             </p>
 
             </motion.div>
-        ))}
+        )
+      )}
     </AnimatePresence>
   );
 };
@@ -184,7 +192,50 @@ const ThemeControl: React.FC<
 > = ({ theme, setTheme, accentColor, setAccentColor, isCollapsed }) => {
   return (
     <AnimatePresence>
-      {!isCollapsed && (
+      {isCollapsed ? (
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={itemVariants}
+          className="p-3 bg-[var(--bg-card)] rounded-lg flex flex-col items-center space-y-3"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </Button>
+          <div className="flex flex-col items-center space-y-2">
+            {THEME_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                title={option.name}
+                onClick={() => setAccentColor(option)}
+                className="w-7 h-7 rounded-full transition-all duration-200 border-2"
+                style={{
+                  backgroundColor: `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`,
+                  borderColor:
+                    accentColor.key === option.key
+                      ? `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`
+                      : "transparent",
+                  boxShadow:
+                    accentColor.key === option.key
+                      ? `0 0 0 2px var(--bg-card)`
+                      : "none",
+                }}
+              >
+                {accentColor.key === option.key && (
+                  <Check size={16} className="text-white/80 mx-auto" />
+                )}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      ) : (
         <motion.div
           initial="hidden"
           animate="visible"
