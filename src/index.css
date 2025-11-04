@@ -542,12 +542,9 @@ body {
   transform: translateY(-50%) translateX(0.75rem);
 }
 .glassmorphism-bg {
-  background: rgba(26, 27, 41, 0.7);
+  background: var(--bg-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-}
-.light-theme .glassmorphism-bg {
-  background: rgba(255, 255, 255, 0.7);
 }
 
 /* Prose for markdown rendering */
