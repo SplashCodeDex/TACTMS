@@ -8,7 +8,17 @@ export const DEFAULT_CONCAT_CONFIG: ConcatenationConfig = {
   "Membership Number": true,
 };
 
-export const ASSEMBLIES: string[] = []; // This will be loaded dynamically
+export const ASSEMBLIES = [
+  "Maranatha",
+  "Central",
+  "Ayiresu",
+  "Adatoh",
+  "Adawukwao",
+  "Larbie",
+  "Osae-Krodua",
+  "Holy-Ghost",
+  "Fante-Mayera",
+];
 
 export const AUTO_SAVE_KEY = "tactmsAutoSaveDraft";
 export const AUTO_SAVE_DEBOUNCE_TIME = 3000; // 3 seconds

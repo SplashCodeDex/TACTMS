@@ -22,7 +22,9 @@ import { TitheRecordB, TransactionLogEntry } from "../types";
 import AnimatedNumber from "../components/AnimatedNumber";
 import DonutChart from "../components/DonutChart";
 import InfoTooltip from "../components/InfoTooltip";
+import { LiquidButton } from "../components/LiquidButton";
 import StatDisplayCard from "../components/StatDisplayCard";
+import EmptyState from "../components/EmptyState";
 import DatePicker from "../components/DatePicker";
 import { useOutletContext } from "react-router-dom";
 
@@ -452,21 +454,18 @@ const ListOverviewActionsSection = React.memo(
                     <p className="form-error-text">{inputErrors.fileName}</p>
                   )}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <LiquidButton
                     onClick={handleDownloadExcel}
-                    leftIcon={<FileSpreadsheet size={18} />}
                     disabled={!fileNameToSave.trim()}
-                    variant="primary"
-                    fullWidth
                   >
+                    <FileSpreadsheet size={18} />
                     Download Excel
-                  </Button>
+                  </LiquidButton>
                   <Button
                     onClick={openSaveFavoriteModal}
                     leftIcon={<Save size={18} />}
                     variant="outline"
-                    fullWidth
                   >
                     Save to Favorites
                   </Button>
