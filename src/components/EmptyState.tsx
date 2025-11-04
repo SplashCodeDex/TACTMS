@@ -1,43 +1,46 @@
-import React from "react";
-import { LayoutDashboard } from "lucide-react";
-import Button from "./Button";
-import { ViewType } from "../types";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { FilePlus2 } from 'lucide-react';
+import Button from './Button';
+import { useNavigate } from 'react-router-dom';
+
 interface EmptyStateProps {
-  theme: "dark" | "light";
-  setActiveView: (view: ViewType) => void;
+  title: string;
+  message: string;
+  actionText?: string;
+  onActionClick?: () => void;
+  icon?: React.ReactNode;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ setActiveView, theme }) => {
-  const logoSrc =
-    theme === "dark"
-      ? `${import.meta.env.BASE_URL}img/DarkLogoExpanded.svg`
-      : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`;
+const EmptyState: React.FC<EmptyStateProps> = ({ title, message, actionText, onActionClick, icon }) => {
+  const navigate = useNavigate();
+
+  const handleAction = () => {
+    if (onActionClick) {
+      onActionClick();
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
-    <div className="text-center p-10 content-card animate-fadeIn flex flex-col items-center justify-center min-h-[60vh]">
-      <img
-        src={logoSrc}
-        alt="TACTMS Logo"
-        className="w-auto h-24 mx-auto mb-4"
-      />
-      <h2 className="text-2xl font-bold text-gradient-primary">
-        Processor is Empty
-      </h2>
-      <p className="text-[var(--text-secondary)] mt-2 mb-8 max-w-lg mx-auto">
-        To begin, either start a new weekly list from the Dashboard or upload a
-        new file directly.
-      </p>
-      <div className="flex gap-4">
-        <Button
-          variant="primary"
-          size="lg"
-          leftIcon={<LayoutDashboard size={18} />}
-          onClick={() => setActiveView("dashboard")}
-        >
-          Go to Dashboard
-        </Button>
+    <motion.div
+      className="flex flex-col items-center justify-center text-center p-8 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] shadow-sm"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="p-4 bg-[var(--bg-elevated)] rounded-full mb-4">
+        {icon || <FilePlus2 size={32} className="text-[var(--primary-accent-start)]" />}
       </div>
-    </div>
+      <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">{title}</h3>
+      <p className="text-[var(--text-secondary)] mb-6 max-w-md">{message}</p>
+      {actionText && (
+        <Button onClick={handleAction} variant="primary" size="lg">
+          {actionText}
+        </Button>
+      )}
+    </motion.div>
   );
 };
 

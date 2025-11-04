@@ -284,7 +284,13 @@ const ListOverviewActionsSection = React.memo(
     }, [currentTotalTithe, lastMonthTotal, lastYearTotal, ytdTotal]);
 
       if (titheListData.length === 0) {
-        return null;
+        return (
+          <EmptyState
+            title="No Assembly Data to Process"
+            message="Please upload a new tithe list or start a new week from the dashboard to begin processing."
+            actionText="Go to Dashboard"
+          />
+        );
       }
 
       return (
