@@ -58,19 +58,35 @@ const NavItem: React.FC<{
 }> = ({ icon: Icon, label, to, isCollapsed }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
-  const activeClass =
-    "bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white shadow-lg shadow-[var(--primary-accent-start)]/20";
-  const inactiveClass =
-    "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5";
+  const [isHovered, setIsHovered] = React.useState(false); // New state for hover
 
   return (
     <Link
       to={to}
-      className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? activeClass : inactiveClass} ${isCollapsed ? "justify-center" : ""}`}
+      className={`w-full flex items-center px-4 py-3 text-sm font-semibold transition-all duration-200 relative ${isCollapsed ? "justify-center" : ""}`}
       aria-current={isActive ? "page" : undefined}
       title={isCollapsed ? label : undefined}
+      onMouseEnter={() => setIsHovered(true)} // Handle hover
+      onMouseLeave={() => setIsHovered(false)} // Handle hover
     >
-      <Icon size={20} className="flex-shrink-0" />
+      {isActive && (
+        <motion.div
+          layoutId="active-nav-indicator"
+          className="absolute inset-0 bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white shadow-lg shadow-[var(--primary-accent-start)]/20 rounded-lg"
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+      )}
+      {!isActive && isHovered && (
+        <motion.div
+          layoutId="hover-nav-indicator"
+          className="absolute inset-0 bg-white/5 rounded-lg"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 40 }}
+        />
+      )}
+      <Icon size={20} className="flex-shrink-0 relative z-10" />
       <AnimatePresence>
         {!isCollapsed && (
           <motion.span
@@ -78,7 +94,7 @@ const NavItem: React.FC<{
             animate={{ opacity: 1, width: "auto", marginLeft: "0.75rem" }}
             exit={{ opacity: 0, width: 0, marginLeft: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap relative z-10"
           >
             {label}
           </motion.span>
@@ -190,15 +206,53 @@ const ThemeControl: React.FC<
     "theme" | "setTheme" | "accentColor" | "setAccentColor" | "isCollapsed"
   >
 > = ({ theme, setTheme, accentColor, setAccentColor, isCollapsed }) => {
+  const [showAccentColors, setShowAccentColors] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowAccentColors(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [containerRef]);
+
+  const accentColorVariants = {
+    hidden: { opacity: 0, y: -10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        staggerChildren: 0.05,
+      },
+    },
+  };
+
+  const accentColorItemVariants = {
+    hidden: { opacity: 0, scale: 0.5 },
+    visible: { opacity: 1, scale: 1 },
+  };
+
+  const colorContainerVariants = {
+    closed: { height: "28px", transition: { duration: 0.4, ease: "easeInOut" } },
+    open: { height: `${5 * 28 + 4 * 8}px`, transition: { duration: 0.4, ease: "easeInOut" } },
+  };
+  
   return (
     <AnimatePresence>
       {isCollapsed ? (
         <motion.div
+          ref={containerRef}
           initial="hidden"
           animate="visible"
           exit="hidden"
           variants={itemVariants}
-          className="p-3 bg-[var(--bg-card)] rounded-lg flex flex-col items-center space-y-3"
+          className="p-3 bg-[var(--bg-card)] rounded-lg flex flex-col items-center space-y-2"
         >
           <Button
             variant="ghost"
@@ -209,31 +263,65 @@ const ThemeControl: React.FC<
           >
             {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
           </Button>
-          <div className="flex flex-col items-center space-y-2">
-            {THEME_OPTIONS.map((option) => (
-              <button
-                key={option.key}
-                title={option.name}
-                onClick={() => setAccentColor(option)}
-                className="w-7 h-7 rounded-full transition-all duration-200 border-2"
-                style={{
-                  backgroundColor: `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`,
-                  borderColor:
-                    accentColor.key === option.key
-                      ? `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`
-                      : "transparent",
-                  boxShadow:
-                    accentColor.key === option.key
-                      ? `0 0 0 2px var(--bg-card)`
-                      : "none",
-                }}
-              >
-                {accentColor.key === option.key && (
-                  <Check size={16} className="text-white/80 mx-auto" />
-                )}
-              </button>
-            ))}
-          </div>
+          
+          <motion.div
+            variants={colorContainerVariants}
+            animate={showAccentColors ? "open" : "closed"}
+            className="overflow-hidden"
+          >
+            <AnimatePresence exitBeforeEnter>
+              {showAccentColors ? (
+                <motion.div
+                  key="color-options"
+                  variants={accentColorVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  className="flex flex-col items-center space-y-2"
+                >
+                  {THEME_OPTIONS.map((option) => (
+                    <motion.button
+                      variants={accentColorItemVariants}
+                      key={option.key}
+                      title={option.name}
+                      onClick={() => {
+                        setAccentColor(option);
+                        setShowAccentColors(false);
+                      }}
+                      className="w-7 h-7 rounded-full transition-all duration-200 border-2"
+                      style={{
+                        backgroundColor: `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`,
+                        borderColor:
+                          accentColor.key === option.key
+                            ? `hsl(${option.values.h}, ${option.values.s}%, ${option.values.l}%)`
+                            : "transparent",
+                        boxShadow:
+                          accentColor.key === option.key
+                            ? `0 0 0 2px var(--bg-card)`
+                            : "none",
+                      }}
+                    >
+                      {accentColor.key === option.key && (
+                        <Check size={16} className="text-white/80 mx-auto" />
+                      )}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="single-color-icon"
+                  onClick={() => setShowAccentColors(true)}
+                  className="w-7 h-7 rounded-full border-2"
+                  style={{
+                    backgroundColor: `hsl(${accentColor.values.h}, ${accentColor.values.s}%, ${accentColor.values.l}%)`,
+                    borderColor: `hsl(${accentColor.values.h}, ${accentColor.values.s}%, ${accentColor.values.l}%)`,
+                    boxShadow: `0 0 0 2px var(--bg-card)`
+                  }}
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
+
         </motion.div>
       ) : (
         <motion.div
