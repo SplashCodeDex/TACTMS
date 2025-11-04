@@ -49,7 +49,7 @@ import {
   ITEMS_PER_FULL_PREVIEW_PAGE,
   APP_THEME_STORAGE_KEY,
   DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
-  ASSEMBLIES,
+  ASSEMBLIES, // Note: ASSEMBLIES is now an empty array in constants.ts. It should be populated dynamically, e.g., from a backend API or a configuration file.
   THEME_OPTIONS,
   APP_ACCENT_COLOR_KEY,
   MEMBER_DATABASE_STORAGE_KEY,
@@ -940,6 +940,33 @@ const App: React.FC = () => {
 
   const handleSaveFromPreview = (updatedList: TitheRecordB[]) => {
     setTitheListData(updatedList);
+
+    if (currentAssembly) {
+      const newOrderMap = new Map<string | number, number>();
+      updatedList.forEach((record, index) => {
+        newOrderMap.set(record["No."], index);
+      });
+
+      setMemberDatabase(prev => {
+        const newDb = { ...prev };
+        const assemblyData = newDb[currentAssembly]?.data || [];
+        const updatedAssemblyData = assemblyData.map(member => {
+          const newOrder = member["No."] !== undefined ? newOrderMap.get(member["No."]) : undefined;
+          if (newOrder !== undefined) {
+            return { ...member, customOrder: newOrder };
+          }
+          return member;
+        });
+
+        newDb[currentAssembly] = {
+          ...(newDb[currentAssembly] || {}),
+          data: updatedAssemblyData,
+        };
+
+        return newDb;
+      });
+    }
+
     setHasUnsavedChanges(true); // Mark the workspace as dirty
     addToast(
       "Changes from list view have been saved to the workspace.",
@@ -1533,6 +1560,7 @@ const App: React.FC = () => {
           sortConfig={fullPreviewSortConfig}
           setSortConfig={setFullPreviewSortConfig}
           openAddMemberToListModal={openAddMemberToListModal}
+          assemblyName={currentAssembly || ""}
         />
       )}
 
@@ -1585,6 +1613,7 @@ const App: React.FC = () => {
           isOpen={isSaveFavoriteModalOpen}
           onClose={() => setIsSaveFavoriteModalOpen(false)}
           title="Save Configuration to Favorites"
+          closeOnOutsideClick={false}
         >
           <div className="space-y-4">
             <div>
@@ -1622,6 +1651,7 @@ const App: React.FC = () => {
           isOpen={isDeleteFavConfirmModalOpen}
           onClose={() => setIsDeleteFavConfirmModalOpen(false)}
           title="Delete Favorite?"
+          closeOnOutsideClick={false}
         >
           <p>
             Are you sure you want to delete this favorite? This action cannot be

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { GoogleGenerativeAI, Content } from '@google/generative-ai';
+import { GoogleGenerativeAI, Content, SchemaType } from '@google/generative-ai';
 import { MemberRecordA, TitheRecordB, ChatMessage, ChartData } from '../types';
 
 export const useGemini = (apiKey: string, addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void) => {
@@ -89,21 +89,32 @@ export const useGeminiChat = () => {
         Provide a summary of the data and some key observations. Also, provide a data array for a chart showing the distribution of tithe amounts.
         `;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const result = await model.generateContent({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                          type: SchemaType.OBJECT,
+                          properties: {
+                            summary: { type: SchemaType.STRING, description: "A summary of the tithe data and key observations." },
+                            chartData: { type: SchemaType.ARRAY, description: "An array of objects for a chart showing the distribution of tithe amounts.", items: { type: SchemaType.OBJECT, properties: { label: { type: SchemaType.STRING }, count: { type: SchemaType.NUMBER } } } },
+                          },
+                          required: ["summary", "chartData"],
+                        },
+                      },
+                    });        const response = await result.response;
         const text = response.text();
 
-        const summary = text.split('---')[0];
-        const chartDataString = text.split('---')[1];
+        const jsonResponse = JSON.parse(text);
 
         setChatHistory([
           {
             role: "model",
-            parts: [{ text: summary }],
-            summary: summary,
+            parts: [{ text: jsonResponse.summary }],
+            summary: jsonResponse.summary,
           },
         ]);
-        setChartData(JSON.parse(chartDataString));
+        setChartData(jsonResponse.chartData);
       } catch (e: any) {
         setError(e.message);
       } finally {

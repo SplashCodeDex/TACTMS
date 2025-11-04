@@ -18,6 +18,7 @@ import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useOutletContext } from "react-router-dom";
+import DOMPurify from "dompurify";
 
 interface AnalyticsSectionProps {
   titheListData: TitheRecordB[];
@@ -54,6 +55,8 @@ const AISummaryCard: React.FC<{ summary: string }> = ({ summary }) => {
       '<li class="list-none ml-0 mb-1.5">$1</li>',
     );
 
+  const sanitizedHtml = DOMPurify.sanitize(formattedSummary);
+
   return (
     <div className="content-card bg-[var(--bg-elevated)] border-l-4 border-[var(--primary-accent-start)]">
       <h3 className="section-heading text-base !mb-3">
@@ -62,7 +65,7 @@ const AISummaryCard: React.FC<{ summary: string }> = ({ summary }) => {
       </h3>
       <ul
         className="text-sm space-y-2 text-[var(--text-secondary)]"
-        dangerouslySetInnerHTML={{ __html: formattedSummary }}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
     </div>
   );

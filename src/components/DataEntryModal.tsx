@@ -95,10 +95,17 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
             step="any"
             min="0"
             value={localAmount}
-            onChange={(e) => setLocalAmount(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              const sanitizedValue = value.replace(/[^0-9.]/g, '');
+              const decimalCount = sanitizedValue.split('.').length - 1;
+              if (decimalCount > 1) {
+                return;
+              }
+              setLocalAmount(sanitizedValue);
+            }}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            onClick={(e) => e.stopPropagation()}
             className="form-input-light w-full text-sm py-1"
             aria-label={`Amount for ${record["Membership Number"]}`}
           />
@@ -243,6 +250,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
       onClose={onClose}
       title="Advanced Data Entry Mode"
       size="xl"
+      closeOnOutsideClick={false}
       footerContent={
         <>
           <Button variant="outline" onClick={onClose}>

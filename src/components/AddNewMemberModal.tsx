@@ -105,6 +105,7 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
+      const maxCustomOrder = memberDatabase.reduce((max, member) => Math.max(max, member.customOrder || 0), 0);
       const newMember: MemberRecordA = {
         "No.": `new_${Date.now()}`,
         Title: formData.Title || "",
@@ -113,6 +114,7 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
         "Other Names": formData["Other Names"] || "",
         "Membership Number": formData["Membership Number"] || "",
         "Phone Number": formData["Phone Number"] || "",
+        customOrder: maxCustomOrder + 1,
       };
       onConfirm(newMember);
       setFormData({});
@@ -143,6 +145,7 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
       onClose={onClose}
       title={`Add Member to List for ${currentAssembly} Assembly`}
       size="lg"
+      closeOnOutsideClick={false}
       footerContent={
         <Button variant="primary" onClick={onClose}>
           Done

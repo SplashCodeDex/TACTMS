@@ -34,9 +34,9 @@ const EditMemberModal: React.FC<EditMemberModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Edit Member in ${assemblyName}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Edit Member in ${assemblyName}`} closeOnOutsideClick={false}>
       <div className="space-y-4">
-        {Object.keys(formData).map((key) => (
+        {Object.keys(formData).filter(key => key !== 'customOrder' && key !== 'No.').map((key) => (
           <div key={key}>
             <label htmlFor={key} className="form-label">{key}</label>
             <input

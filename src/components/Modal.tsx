@@ -8,6 +8,7 @@ interface ModalProps {
   children: React.ReactNode;
   footerContent?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "xxl" | "full"; // Added xxl and full
+  closeOnOutsideClick?: boolean;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -17,6 +18,7 @@ const Modal: React.FC<ModalProps> = ({
   children,
   footerContent,
   size = "md",
+  closeOnOutsideClick = true,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +80,7 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <div
       className="modal-overlay"
-      onClick={onClose}
+      onClick={closeOnOutsideClick ? onClose : undefined}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"

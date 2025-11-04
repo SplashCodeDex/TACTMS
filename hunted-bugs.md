@@ -39,8 +39,25 @@ The parseAgeStringToYears function, which is likely intended to be a more robust
 The Issue: The regex /^(\\d+)\\s*years?/i will correctly parse "30 years" but will ignore the "5 months" in "30 years 5 months".
 The Impact: This can lead to a loss of precision in age calculations and could be considered a regression if a previous version of the code handled this more accurately.
 
-In "Advanced Data Entry Mode" there is a lot of bug. when lose focus, the disappear and resets every entry done. When using the Enter/tab to advanced/highlight to the next input field (say 8) and use the pointer or mouse cursor to select previous input field (2), using the Enter/Tab again should continue from 2 to 3 not 9. 
+
 
 prioritize order of members
 
 the logic for member reconcillation.
+
+how best can this project prioritize the order of members. how are the list of members stored,
+   differece in local and district. how does every single function responsible to handle the 
+  members(both at local(various assemblies) level or district level) in terms of the order. You,
+   when local administrators decides to do the tithe entry for their assembly, they go by the 
+  tithe book, which holds the records of all the members of that particular assembly but not in 
+  alphabetical sort but in order of how the administrator decides (like; 1.Regina, 2.Sarah, 
+  3.Nicholas, 4.Elizabeth, ...), the project must respect this order no matter the 
+  circumstants/situation mandatroy, but you can give option to switch to alphabetical order but 
+  the main point is to respect the custom order of the administrator. so if the administrator 
+  uploads a list of members(both new and existing/alredy in database like; 1.Regina, 2.Nicholas,
+   3.Edina, 4.Marion, 5.Sarah, 6.Elizabeth), the system should be able to  intellegently 
+  differentiate existing members and new members(as won souls) then append/add the won souls to 
+  the prioritize/respected custom order of the user/administrator (1.Regina, 2.Sarah, 
+  3.Nicholas, 4.Elizabeth, 5.Edina, 6.Marion) across everywhere that deals members for that 
+  particular assembly. so basically, nothing distract the respected custom order. respond in 
+  more understandbe and practical way. Thank You.

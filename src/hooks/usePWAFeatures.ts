@@ -85,7 +85,9 @@ export const usePWAFeatures = (
       });
 
       console.log("User is subscribed:", subscription);
-      // TODO: Send subscription to your backend server
+      // CRITICAL: You MUST send this subscription object to your backend server
+      // to store it and use it to send push notifications later.
+      // Example:
       // await fetch('/api/subscribe', {
       //   method: 'POST',
       //   body: JSON.stringify(subscription),

@@ -40,7 +40,7 @@ const MemberDatabaseSection: React.FC = () => {
   const [sortConfig, setSortConfig] = useState<{
     key: keyof MemberRecordA | null;
     direction: "asc" | "desc";
-  }>({ key: null, direction: "asc" });
+  }>({ key: "customOrder", direction: "asc" });
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,6 +70,9 @@ const MemberDatabaseSection: React.FC = () => {
 
     if (sortConfig.key) {
       members.sort((a, b) => {
+        if (sortConfig.key === 'customOrder') {
+          return (a.customOrder || 0) - (b.customOrder || 0);
+        }
         const aValue = String(a[sortConfig.key!]).toLowerCase();
         const bValue = String(b[sortConfig.key!]).toLowerCase();
 
@@ -91,6 +94,14 @@ const MemberDatabaseSection: React.FC = () => {
       direction = "desc";
     }
     setSortConfig({ key, direction });
+  };
+
+  const toggleSortOrder = () => {
+    if (sortConfig.key === 'customOrder') {
+      setSortConfig({ key: 'First Name', direction: 'asc' });
+    } else {
+      setSortConfig({ key: 'customOrder', direction: 'asc' });
+    }
   };
 
   // Get current members for pagination
@@ -128,7 +139,8 @@ const MemberDatabaseSection: React.FC = () => {
       return;
     }
     if (selectedAssembly) {
-      onCreateTitheList(selectedMembers, selectedAssembly);
+      const sortedSelectedMembers = [...selectedMembers].sort((a, b) => (a.customOrder || 0) - (b.customOrder || 0));
+      onCreateTitheList(sortedSelectedMembers, selectedAssembly);
     }
   };
 
@@ -187,6 +199,9 @@ const MemberDatabaseSection: React.FC = () => {
                   className="form-input-light w-full sm:w-64 pl-10"
                 />
               </div>
+              <Button onClick={toggleSortOrder} variant="outline">
+                {sortConfig.key === 'customOrder' ? 'Sort Alphabetically' : 'Sort by Custom Order'}
+              </Button>
               <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md cursor-pointer hover:bg-blue-700">
                 <Upload size={16} />
                 <span>Upload Master List</span>

@@ -219,18 +219,28 @@ export const aggregateReportData = (
 
 export const exportToCsv = (summary: any, selectedYear: number, granularity: string) => {
   let csvContent = "data:text/csv;charset=utf-8,";
+
+  const escapeCsvField = (field: any) => {
+    if (field === null || field === undefined) return "";
+    let value = String(field);
+    if (value.includes(",") || value.includes("\n") || value.includes("\"")) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
   csvContent += `Summary for ${selectedYear}\n`;
   csvContent += `Total Tithe,Total Souls Won\n`;
-  csvContent += `${summary.totalTithe},${summary.totalSouls}\n\n`;
+  csvContent += `${escapeCsvField(summary.totalTithe)},${escapeCsvField(summary.totalSouls)}\n\n`;
 
-  csvContent += `Top Performing Assembly (Tithe),${summary.topPerformingAssembly.name},${summary.topPerformingAssembly.value}\n`;
-  csvContent += `Top Performing Assembly (Growth),${summary.topGrowthAssembly.name},${summary.topGrowthAssembly.value}\n\n`;
+  csvContent += `Top Performing Assembly (Tithe),${escapeCsvField(summary.topPerformingAssembly.name)},${escapeCsvField(summary.topPerformingAssembly.value)}\n`;
+  csvContent += `Top Performing Assembly (Growth),${escapeCsvField(summary.topGrowthAssembly.name)},${escapeCsvField(summary.topGrowthAssembly.value)}\n\n`;
 
   csvContent += `Performance Data (${granularity})\n`;
   csvContent += `Period,Total Tithe,Souls Won\n`;
 
   summary.performance.forEach((perf: any) => {
-    csvContent += `${perf.key},${perf.totalTithe},${perf.soulsWon}\n`;
+    csvContent += `${escapeCsvField(perf.key)},${escapeCsvField(perf.totalTithe)},${escapeCsvField(perf.soulsWon)}\n`;
   });
 
   return csvContent;

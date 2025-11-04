@@ -17,6 +17,7 @@ import {
   Search,
   GripVertical,
   X,
+  Move,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MagicCard } from "./MagicCard";
@@ -90,6 +91,9 @@ interface TitheRecordRowProps {
   ) => void;
   visibleTableHeaders: Array<keyof TitheRecordB>;
   searchTerm: string;
+  onSelectForSmartMove: (record: TitheRecordB) => void;
+  onSmartMoveClick: (record: TitheRecordB) => void;
+  selectedRecordForSmartMove: TitheRecordB | null;
 }
 
 // Row component with integrated DnD logic
@@ -108,6 +112,8 @@ const TitheRecordRow: React.FC<TitheRecordRowProps> = ({
   navigateToNextAmountCellForEditing,
   visibleTableHeaders,
   searchTerm,
+  onSmartMoveClick,
+  selectedRecordForSmartMove,
 }) => {
   const {
     attributes,
@@ -227,6 +233,15 @@ const TitheRecordRow: React.FC<TitheRecordRowProps> = ({
       ))}
       <td className="p-2 align-middle text-xs">
         <div className="flex items-center justify-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onSmartMoveClick(record)}
+                      disabled={selectedRecordForSmartMove !== null}
+                      title="Move selected record to a specific position"
+                    >
+                      <Move size={16} />
+                    </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -262,6 +277,7 @@ interface FullTithePreviewModalProps {
     config: { key: keyof TitheRecordB; direction: "asc" | "desc" } | null,
   ) => void;
   openAddMemberToListModal: () => void;
+  assemblyName: string;
 }
 
 const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
@@ -276,6 +292,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     sortConfig,
     setSortConfig,
     openAddMemberToListModal,
+    assemblyName,
   } = props;
 
   const [internalList, setInternalList] = useState<TitheRecordB[]>([]);
@@ -291,13 +308,11 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   const [searchInput, setSearchInput] = useState(searchTerm);
 
   const [targetPosition, setTargetPosition] = useState("1");
-  const [pendingSmartMove, setPendingSmartMove] = useState<TitheRecordB | null>(
-    null,
-  );
+  const [selectedRecordForSmartMove, setSelectedRecordForSmartMove] = useState<TitheRecordB | null>(null);
 
-  const [lastDeleted, setLastDeleted] = useState<{
+  const [deletionHistory, setDeletionHistory] = useState<Array<{
     items: Array<{ record: TitheRecordB; index: number }>;
-  } | null>(null);
+  }>>([]);
 
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
@@ -333,8 +348,6 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     const hiddenByDefault = [
       "Transaction Type",
       "Payment Source Type",
-      "Transaction Date", // To be safe
-      "Transaction Date ('DD-MMM-YYYY')",
       "Currency",
       "Exchange Rate",
     ];
@@ -493,7 +506,9 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   );
 
   const handleUndoDelete = useCallback(() => {
-    if (!lastDeleted) return;
+    if (deletionHistory.length === 0) return;
+
+    const lastDeleted = deletionHistory[deletionHistory.length - 1];
 
     setInternalList((list) => {
       const listCopy = [...list];
@@ -506,10 +521,10 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
       return listCopy;
     });
 
+    setDeletionHistory((prev) => prev.slice(0, -1));
     setMadeChanges(true);
     addToast(`${lastDeleted.items.length} record(s) restored.`, "success");
-    setLastDeleted(null);
-  }, [lastDeleted, addToast]);
+  }, [deletionHistory, addToast]);
 
   const handleDeleteTitheRecordInternal = useCallback(
     (recordNo: number | string) => {
@@ -519,9 +534,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
       if (deletedItemIndex === -1) return;
 
       const deletedItem = internalList[deletedItemIndex];
-      setLastDeleted({
-        items: [{ record: deletedItem, index: deletedItemIndex }],
-      });
+      setDeletionHistory((prev) => [...prev, { items: [{ record: deletedItem, index: deletedItemIndex }] }]);
 
       setInternalList((list) => list.filter((r) => r["No."] !== recordNo));
       setSelectedRowIds((prev) => {
@@ -639,7 +652,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   const cancelEditInternal = useCallback(() => setEditingCell(null), []);
 
   const handleSmartMoveConfirm = useCallback(() => {
-    if (!pendingSmartMove) return;
+    if (!selectedRecordForSmartMove) return;
 
     const targetPos = parseInt(targetPosition, 10);
     if (
@@ -648,12 +661,12 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
       targetPos > internalList.length + 1
     ) {
       addToast(`Invalid target position.`, "error");
-      setPendingSmartMove(null);
+      setSelectedRecordForSmartMove(null);
       return;
     }
 
     const oldIndex = internalList.findIndex(
-      (item) => item["No."] === pendingSmartMove["No."],
+      (item) => item["No."] === selectedRecordForSmartMove["No."],
     );
     const newIndex = targetPos - 1;
     if (oldIndex === -1) return;
@@ -662,21 +675,13 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     setMadeChanges(true);
 
     addToast(
-      `Moved "${pendingSmartMove["Membership Number"]}" to position ${targetPos}.`,
+      `Moved "${selectedRecordForSmartMove["Membership Number"]}" to position ${targetPos}.`,
       "success",
     );
     setTargetPosition(String(Math.min(targetPos + 1, internalList.length)));
     setSearchInput("");
-    setPendingSmartMove(null);
-  }, [pendingSmartMove, targetPosition, internalList, addToast]);
-
-  useEffect(() => {
-    if (searchTerm && !sortConfig && recordsToShow.length === 1) {
-      setPendingSmartMove(recordsToShow[0]);
-    } else {
-      setPendingSmartMove(null);
-    }
-  }, [recordsToShow, searchTerm, sortConfig]);
+    setSelectedRecordForSmartMove(null);
+  }, [selectedRecordForSmartMove, targetPosition, internalList, addToast]);
 
   const toggleRowSelectionInternal = useCallback(
     (recordNo: number | string) => {
@@ -710,7 +715,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
         itemsToDelete.push({ record, index });
       }
     });
-    setLastDeleted({ items: itemsToDelete });
+    setDeletionHistory((prev) => [...prev, { items: itemsToDelete }]);
 
     setInternalList((list) =>
       list.filter((r) => !selectedRowIds.has(r["No."])),
@@ -763,6 +768,13 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   }, [selectedRowIds, recordsToShow]);
 
   const requestSortFullPreviewInternal = (key: keyof TitheRecordB) => {
+    if (madeChanges) {
+      addToast(
+        "Please save your manual reordering before sorting.",
+        "warning",
+      );
+      return;
+    }
     if (key === "No.") return;
     let direction: "asc" | "desc" = "asc";
     if (sortConfig?.key === key && sortConfig.direction === "asc")
@@ -787,9 +799,9 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     if (!isOpen) {
       setSelectedRowIds(new Set());
       setEditingCell(null);
-      setLastDeleted(null);
+      setDeletionHistory([]);
       setIsColumnSelectorOpen(false);
-      setPendingSmartMove(null);
+      setSelectedRecordForSmartMove(null);
     } else {
       setSearchInput(searchTerm);
       prevListLengthRef.current = titheListData.length;
@@ -802,8 +814,8 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   };
 
   const modalTitle = madeChanges
-    ? "Full Tithe List Preview & Edit *"
-    : "Full Tithe List Preview & Edit";
+    ? `${assemblyName} Tither's List Editor *`
+    : `${assemblyName} Tither's List Editor`;
 
   return (
     <Modal
@@ -811,6 +823,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
       onClose={onClose}
       title={modalTitle}
       size="xxl"
+      closeOnOutsideClick={false}
       footerContent={
         <>
           <Button onClick={onClose} variant="outline" size="md">
@@ -940,11 +953,11 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && pendingSmartMove) {
+                    if (e.key === "Enter" && selectedRecordForSmartMove) {
                       e.preventDefault();
                       handleSmartMoveConfirm();
                     } else if (e.key === "Escape") {
-                      setPendingSmartMove(null);
+                      setSelectedRecordForSmartMove(null);
                       setSearchInput(""); 
                     }
                   }}
@@ -967,7 +980,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
           </div>
 
           <AnimatePresence>
-            {pendingSmartMove && (
+            {selectedRecordForSmartMove && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -976,7 +989,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
               >
                 Move{" "}
                 <strong className="text-[var(--text-primary)]">
-                  {pendingSmartMove["Membership Number"]}
+                  {selectedRecordForSmartMove["Membership Number"]}
                 </strong>{" "}
                 to position{" "}
                 <strong className="text-[var(--text-primary)]">
@@ -1070,6 +1083,9 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
                         }
                         visibleTableHeaders={visibleTableHeaders}
                         searchTerm={searchTerm}
+                        onSelectForSmartMove={setSelectedRecordForSmartMove}
+                        onSmartMoveClick={handleSmartMoveConfirm}
+                        selectedRecordForSmartMove={selectedRecordForSmartMove}
                       />
                     ))
                   ) : (

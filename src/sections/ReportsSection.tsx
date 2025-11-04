@@ -48,20 +48,8 @@ const ReportsSection: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [granularity, setGranularity] = useState<Granularity>("monthly");
   const [isLoading, setIsLoading] = useState(true);
-
-  const processedData = useMemo(
-    () => processDataForReports(transactionLog, memberDatabase),
-    [transactionLog, memberDatabase],
-  );
-
-  useEffect(() => {
-    setIsLoading(true);
-    // Simulate processing time
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [processedData]);
+  const [processedData, setProcessedData] = useState<any>({});
+  const [summary, setSummary] = useState<any>(null);
 
   const yearOptions = useMemo(() => {
     const years = new Set(Object.keys(processedData).map(Number));
@@ -70,29 +58,43 @@ const ReportsSection: React.FC = () => {
     return Array.from(years).sort((a, b) => b - a);
   }, [processedData]);
 
-  const reportData = useMemo(() => {
-    const yearData = processedData[selectedYear];
-    if (!yearData) return {};
+  useEffect(() => {
+    setIsLoading(true);
+    const data = processDataForReports(transactionLog, memberDatabase);
+    setProcessedData(data);
 
+    const yearData = data[selectedYear];
+    if (!yearData) {
+      setSummary({ totalTithe: 0, totalSouls: 0, topPerformingAssembly: { name: "N/A", value: 0 }, topGrowthAssembly: { name: "N/A", value: 0 }, performance: [] });
+      setIsLoading(false);
+      return;
+    }
+
+    let reportDataToProcess;
     switch (granularity) {
       case "yearly":
-        return yearData.months;
+        reportDataToProcess = yearData.months;
+        break;
       case "monthly":
-        return yearData.months;
+        reportDataToProcess = yearData.months;
+        break;
       case "weekly":
-        return yearData.weeks;
+        reportDataToProcess = yearData.weeks;
+        break;
       case "daily":
-        return yearData.days;
+        reportDataToProcess = yearData.days;
+        break;
       default:
-        return yearData.months;
+        reportDataToProcess = yearData.months;
     }
-  }, [selectedYear, processedData, granularity]);
 
-  const summary = useMemo(() => {
-    return aggregateReportData(reportData, getGranularityForAggregation(granularity));
-  }, [reportData, granularity]);
+    const aggregatedData = aggregateReportData(reportDataToProcess, getGranularityForAggregation(granularity));
+    setSummary(aggregatedData);
+    setIsLoading(false);
+  }, [transactionLog, memberDatabase, selectedYear, granularity]);
 
   const handleDownloadCsv = () => {
+    if (!summary) return;
     const csvContent = exportToCsv(summary, selectedYear, granularity);
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -103,7 +105,7 @@ const ReportsSection: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const hasDataForPeriod = summary.totalTithe > 0 || summary.totalSouls > 0;
+  const hasDataForPeriod = summary && (summary.totalTithe > 0 || summary.totalSouls > 0);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -162,7 +164,7 @@ const ReportsSection: React.FC = () => {
         </div>
       </section>
 
-      {hasDataForPeriod ? (
+      {hasDataForPeriod && summary ? (
         <AnimatePresence>
           <motion.div
             className="space-y-8"

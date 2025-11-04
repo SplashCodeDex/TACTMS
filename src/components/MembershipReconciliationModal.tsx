@@ -126,6 +126,7 @@ const MembershipReconciliationModal: React.FC<
       onClose={onClose}
       title="Membership Reconciliation"
       size="xl"
+      closeOnOutsideClick={false}
       footerContent={
         <Button onClick={onClose} variant="primary" size="md">
           Continue to Dashboard

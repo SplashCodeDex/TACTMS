@@ -15,7 +15,7 @@ const ClearWorkspaceModal: React.FC<ClearWorkspaceModalProps> = ({
   onConfirm,
 }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Clear Workspace?">
+    <Modal isOpen={isOpen} onClose={onClose} title="Clear Workspace?" closeOnOutsideClick={false}>
       <div className="space-y-4">
         <div className="flex items-center">
           <AlertTriangle className="text-red-500 mr-3" size={24} />

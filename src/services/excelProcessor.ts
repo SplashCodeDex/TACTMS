@@ -157,10 +157,14 @@ export const reconcileMembers = (
 
   const masterMemberMap = new Map<string, MemberRecordA>();
   const unidentifiableMasterMembers: MemberRecordA[] = [];
+  let maxCustomOrder = 0;
   masterData.forEach((m) => {
     const id = getMemberId(m);
     if (id) masterMemberMap.set(id, m);
     else unidentifiableMasterMembers.push(m);
+    if (m.customOrder !== undefined && m.customOrder > maxCustomOrder) {
+      maxCustomOrder = m.customOrder;
+    }
   });
 
   const newMemberMap = new Map<string, MemberRecordA>();
@@ -176,9 +180,10 @@ export const reconcileMembers = (
   const changedMembers: ChangedMemberDetail[] = [];
 
   // Identify new members and changed members
+  let newMemberOrder = maxCustomOrder + 1;
   newMemberMap.forEach((newRecord, id) => {
     if (!masterMemberMap.has(id)) {
-      newMembers.push(newRecord);
+      newMembers.push({ ...newRecord, customOrder: newMemberOrder++ });
     } else {
       const oldRecord = masterMemberMap.get(id)!;
       const changes: { field: string; oldValue: any; newValue: any }[] = [];
@@ -197,7 +202,7 @@ export const reconcileMembers = (
       });
 
       if (changes.length > 0) {
-        changedMembers.push({ memberId: id, oldRecord, newRecord, changes });
+        changedMembers.push({ memberId: id, oldRecord, newRecord: { ...newRecord, customOrder: oldRecord.customOrder }, changes });
       }
     }
   });

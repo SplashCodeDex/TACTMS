@@ -44,6 +44,7 @@ export interface MemberRecordA {
   // New fields for accuracy
   firstSeenDate?: string; // ISO string
   firstSeenSource?: string; // e.g., filename or 'manual_add'
+  customOrder?: number;
 }
 
 export interface TitheRecordB {

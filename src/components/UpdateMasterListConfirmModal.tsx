@@ -15,7 +15,7 @@ const UpdateMasterListConfirmModal: React.FC<
   UpdateMasterListConfirmModalProps
 > = ({ isOpen, onClose, onConfirm, existingData, pendingUpdate }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Update Master List?">
+    <Modal isOpen={isOpen} onClose={onClose} title="Update Master List?" closeOnOutsideClick={false}>
       <div className="space-y-4">
         <p className="text-gray-600 dark:text-gray-400">
           Are you sure you want to update the master list for{" "}

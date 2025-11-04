@@ -143,6 +143,8 @@ self.addEventListener("sync", (event) => {
   const syncEvent = event as SyncEvent;
   if (syncEvent.tag === "sync-tithe-data") {
     syncEvent.waitUntil(
+      // CRITICAL: Implement actual data synchronization logic here.
+      // This is where you would send offline data to your backend or fetch updates.
       Promise.resolve(console.log("Background sync for tithe data triggered!"))
     );
   }
@@ -154,6 +156,8 @@ self.addEventListener("periodicsync", (event) => {
   const periodicSyncEvent = event as PeriodicSyncEvent;
   if (periodicSyncEvent.tag === "get-latest-updates") {
     periodicSyncEvent.waitUntil(
+      // CRITICAL: Implement actual logic for fetching latest updates here.
+      // This could involve fetching new data, configurations, or content.
       Promise.resolve(console.log("Periodic sync for latest updates triggered!"))
     );
   }
