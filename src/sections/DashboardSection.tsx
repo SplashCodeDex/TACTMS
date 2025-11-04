@@ -9,7 +9,14 @@ import {
   UploadCloud,
   Building2,
   User,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   TransactionLogEntry,
   MemberDatabase,
@@ -282,29 +289,33 @@ const DashboardSection: React.FC = () => {
                   >
                     Select Assembly
                   </label>
-                  <select
-                    id="assembly-start-select-dash"
-                    value={selectedAssembly}
-                    onChange={(e) => setSelectedAssembly(e.target.value)}
-                    className="form-input-light w-full"
-                    disabled={Object.keys(memberDatabase).length === 0}
-                  >
-                    <option value="" disabled>
-                      -- Select Assembly --
-                    </option>
-                    {ASSEMBLIES.map((assembly) => (
-                      <option
-                        key={assembly}
-                        value={assembly}
-                        disabled={!assembliesWithData.has(assembly)}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        id="assembly-start-select-dash"
+                        variant="outline"
+                        className="w-full justify-between"
+                        disabled={Object.keys(memberDatabase).length === 0}
+                        rightIcon={<ChevronDown size={16} />}
                       >
-                        {assembly}{" "}
-                        {assembliesWithData.has(assembly)
-                          ? ""
-                          : "(No member data)"}
-                      </option>
-                    ))}
-                  </select>
+                        {selectedAssembly || "-- Select Assembly --"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56 glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                      {ASSEMBLIES.map((assembly) => (
+                        <DropdownMenuItem
+                          key={assembly}
+                          disabled={!assembliesWithData.has(assembly)}
+                          onSelect={() => setSelectedAssembly(assembly)}
+                        >
+                          {assembly}{" "}
+                          {assembliesWithData.has(assembly)
+                            ? ""
+                            : "(No member data)"}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <Button
                   onClick={handleStartWeek}

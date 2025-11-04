@@ -17,6 +17,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import PopoverProfile from "./PopoverProfile";
 import { GoogleUserProfile } from "../types";
 import { THEME_OPTIONS } from "../constants";
 import SyncStatusIndicator from "./SyncStatusIndicator";
@@ -124,38 +125,12 @@ const GoogleSyncControl: React.FC<
       {!isCollapsed &&
         (isConfigured ? (
           isLoggedIn && userProfile ? (
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              variants={itemVariants}
-              className="p-3 bg-[var(--bg-card)] rounded-lg"
-            >
-              <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarImage src={userProfile.imageUrl} alt={userProfile.name} />
-                  <AvatarFallback>{userProfile.name.split(" ").map((n) => n[0]).join("")}</AvatarFallback>
-                </Avatar>
-                <div className="text-left overflow-hidden flex-grow">
-                  <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
-                    {userProfile.name}
-                  </p>
-                  <p className="text-xs text-[var(--text-muted)] truncate">
-                    {userProfile.email}
-                  </p>
-                </div>
-                <SyncStatusIndicator status={syncStatus} isOnline={isOnline} />
-              </div>
-              <Button
-                onClick={signOut}
-                fullWidth
-                variant="danger"
-                size="sm"
-                className="mt-3 !bg-transparent !text-[var(--danger-text)] hover:!bg-[var(--danger-start)]/10"
-              >
-                Sign Out
-              </Button>
-            </motion.div>
+            <PopoverProfile
+              userProfile={userProfile}
+              signOut={signOut}
+              syncStatus={syncStatus}
+              isOnline={isOnline}
+            />
           ) : (
             <motion.div
               initial="hidden"
