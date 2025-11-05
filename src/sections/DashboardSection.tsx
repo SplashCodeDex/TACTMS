@@ -453,21 +453,20 @@ const DashboardSection: React.FC = () => {
                         )}
           </motion.section>
         </div>
+        <motion.section
+          variants={itemVariants}
+          className="lg:col-span-3 content-card"
+        >
+          <h2 className="section-heading">
+            <TrendingUp size={22} className="mr-3 icon-primary" />
+            Weekly Tithe Trend
+          </h2>
+          <p className="text-sm text-center py-4 text-[var(--text-muted)]">
+            Showing data for the last 6 weeks.
+          </p>
+          <BarChart data={weeklyTitheData} />
+        </motion.section>
       </div>
-
-      <motion.section
-        variants={itemVariants}
-        className="lg:col-span-2 content-card"
-      >
-        <h2 className="section-heading">
-          <TrendingUp size={22} className="mr-3 icon-primary" />
-          Weekly Tithe Trend
-        </h2>
-        <p className="text-sm text-center py-4 text-[var(--text-muted)]">
-          Showing data for the last 6 weeks.
-        </p>
-        <BarChart data={weeklyTitheData} />
-      </motion.section>
     </motion.div>
   );
 };
