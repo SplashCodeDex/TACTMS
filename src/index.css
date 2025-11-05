@@ -650,12 +650,12 @@ body {
 
 /* Bar Chart */
 .bar-chart-container .bar-value {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: bold;
   fill: var(--text-on-accent);
 }
 .bar-chart-container .axis-text {
-  font-size: 12px;
+  font-size: 14px;
   fill: var(--text-secondary);
 }
 

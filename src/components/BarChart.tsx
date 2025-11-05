@@ -26,7 +26,7 @@ const BarChart: React.FC<BarChartProps> = ({
   const barMargin = totalBarSpace * 0.4; // 40% for margin
 
   const maxValue = Math.max(...data.map((d) => d.count), 0);
-  const bottomPadding = 45; // Increased padding for labels
+  const bottomPadding = 2; // Increased padding for labels
 
   return (
     <div className="bar-chart-container w-full overflow-x-auto pb-4">
