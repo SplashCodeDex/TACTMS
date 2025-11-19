@@ -1,6 +1,6 @@
 {
     "mcpServers": {
-      "Shadcn": {
+      "ShadcnUI": {
         "httpUrl": "https://www.shadcn.io/api/mcp",
         "args": []
       },
