@@ -108,21 +108,21 @@ const GoogleSyncControl: React.FC<
   Pick<
     SidebarProps,
     |
-      "isLoggedIn"
+    "isLoggedIn"
     |
-      "userProfile"
+    "userProfile"
     |
-      "syncStatus"
+    "syncStatus"
     |
-      "signIn"
+    "signIn"
     |
-      "signOut"
+    "signOut"
     |
-      "isCollapsed"
+    "isCollapsed"
     |
-      "isConfigured"
+    "isConfigured"
     |
-      "isOnline"
+    "isOnline"
   >
 > = ({
   isLoggedIn,
@@ -134,26 +134,50 @@ const GoogleSyncControl: React.FC<
   isConfigured,
   isOnline,
 }) => {
-  return (
-    <AnimatePresence>
-      {isCollapsed ? (
-        isConfigured && isLoggedIn && userProfile && (
-          <PopoverProfile
-            userProfile={userProfile}
-            signOut={signOut}
-            syncStatus={syncStatus}
-            isOnline={isOnline}
-          />
-        )
-      ) : (
-        isConfigured ? (
-          isLoggedIn && userProfile ? (
+    return (
+      <AnimatePresence>
+        {isCollapsed ? (
+          isConfigured && isLoggedIn && userProfile && (
             <PopoverProfile
               userProfile={userProfile}
               signOut={signOut}
               syncStatus={syncStatus}
               isOnline={isOnline}
             />
+          )
+        ) : (
+          isConfigured ? (
+            isLoggedIn && userProfile ? (
+              <PopoverProfile
+                userProfile={userProfile}
+                signOut={signOut}
+                syncStatus={syncStatus}
+                isOnline={isOnline}
+              />
+            ) : (
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                variants={itemVariants}
+                className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
+              >
+                <h4 className="font-semibold text-[var(--text-primary)]">
+                  Cloud Sync
+                </h4>
+                <p className="text-xs text-[var(--text-muted)] mt-1 mb-4">
+                  Sign in to sync your favorites across devices.
+                </p>
+                <Button
+                  onClick={signIn}
+                  leftIcon={<LogIn size={16} />}
+                  fullWidth
+                  variant="primary"
+                >
+                  Sign in with Google
+                </Button>
+              </motion.div>
+            )
           ) : (
             <motion.div
               initial="hidden"
@@ -163,42 +187,18 @@ const GoogleSyncControl: React.FC<
               className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
             >
               <h4 className="font-semibold text-[var(--text-primary)]">
-                Cloud Sync
+                Cloud Sync Unavailable
               </h4>
-              <p className="text-xs text-[var(--text-muted)] mt-1 mb-4">
-                Sign in to sync your favorites across devices.
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                This feature has not been configured.
               </p>
-              <Button
-                onClick={signIn}
-                leftIcon={<LogIn size={16} />}
-                fullWidth
-                variant="primary"
-              >
-                Sign in with Google
-              </Button>
-            </motion.div>
-          )
-        ) : (
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            variants={itemVariants}
-            className="p-3 bg-[var(--bg-card)] rounded-lg text-center"
-          >
-            <h4 className="font-semibold text-[var(--text-primary)]">
-              Cloud Sync Unavailable
-            </h4>
-            <p className="text-xs text-[var(--text-muted)] mt-1">
-              This feature has not been configured.
-            </p>
 
             </motion.div>
-        )
-      )}
-    </AnimatePresence>
-  );
-};
+          )
+        )}
+      </AnimatePresence>
+    );
+  };
 
 const ThemeControl: React.FC<
   Pick<
@@ -242,7 +242,7 @@ const ThemeControl: React.FC<
     closed: { height: "28px", transition: { duration: 0.4, ease: "easeInOut" } },
     open: { height: `${5 * 28 + 4 * 8}px`, transition: { duration: 0.4, ease: "easeInOut" } },
   };
-  
+
   return (
     <AnimatePresence>
       {isCollapsed ? (
@@ -263,13 +263,13 @@ const ThemeControl: React.FC<
           >
             {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
           </Button>
-          
+
           <motion.div
             variants={colorContainerVariants}
             animate={showAccentColors ? "open" : "closed"}
             className="overflow-hidden"
           >
-            <AnimatePresence exitBeforeEnter>
+            <AnimatePresence mode="wait">
               {showAccentColors ? (
                 <motion.div
                   key="color-options"
@@ -331,7 +331,7 @@ const ThemeControl: React.FC<
           variants={itemVariants}
           className="p-3 bg-[var(--bg-card)] rounded-lg"
         >
-     <h4 className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+          <h4 className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-3">
             Appearance
           </h4>
           <div className="flex items-center space-x-2 p-1 bg-[var(--input-bg)] rounded-xl shadow-inner mb-3">
@@ -427,11 +427,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         <AnimatePresence>
           {!isCollapsed && (
             <motion.p
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="text-xs text-[var(--text-muted)] text-center"
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="text-xs text-[var(--text-muted)] text-center"
             >
               TACTMS - The Apostolic Church Tithe Made Simple
             </motion.p>

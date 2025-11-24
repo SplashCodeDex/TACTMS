@@ -204,23 +204,26 @@ self.addEventListener("message", (event) => {
 
     const promiseChain = async () => {
       try {
-        await fetch("api/analytics", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
+        // Backend not yet implemented for analytics
+        // await fetch("api/analytics", {
+        //   method: "POST",
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //   },
+        //   body: JSON.stringify(payload),
+        // });
+        console.log("Analytics event queued (backend not configured):", payload);
       } catch (error) {
-        await analyticsSyncQueue.pushRequest({
-          request: new Request("api/analytics", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          }),
-        });
+        // await analyticsSyncQueue.pushRequest({
+        //   request: new Request("api/analytics", {
+        //     method: "POST",
+        //     headers: {
+        //       "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify(payload),
+        //   }),
+        // });
+        console.warn("Failed to queue analytics event:", error);
       }
     };
 
