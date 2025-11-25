@@ -104,7 +104,7 @@ export const usePWAFeatures = (
   const registerBackgroundSync = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      await registration.sync.register("sync-tithe-data");
+      await (registration as any).sync.register("sync-tithe-data");
       console.log('Background sync registered for "sync-tithe-data"');
       addToast("Offline changes will be synced in the background.", "info");
     } catch (error) {

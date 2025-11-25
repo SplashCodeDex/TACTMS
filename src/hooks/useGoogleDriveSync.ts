@@ -172,57 +172,70 @@ export const useGoogleDriveSync = (
       isSyncingRef.current = true;
       setSyncStatus("syncing");
 
-      try {
-        if (!favFileId || !logFileId)
-          throw new Error("Could not find or create Drive files.");
+      const MAX_RETRIES = 3;
+      let attempt = 0;
+      let success = false;
 
-        const localFavorites = JSON.parse(
-          localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]",
-        );
-        const localLog = JSON.parse(
-          localStorage.getItem(TRANSACTION_LOG_STORAGE_KEY) || "[]",
-        );
+      while (attempt < MAX_RETRIES && !success) {
+        try {
+          if (!favFileId || !logFileId)
+            throw new Error("Could not find or create Drive files.");
 
-        if (isLocalChange) {
-          saveFavorites(localFavorites);
-          saveLog(localLog);
-        } else {
-          const {
-            mergedData: mergedFavs,
-            updated: favUp,
-            added: favAdd,
-          } = mergeData(localFavorites, driveFavorites || []);
-          const {
-            mergedData: mergedLog,
-            updated: logUp,
-            added: logAdd,
-          } = mergeData(localLog, driveLog || []);
+          const localFavorites = JSON.parse(
+            localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]",
+          );
+          const localLog = JSON.parse(
+            localStorage.getItem(TRANSACTION_LOG_STORAGE_KEY) || "[]",
+          );
 
-          setFavorites(mergedFavs);
-          setTransactionLog(mergedLog);
-
-          saveFavorites(mergedFavs);
-          saveLog(mergedLog);
-
-          if (favUp + favAdd + logUp + logAdd > 0) {
-            addToast(
-              `Sync complete. Loaded ${favAdd + logAdd} new items from Drive.`,
-              "info",
-            );
+          if (isLocalChange) {
+            saveFavorites(localFavorites);
+            saveLog(localLog);
           } else {
-            addToast("Data is up to date.", "success", 2000);
+            const {
+              mergedData: mergedFavs,
+              updated: favUp,
+              added: favAdd,
+            } = mergeData(localFavorites, driveFavorites || []);
+            const {
+              mergedData: mergedLog,
+              updated: logUp,
+              added: logAdd,
+            } = mergeData(localLog, driveLog || []);
+
+            setFavorites(mergedFavs);
+            setTransactionLog(mergedLog);
+
+            saveFavorites(mergedFavs);
+            saveLog(mergedLog);
+
+            if (favUp + favAdd + logUp + logAdd > 0) {
+              addToast(
+                `Sync complete. Loaded ${favAdd + logAdd} new items from Drive.`,
+                "info",
+              );
+            } else {
+              addToast("Data is up to date.", "success", 2000);
+            }
+          }
+          setSyncStatus("synced");
+          success = true;
+        } catch (e: any) {
+          attempt++;
+          console.error(`Sync error (attempt ${attempt}/${MAX_RETRIES}):`, e);
+
+          if (attempt >= MAX_RETRIES) {
+            setSyncStatus("error");
+            const errorMsg =
+              e.result?.error?.message || "An unknown error occurred during sync.";
+            addToast(`Google Drive sync failed after ${MAX_RETRIES} attempts: ${errorMsg}`, "error");
+          } else {
+            // Wait before retrying (exponential backoff could be added here)
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
           }
         }
-        setSyncStatus("synced");
-      } catch (e: any) {
-        console.error("Sync error:", e);
-        setSyncStatus("error");
-        const errorMsg =
-          e.result?.error?.message || "An unknown error occurred during sync.";
-        addToast(`Google Drive sync failed: ${errorMsg}`, "error");
-      } finally {
-        isSyncingRef.current = false;
       }
+      isSyncingRef.current = false;
     },
     [
       isLoggedIn,

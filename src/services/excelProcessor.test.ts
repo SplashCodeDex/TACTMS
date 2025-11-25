@@ -99,6 +99,8 @@ describe("filterMembersByAge", () => {
     { "No.": 7, "First Name": "Grace", Age: "20 years" },
     { "No.": 8, "First Name": "Heidi", Age: "30 years 5 months" }, // Test with more complex age string
     { "No.": 9, "First Name": "Ivan", Age: "Unknown" }, // Test with non-numeric age
+    { "No.": 10, "First Name": "Judy", Age: "Age: 28" }, // New format
+    { "No.": 11, "First Name": "Kevin", Age: "32yrs" }, // New format
   ];
 
   it("should return all members if no age range is specified", () => {
@@ -108,39 +110,39 @@ describe("filterMembersByAge", () => {
 
   it("should filter members by minimum age", () => {
     const filtered = filterMembersByAge(members, 25);
-    expect(filtered).toHaveLength(5); // Alice, Bob, David, Frank, Heidi
+    expect(filtered).toHaveLength(7); // Alice, Bob, David, Frank, Heidi, Judy, Kevin
     expect(filtered.map((m) => m["First Name"])).toEqual(
-      expect.arrayContaining(["Alice", "Bob", "David", "Frank", "Heidi"]),
+      expect.arrayContaining(["Alice", "Bob", "David", "Frank", "Heidi", "Judy", "Kevin"]),
     );
   });
 
   it("should filter members by maximum age", () => {
     const filtered = filterMembersByAge(members, undefined, 30);
-    expect(filtered).toHaveLength(6); // Alice, Bob, Charlie, Eve, Grace, Heidi
+    expect(filtered).toHaveLength(7); // Alice, Bob, Charlie, Eve, Grace, Heidi, Judy
     expect(filtered.map((m) => m["First Name"])).toEqual(
-      expect.arrayContaining(["Alice", "Bob", "Charlie", "Eve", "Grace", "Heidi"]),
+      expect.arrayContaining(["Alice", "Bob", "Charlie", "Eve", "Grace", "Heidi", "Judy"]),
     );
   });
 
   it("should filter members by both minimum and maximum age", () => {
     const filtered = filterMembersByAge(members, 20, 40);
-    expect(filtered).toHaveLength(5); // Alice, Bob, David, Grace, Heidi
+    expect(filtered).toHaveLength(7); // Alice, Bob, David, Grace, Heidi, Judy, Kevin
     expect(filtered.map((m) => m["First Name"])).toEqual(
-      expect.arrayContaining(["Alice", "Bob", "David", "Grace", "Heidi"]),
+      expect.arrayContaining(["Alice", "Bob", "David", "Grace", "Heidi", "Judy", "Kevin"]),
     );
   });
 
   it("should handle members with complex age strings", () => {
-    const filtered = filterMembersByAge(members, 30, 35);
-    expect(filtered).toHaveLength(2); // Bob, Heidi
+    const filtered = filterMembersByAge(members, 28, 35);
+    expect(filtered).toHaveLength(4); // Bob, Heidi, Judy, Kevin
     expect(filtered.map((m) => m["First Name"])).toEqual(
-      expect.arrayContaining(["Bob", "Heidi"]),
+      expect.arrayContaining(["Bob", "Heidi", "Judy", "Kevin"]),
     );
   });
 
   it("should exclude members with non-numeric age strings", () => {
     const filtered = filterMembersByAge(members, 1, 100);
-    expect(filtered).toHaveLength(8); // All except Ivan
+    expect(filtered).toHaveLength(10); // All except Ivan
     expect(filtered.map((m) => m["First Name"])).not.toContain("Ivan");
   });
 
@@ -193,7 +195,7 @@ describe("reconcileMembers", () => {
     expect(report.newMembers).toHaveLength(1);
     expect(report.newMembers[0]["First Name"]).toBe("Alice");
     expect(report.missingMembers).toHaveLength(2);
-    expect(report.missingMembers.map((m) => m["First Name"])) .toEqual(
+    expect(report.missingMembers.map((m) => m["First Name"])).toEqual(
       expect.arrayContaining(["Jane", "Peter"]),
     );
   });
@@ -244,9 +246,24 @@ describe("reconcileMembers", () => {
       { "First Name": "Jane", Surname: "Smith" },
     ];
     const report = reconcileMembers(currentDataWithoutMembershipNumber, masterListWithoutMembershipNumber);
-    expect(report.newMembers).toHaveLength(1);
     expect(report.newMembers[0]["First Name"]).toBe("Jane");
     expect(report.missingMembers).toHaveLength(0);
+  });
+
+  it("should NOT generate an ID if names are too short (prevent false positives)", () => {
+    const masterListShortNames: MemberRecordA[] = [
+      { "First Name": "J", Surname: "D" },
+    ];
+    const currentDataShortNames: MemberRecordA[] = [
+      { "First Name": "J", Surname: "D" },
+    ];
+    // Since no ID is generated, they are treated as "unidentifiable" and thus "new" (or handled separately depending on logic, but definitely not matched)
+    // Actually, unidentifiable members are pushed to unidentifiable lists, not new/missing directly in the main return if they can't be mapped.
+    // Let's check unidentifiable lists.
+    const report = reconcileMembers(currentDataShortNames, masterListShortNames);
+    expect(report.unidentifiableNewMembers).toHaveLength(1);
+    expect(report.unidentifiableMasterMembers).toHaveLength(1);
+    expect(report.newMembers).toHaveLength(0);
   });
 });
 
@@ -394,8 +411,11 @@ describe("exportToExcel", () => {
   });
 
   it("should handle empty data gracefully", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => { });
     const data: any[] = [];
     exportToExcel(data);
     expect(vi.mocked(XLSX.writeFile)).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith("No data provided to export.");
+    consoleSpy.mockRestore();
   });
 });

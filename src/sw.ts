@@ -8,7 +8,6 @@ import {
 } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
-import { Queue } from "workbox-background-sync";
 
 // Serve offline.html for navigation requests when offline
 const offlineHandler = createHandlerBoundToURL("offline.html");
@@ -194,9 +193,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-const analyticsSyncQueue = new Queue("analytics-queue", {
-  maxRetentionTime: 24 * 60, // Retry for max of 24 Hours
-});
+// const analyticsSyncQueue = new Queue("analytics-queue", {
+//   maxRetentionTime: 24 * 60, // Retry for max of 24 Hours
+// });
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "QUEUE_ANALYTICS_EVENT") {

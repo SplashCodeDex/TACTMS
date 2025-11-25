@@ -11,7 +11,8 @@ export const parseAgeStringToYears = (
   ageString: string | undefined,
 ): number | null => {
   if (!ageString || typeof ageString !== "string") return null;
-  const match = ageString.match(/^(\d+)\s*years?/i);
+  // Match "30", "30 years", "Age: 30", "30yrs"
+  const match = ageString.match(/(?:age:?\s*)?(\d+)\s*(?:years?|yrs?)?/i);
   return match ? parseInt(match[1], 10) : null;
 };
 
@@ -34,12 +35,11 @@ export const filterMembersByAge = (
     return members; // Return all members if no age range is specified
   }
   return members.filter((member) => {
-    // Extract age number from a string like "30 years" or "30 years 5 months"
-    const ageMatch = member.Age?.match(/(\d+)/);
-    if (!ageMatch) {
-      return false; // Exclude members with non-numeric age
+    // Use the robust helper function
+    const age = parseAgeStringToYears(member.Age);
+    if (age === null) {
+      return false; // Exclude members with non-numeric or unparseable age
     }
-    const age = parseInt(ageMatch[1], 10);
 
     const isAboveMin = minAge === undefined || age >= minAge;
     const isBelowMax = maxAge === undefined || age <= maxAge;
@@ -151,7 +151,11 @@ export const reconcileMembers = (
     // Fallback to First Name + Surname if no membership number, now case-insensitive
     const firstName = String(m["First Name"] || "").trim().toLowerCase();
     const surname = String(m.Surname || "").trim().toLowerCase();
-    if (firstName && surname) return `${firstName}-${surname}`;
+
+    // STRICTER CHECK: Only generate ID if both names are present and at least 2 chars long
+    if (firstName.length >= 2 && surname.length >= 2) {
+      return `${firstName}-${surname}`;
+    }
     return ""; // No identifiable ID
   };
 
