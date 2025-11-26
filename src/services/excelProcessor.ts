@@ -144,77 +144,172 @@ export const reconcileMembers = (
   newData: MemberRecordA[],
   masterData: MemberRecordA[],
 ): Omit<MembershipReconciliationReport, "previousFileDate"> => {
+  // Helper to get ID (Membership Number)
   const getMemberId = (m: MemberRecordA) => {
-    const membershipNumber = String(m["Membership Number"] || m["Old Membership Number"] || "").trim();
-    if (membershipNumber) return membershipNumber;
+    return String(m["Membership Number"] || m["Old Membership Number"] || "").trim();
+  };
 
-    // Fallback to First Name + Surname if no membership number, now case-insensitive
+  // Helper to get Name Key (First Name + Surname)
+  const getNameKey = (m: MemberRecordA) => {
     const firstName = String(m["First Name"] || "").trim().toLowerCase();
     const surname = String(m.Surname || "").trim().toLowerCase();
-
-    // STRICTER CHECK: Only generate ID if both names are present and at least 2 chars long
     if (firstName.length >= 2 && surname.length >= 2) {
       return `${firstName}-${surname}`;
     }
-    return ""; // No identifiable ID
+    return "";
   };
 
-  const masterMemberMap = new Map<string, MemberRecordA>();
+  // 1. Index Master Data
+  const masterById = new Map<string, MemberRecordA>();
+  const masterByName = new Map<string, MemberRecordA[]>(); // Allow duplicates for name
   const unidentifiableMasterMembers: MemberRecordA[] = [];
   let maxCustomOrder = 0;
+
   masterData.forEach((m) => {
     const id = getMemberId(m);
-    if (id) masterMemberMap.set(id, m);
-    else unidentifiableMasterMembers.push(m);
+    const nameKey = getNameKey(m);
+
+    if (id) masterById.set(id, m);
+    if (nameKey) {
+      if (!masterByName.has(nameKey)) masterByName.set(nameKey, []);
+      masterByName.get(nameKey)!.push(m);
+    }
+
+    if (!id && !nameKey) unidentifiableMasterMembers.push(m);
+
     if (m.customOrder !== undefined && m.customOrder > maxCustomOrder) {
       maxCustomOrder = m.customOrder;
     }
   });
 
-  const newMemberMap = new Map<string, MemberRecordA>();
-  const unidentifiableNewMembers: MemberRecordA[] = [];
-  newData.forEach((m) => {
-    const id = getMemberId(m);
-    if (id) newMemberMap.set(id, m);
-    else unidentifiableNewMembers.push(m);
-  });
-
   const newMembers: MemberRecordA[] = [];
   const missingMembers: MemberRecordA[] = [];
   const changedMembers: ChangedMemberDetail[] = [];
+  const unidentifiableNewMembers: MemberRecordA[] = [];
 
-  // Identify new members and changed members
+  // Track which master records have been matched to avoid double counting
+  const matchedMasterIds = new Set<string>();
+  const matchedMasterNames = new Set<string>(); // To track name matches if ID didn't match
+
   let newMemberOrder = maxCustomOrder + 1;
-  newMemberMap.forEach((newRecord, id) => {
-    if (!masterMemberMap.has(id)) {
-      newMembers.push({ ...newRecord, customOrder: newMemberOrder++ });
-    } else {
-      const oldRecord = masterMemberMap.get(id)!;
-      const changes: { field: string; oldValue: any; newValue: any }[] = [];
 
-      // Compare all keys present in MemberRecordA
+  // 2. Process New Data
+  newData.forEach((newRecord) => {
+    const newId = getMemberId(newRecord);
+    const newNameKey = getNameKey(newRecord);
+    let matchedMasterRecord: MemberRecordA | undefined;
+
+    // PASS 1: Match by ID
+    if (newId && masterById.has(newId)) {
+      matchedMasterRecord = masterById.get(newId);
+      matchedMasterIds.add(newId);
+    }
+    // PASS 2: Match by Name (if no ID match found)
+    else if (newNameKey && masterByName.has(newNameKey)) {
+      // Find a master record with this name that hasn't been matched by ID yet
+      const candidates = masterByName.get(newNameKey)!;
+      // Simple heuristic: take the first one that isn't matched yet
+      // (Could be improved with fuzzy matching or other heuristics)
+      matchedMasterRecord = candidates.find(c => {
+        const cId = getMemberId(c);
+        // If candidate has an ID, check if it was already matched
+        if (cId) return !matchedMasterIds.has(cId);
+        // If candidate has no ID, we can potentially match it (but need to be careful about duplicates)
+        // For now, let's assume if we match by name, we consume that name instance.
+        // But since we don't have unique IDs for name-only records, we need a way to track specific instances.
+        // Let's rely on object reference equality for now if possible, or just skip complex duplicate handling for this pass.
+        return true;
+      });
+
+      // If we found a match, we need to mark it as matched.
+      // Since we might not have an ID, we can't use matchedMasterIds easily for ID-less records.
+      // But if the master record *did* have an ID, we should add it to matchedMasterIds so it doesn't get marked as missing later.
+      if (matchedMasterRecord) {
+        const matchId = getMemberId(matchedMasterRecord);
+        if (matchId) matchedMasterIds.add(matchId);
+        // We also need to ensure we don't match this same master record again by name to another new record.
+        // This simple logic might match the same master record to multiple new records if they share a name.
+        // To fix this properly, we should remove the candidate from the list or track matched references.
+        // Let's remove it from the candidate list for this scope.
+        const index = candidates.indexOf(matchedMasterRecord);
+        if (index > -1) {
+          candidates.splice(index, 1); // Remove it so it can't be matched again
+        }
+      }
+    }
+
+    if (matchedMasterRecord) {
+      // Check for changes
+      const oldRecord = matchedMasterRecord;
+      const changes: { field: string; oldValue: any; newValue: any }[] = [];
       const allKeys = new Set([...Object.keys(oldRecord), ...Object.keys(newRecord)]);
 
       allKeys.forEach((key) => {
         const oldValue = oldRecord[key];
         const newValue = newRecord[key];
-
-        // Simple comparison for now, can be enhanced for specific types (e.g., date parsing)
         if (String(oldValue) !== String(newValue)) {
           changes.push({ field: key, oldValue, newValue });
         }
       });
 
       if (changes.length > 0) {
-        changedMembers.push({ memberId: id, oldRecord, newRecord: { ...newRecord, customOrder: oldRecord.customOrder }, changes });
+        // Use the ID from the master record if available, otherwise the new ID, otherwise name key
+        const memberId = getMemberId(oldRecord) || newId || newNameKey;
+        changedMembers.push({ memberId, oldRecord, newRecord: { ...newRecord, customOrder: oldRecord.customOrder }, changes });
+      }
+    } else {
+      // No match found -> New Member
+      if (!newId && !newNameKey) {
+        unidentifiableNewMembers.push(newRecord);
+      } else {
+        newMembers.push({ ...newRecord, customOrder: newMemberOrder++ });
       }
     }
   });
 
-  // Identify missing members
-  masterMemberMap.forEach((oldRecord, id) => {
-    if (!newMemberMap.has(id)) {
-      missingMembers.push(oldRecord);
+  // 3. Identify Missing Members
+  // Any master record that wasn't matched is missing
+  masterData.forEach((masterRecord) => {
+    const id = getMemberId(masterRecord);
+    const nameKey = getNameKey(masterRecord);
+
+    // If it was matched by ID, it's not missing
+    if (id && matchedMasterIds.has(id)) return;
+
+    // If it was matched by Name (and removed from the candidate list), it's not missing.
+    // Wait, we modified the candidate list in masterByName.
+    // So if we check masterByName, we can see if this record is still there?
+    // No, masterByName holds references.
+    // Let's use a simpler approach:
+    // If we matched it in Pass 2, we need to know.
+    // The issue is tracking "matched by name" for ID-less records.
+
+    // REVISED STRATEGY for Missing Detection:
+    // We need a set of "matched master objects".
+    // But we can't easily hash objects.
+    // Let's assume for now that if it has an ID, matchedMasterIds handles it.
+    // If it DOES NOT have an ID, we check if its name key still has candidates in masterByName.
+    // Actually, we popped them from masterByName in Pass 2.
+    // So if we iterate through masterData:
+    // 1. If it has ID and ID is in matchedMasterIds -> Matched.
+    // 2. If it has NO ID, check if it is still present in masterByName[nameKey].
+    //    If it IS present, it means it wasn't consumed by a new record -> Missing.
+    //    If it is NOT present (because we spliced it out), it was matched -> Not missing.
+
+    if (id) {
+      // Handled by matchedMasterIds check above
+      if (!matchedMasterIds.has(id)) missingMembers.push(masterRecord);
+    } else if (nameKey) {
+      // Check if this specific object instance is still in the candidates list
+      const candidates = masterByName.get(nameKey);
+      if (candidates && candidates.includes(masterRecord)) {
+        missingMembers.push(masterRecord);
+      }
+    } else {
+      // Unidentifiable master members are ignored or handled separately?
+      // For now, let's not mark them as missing to avoid noise, or maybe we should?
+      // The original logic didn't seem to track unidentifiables in missing list explicitly?
+      // Let's stick to identifiable ones.
     }
   });
 
