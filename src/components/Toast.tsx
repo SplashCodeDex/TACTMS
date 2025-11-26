@@ -126,7 +126,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
   onDismiss,
 }) => {
   return (
-    <div className="fixed bottom-6 right-6 z-[100] w-full max-w-md">
+    <div className="fixed bottom-6 right-6 z-[200] w-full max-w-md">
       <AnimatePresence>
         {toasts.map((toast) => (
           <Toast key={toast.id} {...toast} onDismiss={onDismiss} />

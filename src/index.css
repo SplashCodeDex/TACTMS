@@ -456,7 +456,7 @@ body {
     opacity 0.2s,
     visibility 0.2s,
     transform 0.2s;
-  z-index: 20;
+  z-index: 60;
   border: 1px solid var(--border-color);
 }
 
@@ -613,7 +613,7 @@ body {
 .command-palette-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 110;
   background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
