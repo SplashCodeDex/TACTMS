@@ -732,21 +732,49 @@ const App: React.FC = () => {
     const masterList = memberDatabase[assembly];
     if (masterList?.data) {
       const report = reconcileMembers(data, masterList.data);
+      let enrichedNewMembers: MemberRecordA[] = [];
 
       if (report.newMembers.length > 0) {
         const now = new Date().toISOString();
 
-        const enrichedNewMembers = report.newMembers.map((member) => ({
+        enrichedNewMembers = report.newMembers.map((member) => ({
           ...member,
           firstSeenDate: now,
           firstSeenSource: sourceFileName,
         }));
+      }
 
+      // Consolidate updates: Apply changes AND add new members
+      if (enrichedNewMembers.length > 0 || report.changedMembers.length > 0) {
         setMemberDatabase((prev) => {
-          const updatedData = [
-            ...(prev[assembly]?.data || []),
-            ...enrichedNewMembers,
-          ];
+          const prevAssemblyData = prev[assembly]?.data || [];
+          let updatedData = [...prevAssemblyData];
+
+          // 1. Apply Changes to existing members
+          if (report.changedMembers.length > 0) {
+            const changesMap = new Map(
+              report.changedMembers.map((c) => [c.oldRecord, c]),
+            );
+            updatedData = updatedData.map((member) => {
+              const change = changesMap.get(member);
+              if (change) {
+                return {
+                  ...change.newRecord,
+                  // Preserve internal metadata from the existing record
+                  firstSeenDate: member.firstSeenDate,
+                  firstSeenSource: member.firstSeenSource,
+                  customOrder: member.customOrder,
+                };
+              }
+              return member;
+            });
+          }
+
+          // 2. Append New Members
+          if (enrichedNewMembers.length > 0) {
+            updatedData = [...updatedData, ...enrichedNewMembers];
+          }
+
           return {
             ...prev,
             [assembly]: {
@@ -759,24 +787,29 @@ const App: React.FC = () => {
             },
           };
         });
+      }
 
+      if (
+        report.newMembers.length > 0 ||
+        report.missingMembers.length > 0 ||
+        report.changedMembers.length > 0
+      ) {
         setReconciliationReport({
           ...report,
-          newMembers: enrichedNewMembers,
+          newMembers:
+            enrichedNewMembers.length > 0
+              ? enrichedNewMembers
+              : report.newMembers,
           previousFileDate: `Master List (updated ${new Date(masterList.lastUpdated).toLocaleDateString()})`,
         });
         setSoulsWonCount(report.newMembers.length);
         setIsReconciliationModalOpen(true);
-      } else if (report.missingMembers.length > 0) {
-        setReconciliationReport({
-          ...report,
-          newMembers: [],
-          previousFileDate: `Master List (updated ${new Date(masterList.lastUpdated).toLocaleDateString()})`,
-        });
-        setIsReconciliationModalOpen(true);
-        setSoulsWonCount(0);
       } else {
         setSoulsWonCount(0);
+        addToast(
+          "No changes detected. The uploaded file matches the master list.",
+          "info",
+        );
       }
     } else {
       setSoulsWonCount(data.length);

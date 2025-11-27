@@ -77,6 +77,54 @@ interface MembershipReconciliationModalProps {
   onKeepMembers: (members: MemberRecordA[]) => void;
 }
 
+const ChangedMembersList: React.FC<{
+  members: import("../types.ts").ChangedMemberDetail[];
+}> = ({ members }) => (
+  <div className="bg-[var(--bg-card-subtle-accent)] p-4 rounded-lg flex-1">
+    <h3 className="font-semibold text-md mb-3 flex items-center text-[var(--text-primary)]">
+      <Users size={20} className="mr-2 text-[var(--warning-text)]" />
+      Changed Members ({members.length})
+    </h3>
+    {members.length > 0 ? (
+      <ScrollArea className="h-48">
+        <ul className="space-y-2 text-sm pr-2">
+          {members.map((item, index) => {
+            const name =
+              `${item.newRecord.Title || ""} ${item.newRecord["First Name"] || ""} ${item.newRecord.Surname || ""} ${item.newRecord["Other Names"] || ""}`
+                .replace(/\s+/g, " ")
+                .trim() || "Unnamed Member";
+            return (
+              <li
+                key={item.memberId || index}
+                className="text-[var(--text-secondary)] p-2 rounded-md bg-[var(--bg-card)]"
+              >
+                <p className="font-medium text-[var(--text-primary)] truncate" title={name}>
+                  {name}
+                </p>
+                <div className="text-xs text-[var(--text-muted)] mt-1 space-y-1">
+                  {item.changes.map((change, i) => (
+                    <div key={i} className="flex gap-1">
+                      <span className="font-semibold">{change.field}:</span>
+                      <span className="line-through opacity-70">{String(change.oldValue)}</span>
+                      <span>→</span>
+                      <span className="text-[var(--primary-accent-start)]">{String(change.newValue)}</span>
+                    </div>
+                  ))}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </ScrollArea>
+    ) : (
+      <div className="text-center py-4 flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
+        <Inbox size={24} className="mb-2 opacity-50" />
+        <p className="text-sm">No members with changes.</p>
+      </div>
+    )}
+  </div>
+);
+
 const MembershipReconciliationModal: React.FC<
   MembershipReconciliationModalProps
 > = ({ isOpen, onClose, report, onKeepMembers }) => {
@@ -128,7 +176,7 @@ const MembershipReconciliationModal: React.FC<
       isOpen={isOpen}
       onClose={onClose}
       title="Membership Reconciliation"
-      size="xl"
+      size="xxl"
       closeOnOutsideClick={false}
       footerContent={
         <Button onClick={onClose} variant="primary" size="md">
@@ -150,13 +198,16 @@ const MembershipReconciliationModal: React.FC<
             .
           </p>
         </div>
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <ReconciliationList
-            title="New Members (Souls Won)"
+            title="New Members"
             icon={<UserPlus size={20} className="text-[var(--success-text)]" />}
             members={report.newMembers}
-            emptyText="No new members found."
+            emptyText="No new members."
           />
+
+          <ChangedMembersList members={report.changedMembers} />
+
           <div className="bg-[var(--bg-card-subtle-accent)] p-4 rounded-lg flex-1">
             <h3 className="font-semibold text-md mb-3 flex items-center text-[var(--text-primary)]">
               <UserMinus size={20} className="mr-2 text-[var(--danger-text)]" />
@@ -224,7 +275,7 @@ const MembershipReconciliationModal: React.FC<
                     onClick={handleKeepSelected}
                     disabled={selectedMissingIds.size === 0}
                   >
-                    Keep Selected in List ({selectedMissingIds.size})
+                    Keep Selected ({selectedMissingIds.size})
                   </Button>
                 </div>
               </>
