@@ -49,12 +49,12 @@ import {
   ITEMS_PER_FULL_PREVIEW_PAGE,
   APP_THEME_STORAGE_KEY,
   DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
-  ASSEMBLIES, // Note: ASSEMBLIES is now an empty array in constants.ts. It should be populated dynamically, e.g., from a backend API or a configuration file.
+  ASSEMBLIES,
   THEME_OPTIONS,
   APP_ACCENT_COLOR_KEY,
   MEMBER_DATABASE_STORAGE_KEY,
 } from "./constants";
-import DataEntryModal from "./components/DataEntryModal";
+import AmountEntryModal from "./components/AmountEntryModal";
 import AssemblySelectionModal from "./components/AssemblySelectionModal";
 import MembershipReconciliationModal from "./components/MembershipReconciliationModal";
 import ClearWorkspaceModal from "./components/ClearWorkspaceModal";
@@ -97,6 +97,7 @@ const App: React.FC = () => {
   const [titheListData, setTitheListData] = useState<TitheRecordB[]>([]);
 
   const [globalNotifications, setGlobalNotifications] = useState<Notification[]>([]);
+  const [isAmountEntryModalOpen, setIsAmountEntryModalOpen] = useState(false);
 
   const [inputErrors, setInputErrors] = useState<{ [key: string]: string }>({});
 
@@ -135,7 +136,7 @@ const App: React.FC = () => {
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
   const [isFullPreviewModalOpen, setIsFullPreviewModalOpen] = useState(false);
-  const [isDataEntryModalOpen, setIsDataEntryModalOpen] = useState(false);
+
   const [isAddNewMemberModalOpen, setIsAddNewMemberModalOpen] = useState(false);
   const [isCreateTitheListModalOpen, setIsCreateTitheListModalOpen] =
     useState(false);
@@ -240,7 +241,7 @@ const App: React.FC = () => {
     ) => {
       const toastOptions: Parameters<typeof toast>[1] = {
         duration,
-        action: actions && actions.length > 0 ? { 
+        action: actions && actions.length > 0 ? {
           label: actions[0].label,
           onClick: actions[0].onClick
         } : undefined,
@@ -420,7 +421,7 @@ const App: React.FC = () => {
     setIsFavDetailsModalOpen(false);
     setIsDeleteFavConfirmModalOpen(false);
     setIsFullPreviewModalOpen(false);
-    setIsDataEntryModalOpen(false);
+    setIsAmountEntryModalOpen(false);
     setIsAddNewMemberModalOpen(false);
     setIsCreateTitheListModalOpen(false);
     setIsSaveFavoriteModalOpen(false);
@@ -431,97 +432,99 @@ const App: React.FC = () => {
     setIsCommandPaletteOpen(false);
   }, [clearAutoSaveDraft]);
 
-      const handleDateChange = useCallback(
-        (date: Date) => {
-          const sundayDate = getMostRecentSunday(date); // Adjust input date to Sunday
-          const isSameDay =
-            sundayDate.setHours(0, 0, 0, 0) ===
-            selectedDate.setHours(0, 0, 0, 0);        if (isSameDay) {
+  const handleDateChange = useCallback(
+    (date: Date) => {
+      const sundayDate = getMostRecentSunday(date); // Adjust input date to Sunday
+      const isSameDay =
+        sundayDate.setHours(0, 0, 0, 0) ===
+        selectedDate.setHours(0, 0, 0, 0); if (isSameDay) {
           return;
         }
-  
-        if (currentAssembly) {
-                  const startOfDay = sundayDate.setHours(0, 0, 0, 0); // Use sundayDate here
-                  const logsForDay = transactionLog
-                    .filter((log) => {
-                      if (log.assemblyName !== currentAssembly) return false;
-                      const logDate = getMostRecentSunday(new Date(log.selectedDate)).setHours(0, 0, 0, 0); // Adjust logDate to Sunday
-                      return logDate === startOfDay;
-                    })            .sort((a, b) => b.timestamp - a.timestamp);
-  
-          const latestLogForDate = logsForDay[0];
-  
-                  if (latestLogForDate && latestLogForDate.titheListData) {
-                    const sundayDate = getMostRecentSunday(new Date(latestLogForDate.selectedDate));
-                    addToast(
-                      `Loading saved record for ${formatDateDDMMMYYYY(sundayDate)}.`, 
-                      "info",
-                      3000,
-                    );
-          
-                    setTitheListData(latestLogForDate.titheListData);
-                    setConcatenationConfig(latestLogForDate.concatenationConfig);
-                    setDescriptionText(latestLogForDate.descriptionText);
-                    setAmountMappingColumn(latestLogForDate.amountMappingColumn);
-                    setSoulsWonCount(latestLogForDate.soulsWonCount);
-                    setSelectedDate(sundayDate);
-          
-                    setOriginalData([]);
-                    setProcessedDataA([]);
-                    setAgeRangeMin("");
-                    setAgeRangeMax("");
-                    setIsAgeFilterActive(false);
-                    setUploadedFile(
-                      new File(
-                        [],
-                        `Record from ${formatDateDDMMMYYYY(sundayDate)}`,
-                        { type: "text/plain" },
-                      ),
-                    );
-                    setFileNameToSave(
-                      `${latestLogForDate.assemblyName}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`,
-                    );
-          
-                    setHasUnsavedChanges(false);
-                    clearAutoSaveDraft();
-                    return;
-                  }        }
-  
-              // If no log found, prepare the current list for the new date by resetting amounts.
-              setSelectedDate(sundayDate);
-              if (titheListData.length > 0) {
-                const formattedDate = formatDateDDMMMYYYY(sundayDate);
-                const newDescription = descriptionText.replace(
-                  /{DD-MMM-YYYY}/gi,
-                  formattedDate,
-                );
-        
-                const freshList = titheListData.map((record) => ({
-                  ...record,
-                  "Transaction Amount": "", // Reset amount for the new date
-                  "Transaction Date ('DD-MMM-YYYY')": formattedDate,
-                  "Narration/Description": newDescription,
-                }));
-        
-                setTitheListData(freshList);
-                setSoulsWonCount(0); // Reset souls won for the new period
-                setHasUnsavedChanges(true); // Mark as unsaved
-              }
-        
-              if (currentAssembly) {
-                const newFileName = `${currentAssembly}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`;
-                setFileNameToSave(newFileName);
-              }      },
-      [
-        currentAssembly,
-        selectedDate,
-        transactionLog,
-        addToast,
-        descriptionText,
-        titheListData,
-        clearAutoSaveDraft,
-      ],
-    );
+
+      if (currentAssembly) {
+        const startOfDay = sundayDate.setHours(0, 0, 0, 0); // Use sundayDate here
+        const logsForDay = transactionLog
+          .filter((log) => {
+            if (log.assemblyName !== currentAssembly) return false;
+            const logDate = getMostRecentSunday(new Date(log.selectedDate)).setHours(0, 0, 0, 0); // Adjust logDate to Sunday
+            return logDate === startOfDay;
+          }).sort((a, b) => b.timestamp - a.timestamp);
+
+        const latestLogForDate = logsForDay[0];
+
+        if (latestLogForDate && latestLogForDate.titheListData) {
+          const sundayDate = getMostRecentSunday(new Date(latestLogForDate.selectedDate));
+          addToast(
+            `Loading saved record for ${formatDateDDMMMYYYY(sundayDate)}.`,
+            "info",
+            3000,
+          );
+
+          setTitheListData(latestLogForDate.titheListData);
+          setConcatenationConfig(latestLogForDate.concatenationConfig);
+          setDescriptionText(latestLogForDate.descriptionText);
+          setAmountMappingColumn(latestLogForDate.amountMappingColumn);
+          setSoulsWonCount(latestLogForDate.soulsWonCount);
+          setSelectedDate(sundayDate);
+
+          setOriginalData([]);
+          setProcessedDataA([]);
+          setAgeRangeMin("");
+          setAgeRangeMax("");
+          setIsAgeFilterActive(false);
+          setUploadedFile(
+            new File(
+              [],
+              `Record from ${formatDateDDMMMYYYY(sundayDate)}`,
+              { type: "text/plain" },
+            ),
+          );
+          setFileNameToSave(
+            `${latestLogForDate.assemblyName}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`,
+          );
+
+          setHasUnsavedChanges(false);
+          clearAutoSaveDraft();
+          return;
+        }
+      }
+
+      // If no log found, prepare the current list for the new date by resetting amounts.
+      setSelectedDate(sundayDate);
+      if (titheListData.length > 0) {
+        const formattedDate = formatDateDDMMMYYYY(sundayDate);
+        const newDescription = descriptionText.replace(
+          /{DD-MMM-YYYY}/gi,
+          formattedDate,
+        );
+
+        const freshList = titheListData.map((record) => ({
+          ...record,
+          "Transaction Amount": "", // Reset amount for the new date
+          "Transaction Date ('DD-MMM-YYYY')": formattedDate,
+          "Narration/Description": newDescription,
+        }));
+
+        setTitheListData(freshList);
+        setSoulsWonCount(0); // Reset souls won for the new period
+        setHasUnsavedChanges(true); // Mark as unsaved
+      }
+
+      if (currentAssembly) {
+        const newFileName = `${currentAssembly}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`;
+        setFileNameToSave(newFileName);
+      }
+    },
+    [
+      currentAssembly,
+      selectedDate,
+      transactionLog,
+      addToast,
+      descriptionText,
+      titheListData,
+      clearAutoSaveDraft,
+    ],
+  );
   const handleDescriptionChange = useCallback(
     (text: string) => {
       setDescriptionText(text);
@@ -1417,7 +1420,7 @@ const App: React.FC = () => {
       />
       <AnimatePresence>
         {isCommandPaletteOpen && (
-        <CommandPalette
+          <CommandPalette
             isOpen={isCommandPaletteOpen}
             onClose={() => setIsCommandPaletteOpen(false)}
             setTheme={setTheme}
@@ -1502,7 +1505,7 @@ const App: React.FC = () => {
                     ? (tithersCount / processedDataA.length) * 100
                     : 0,
                 setIsFullPreviewModalOpen,
-                setIsDataEntryModalOpen,
+                setIsAmountEntryModalOpen,
                 fileNameToSave,
                 setFileNameToSave,
                 inputErrors,
@@ -1564,17 +1567,12 @@ const App: React.FC = () => {
         />
       )}
 
-      {isDataEntryModalOpen && (
-        <DataEntryModal
-          isOpen={isDataEntryModalOpen}
-          onClose={() => setIsDataEntryModalOpen(false)}
+      {isAmountEntryModalOpen && (
+        <AmountEntryModal
+          isOpen={isAmountEntryModalOpen}
+          onClose={() => setIsAmountEntryModalOpen(false)}
           titheListData={titheListData}
-          onSave={(updatedList) => {
-            setTitheListData(updatedList);
-            setHasUnsavedChanges(true);
-            setIsDataEntryModalOpen(false);
-            addToast("Data entry saved to workspace.", "success");
-          }}
+          onSave={handleSaveFromPreview}
         />
       )}
 

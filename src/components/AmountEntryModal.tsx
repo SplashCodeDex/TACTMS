@@ -116,14 +116,14 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
 );
 DataEntryRow.displayName = "DataEntryRow";
 
-interface DataEntryModalProps {
+interface AmountEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (updatedList: TitheRecordB[]) => void;
   titheListData: TitheRecordB[];
 }
 
-const DataEntryModal: React.FC<DataEntryModalProps> = ({
+const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
   isOpen,
   onClose,
   onSave,
@@ -136,6 +136,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
   );
   const [filterText, setFilterText] = useState("");
   const [showOnlyEmpty, setShowOnlyEmpty] = useState(false);
+  const [globalDescription, setGlobalDescription] = useState("");
 
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
@@ -146,6 +147,8 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
       // Set the first record as active when modal opens
       if (titheListData.length > 0) {
         setActiveRecordId(titheListData[0]["No."]);
+        // Initialize global description from the first record if available, or default
+        setGlobalDescription(titheListData[0]["Narration/Description"] || "Tithe");
       }
     } else {
       // Reset state on close
@@ -154,6 +157,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
       setActiveRecordId(null);
       setFilterText("");
       setShowOnlyEmpty(false);
+      setGlobalDescription("");
     }
   }, [isOpen, titheListData]);
 
@@ -224,7 +228,12 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
   }, [activeRecordId]);
 
   const handleSave = () => {
-    onSave(localData);
+    // Apply global description to all records before saving
+    const dataWithDescription = localData.map(record => ({
+      ...record,
+      "Narration/Description": globalDescription
+    }));
+    onSave(dataWithDescription);
   };
 
   const { entriesFilled, totalEntries, progressPercentage } = useMemo(() => {
@@ -248,7 +257,7 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Advanced Data Entry Mode"
+      title="Amount Entry Mode"
       size="xl"
       closeOnOutsideClick={false}
       footerContent={
@@ -286,6 +295,18 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
               A-Z
             </Button>
           </div>
+
+          {/* Global Description Input */}
+          <div className="flex-grow min-w-[200px]">
+            <input
+              type="text"
+              placeholder="Narration/Description (e.g. Tithe for Nov)"
+              value={globalDescription}
+              onChange={(e) => setGlobalDescription(e.target.value)}
+              className="form-input-light w-full text-sm py-1.5"
+            />
+          </div>
+
           <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
             <div className="relative flex-grow">
               <Search
@@ -379,4 +400,4 @@ const DataEntryModal: React.FC<DataEntryModalProps> = ({
   );
 };
 
-export default DataEntryModal;
+export default AmountEntryModal;

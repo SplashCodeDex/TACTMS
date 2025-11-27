@@ -47,7 +47,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onDateChange }) =
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-10 mt-2 w-auto bg-[var(--bg-elevated)] rounded-md shadow-lg border border-[var(--border-color)]"
+            className="absolute z-50 mt-2 w-auto bg-[var(--bg-glass)] backdrop-blur-lg rounded-md shadow-lg border border-[var(--border-color)]"
           >
             <Calendar
               mode="single"
