@@ -1514,12 +1514,7 @@ const App: React.FC = () => {
                 viewFavoriteDetails,
                 updateFavoriteName,
                 addToast,
-                // Analytics
-                titheListData,
-                currentAssembly,
-                selectedDate,
-                // Reports
-                // MemberDatabase
+                onDeleteAssembly: handleDeleteAssembly,
                 onUploadMasterList: (file: File, assembly: string) =>
                   handleFileAccepted(file, true, assembly),
                 onCreateTitheList: (
@@ -1534,7 +1529,7 @@ const App: React.FC = () => {
                   setMemberToEdit({ member, assemblyName });
                   setIsEditMemberModalOpen(true);
                 },
-                onDeleteAssembly: handleDeleteAssembly,
+
                 // ListOverviewActions
                 currentTotalTithe: totalTitheAmount,
                 hasUnsavedChanges,
