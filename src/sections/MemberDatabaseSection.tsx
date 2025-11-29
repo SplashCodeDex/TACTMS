@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "../components/Button";
+import Checkbox from "../components/Checkbox";
 import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { filterMembersByAge } from "../services/excelProcessor";
@@ -287,14 +288,12 @@ const MemberDatabaseSection: React.FC = () => {
               <thead className="bg-[var(--bg-elevated)]">
                 <tr>
                   <th scope="col" className="p-4">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox"
+                    <Checkbox
                       checked={
                         selectedMembers.length === sortedAndFilteredMembers.length &&
                         sortedAndFilteredMembers.length > 0
                       }
-                      onChange={handleSelectAll}
+                      onChange={() => handleSelectAll()}
                     />
                   </th>
                   <th
@@ -357,9 +356,7 @@ const MemberDatabaseSection: React.FC = () => {
                 {currentMembers.map((member) => (
                   <tr key={member["No."]}>
                     <td className="p-4">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox"
+                      <Checkbox
                         checked={selectedMembers.some(
                           (m) => m["No."] === member["No."],
                         )}
