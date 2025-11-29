@@ -299,17 +299,8 @@ export const reconcileMembers = (
     }
   });
 
-  // 3. Identify Missing Members
-  masterData.forEach((masterRecord) => {
-    // If the record reference hasn't been matched, it's missing
-    if (!matchedMasterRecords.has(masterRecord)) {
-      missingMembers.push(masterRecord);
-    }
-  });
-
   return {
     newMembers,
-    missingMembers,
     changedMembers,
     unidentifiableNewMembers,
     unidentifiableMasterMembers,

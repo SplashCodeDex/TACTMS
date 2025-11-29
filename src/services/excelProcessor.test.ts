@@ -172,21 +172,9 @@ describe("reconcileMembers", () => {
     const report = reconcileMembers(currentData, masterList);
     expect(report.newMembers).toHaveLength(1);
     expect(report.newMembers[0]["First Name"]).toBe("Alice");
-    expect(report.missingMembers).toHaveLength(0);
   });
 
-  it("should identify missing members when they are not in the current data", () => {
-    const currentData: MemberRecordA[] = [
-      { "No.": 1, "First Name": "John", Surname: "Doe", "Membership Number": "1001" },
-      { "No.": 3, "First Name": "Peter", Surname: "Jones", "Membership Number": "1003" },
-    ];
-    const report = reconcileMembers(currentData, masterList);
-    expect(report.newMembers).toHaveLength(0);
-    expect(report.missingMembers).toHaveLength(1);
-    expect(report.missingMembers[0]["First Name"]).toBe("Jane");
-  });
-
-  it("should identify both new and missing members", () => {
+  it("should identify both new and missing members (only new reported)", () => {
     const currentData: MemberRecordA[] = [
       { "No.": 1, "First Name": "John", Surname: "Doe", "Membership Number": "1001" },
       { "No.": 4, "First Name": "Alice", Surname: "Brown", "Membership Number": "1004" },
@@ -194,24 +182,18 @@ describe("reconcileMembers", () => {
     const report = reconcileMembers(currentData, masterList);
     expect(report.newMembers).toHaveLength(1);
     expect(report.newMembers[0]["First Name"]).toBe("Alice");
-    expect(report.missingMembers).toHaveLength(2);
-    expect(report.missingMembers.map((m) => m["First Name"])).toEqual(
-      expect.arrayContaining(["Jane", "Peter"]),
-    );
   });
 
   it("should return empty arrays if no changes", () => {
     const currentData: MemberRecordA[] = [...masterList];
     const report = reconcileMembers(currentData, masterList);
     expect(report.newMembers).toHaveLength(0);
-    expect(report.missingMembers).toHaveLength(0);
   });
 
   it("should handle empty current data", () => {
     const currentData: MemberRecordA[] = [];
     const report = reconcileMembers(currentData, masterList);
     expect(report.newMembers).toHaveLength(0);
-    expect(report.missingMembers).toHaveLength(3);
   });
 
   it("should handle empty master list", () => {
@@ -220,7 +202,6 @@ describe("reconcileMembers", () => {
     ];
     const report = reconcileMembers(currentData, []);
     expect(report.newMembers).toHaveLength(1);
-    expect(report.missingMembers).toHaveLength(0);
   });
 
   it("should use 'Membership Number' for reconciliation if available", () => {
@@ -234,7 +215,6 @@ describe("reconcileMembers", () => {
     const report = reconcileMembers(currentDataWithMembershipNumber, masterListWithMembershipNumber);
     expect(report.newMembers).toHaveLength(1);
     expect(report.newMembers[0]["Membership Number"]).toBe("MN002");
-    expect(report.missingMembers).toHaveLength(0);
   });
 
   it("should use 'First Name' and 'Surname' for reconciliation if 'Membership Number' is not available", () => {
@@ -247,7 +227,6 @@ describe("reconcileMembers", () => {
     ];
     const report = reconcileMembers(currentDataWithoutMembershipNumber, masterListWithoutMembershipNumber);
     expect(report.newMembers[0]["First Name"]).toBe("Jane");
-    expect(report.missingMembers).toHaveLength(0);
   });
 
   it("should NOT generate an ID if names are too short (prevent false positives)", () => {

@@ -761,7 +761,6 @@ const App: React.FC = () => {
 
       if (
         report.newMembers.length > 0 ||
-        report.missingMembers.length > 0 ||
         report.changedMembers.length > 0
       ) {
         setReconciliationReport({
@@ -835,30 +834,7 @@ const App: React.FC = () => {
     );
   };
 
-  const handleKeepReconciliationMembers = (membersToKeep: MemberRecordA[]) => {
-    const newTitheRecords = createTitheList(
-      membersToKeep,
-      concatenationConfig,
-      selectedDate,
-      descriptionText,
-      amountMappingColumn,
-    );
 
-    setTitheListData((prev) => {
-      const existingNos = new Set(prev.map((r) => r["No."]));
-      const recordsToAdd = newTitheRecords.filter(
-        (r) => !existingNos.has(r["No."]),
-      );
-      return [...prev, ...recordsToAdd];
-    });
-
-    setProcessedDataA((prev) => [...prev, ...membersToKeep]);
-
-    addToast(
-      `Kept ${membersToKeep.length} missing members in the list.`,
-      "success",
-    );
-  };
 
   const handleApplyAgeFilter = useCallback(() => {
     const min = Number(ageRangeMin) || 0;
@@ -1890,7 +1866,6 @@ const App: React.FC = () => {
             isOpen={isReconciliationModalOpen}
             onClose={() => setIsReconciliationModalOpen(false)}
             report={reconciliationReport}
-            onKeepMembers={handleKeepReconciliationMembers}
           />
         )
       }
