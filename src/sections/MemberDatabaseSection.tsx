@@ -417,7 +417,7 @@ const MemberDatabaseSection: React.FC = () => {
 
                 {/* Page Numbers Window */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(page => page >= currentPage - 2 && page <= currentPage + 2)
+                  .filter(page => page >= Number(currentPage) - 2 && page <= Number(currentPage) + 2)
                   .map((page) => (
                     <button
                       key={page}
