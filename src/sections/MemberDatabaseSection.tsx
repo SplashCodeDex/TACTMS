@@ -63,7 +63,19 @@ const MemberDatabaseSection: React.FC = () => {
 
   const sortedAndFilteredMembers = useMemo(() => {
     if (!selectedAssembly) return [];
-    let members = memberDatabase[selectedAssembly]?.data || [];
+
+    let members: MemberRecordA[] = [];
+
+    if (selectedAssembly === "ALL MEMBERS") {
+      // Aggregate all members from all assemblies
+      Object.values(memberDatabase).forEach(db => {
+        if (db && db.data) {
+          members = [...members, ...db.data];
+        }
+      });
+    } else {
+      members = memberDatabase[selectedAssembly]?.data || [];
+    }
 
     // 1. Filter by Search Term
     if (searchTerm) {
@@ -176,28 +188,43 @@ const MemberDatabaseSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex border-b border-[var(--border-color)]">
-        {Object.keys(memberDatabase).map((assemblyName) => (
-          <button
-            key={assemblyName}
-            onClick={() => setSelectedAssembly(assemblyName)}
-            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${selectedAssembly === assemblyName
-              ? "border-b-2 border-[var(--primary-accent-start)] text-[var(--primary-accent-start)]"
-              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
-          >
-            {assemblyName}
-          </button>
-        ))}
+      <div className="flex border-b border-[var(--border-color)] overflow-x-auto">
+        {Object.keys(memberDatabase)
+          .filter(key => key !== "true") // Fix: Filter out "true" key
+          .map((assemblyName) => (
+            <button
+              key={assemblyName}
+              onClick={() => setSelectedAssembly(assemblyName)}
+              className={`px-4 py-2 text-sm font-medium transition-colors duration-200 whitespace-nowrap ${selectedAssembly === assemblyName
+                ? "border-b-2 border-[var(--primary-accent-start)] text-[var(--primary-accent-start)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+            >
+              {assemblyName}
+            </button>
+          ))}
+
+        {/* ALL MEMBERS Tab - Pushed to the far right */}
+        <button
+          onClick={() => setSelectedAssembly("ALL MEMBERS")}
+          className={`ml-auto px-4 py-2 text-sm font-medium transition-colors duration-200 whitespace-nowrap ${selectedAssembly === "ALL MEMBERS"
+            ? "border-b-2 border-[var(--primary-accent-start)] text-[var(--primary-accent-start)]"
+            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            }`}
+        >
+          ALL MEMBERS
+        </button>
       </div>
 
-      {selectedAssembly && memberDatabase[selectedAssembly] ? (
+      {selectedAssembly && (memberDatabase[selectedAssembly] || selectedAssembly === "ALL MEMBERS") ? (
         <div className="content-card">
           <div className="flex flex-wrap items-center justify-between gap-4 p-4">
             <div>
               <h3 className="text-lg font-semibold">{selectedAssembly}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {memberDatabase[selectedAssembly].data.length} members
+                {selectedAssembly === "ALL MEMBERS"
+                  ? sortedAndFilteredMembers.length
+                  : memberDatabase[selectedAssembly]?.data.length} members
               </p>
             </div>
             <div className="flex items-center gap-4 flex-wrap">
@@ -233,9 +260,8 @@ const MemberDatabaseSection: React.FC = () => {
                   className="form-input-light w-full sm:w-64 pl-10"
                 />
               </div>
-              <Button onClick={toggleSortOrder} variant="outline">
-                {sortConfig.key === 'customOrder' ? 'Sort Alphabetically' : 'Sort by Custom Order'}
-              </Button>
+              {/* Removed Sort Alphabetically Button as requested */}
+
               <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md cursor-pointer hover:bg-blue-700">
                 <Upload size={16} />
                 <span>Upload Master List</span>
@@ -332,7 +358,7 @@ const MemberDatabaseSection: React.FC = () => {
                         onChange={() => handleSelectMember(member)}
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]"> {/* Fixed: Changed color to text-primary (white in dark mode) */}
                       {member["First Name"]} {member.Surname}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -356,7 +382,10 @@ const MemberDatabaseSection: React.FC = () => {
             </table>
           </div>
           {sortedAndFilteredMembers.length > membersPerPage && (
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center mt-4 items-center gap-2">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mr-4">
+                Page {currentPage} of {totalPages}
+              </div>
               <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                 <button
                   onClick={() => paginate(currentPage - 1)}
@@ -365,18 +394,49 @@ const MemberDatabaseSection: React.FC = () => {
                 >
                   Previous
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => paginate(i + 1)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
-                      ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
-                      }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+
+                {/* First Page */}
+                {currentPage > 3 && (
+                  <>
+                    <button
+                      onClick={() => paginate(1)}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
+                    >
+                      1
+                    </button>
+                    {currentPage > 4 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
+                  </>
+                )}
+
+                {/* Page Numbers Window */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(page => page >= currentPage - 2 && page <= currentPage + 2)
+                  .map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => paginate(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
+                        ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
+                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                        }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                {/* Last Page */}
+                {currentPage < totalPages - 2 && (
+                  <>
+                    {currentPage < totalPages - 3 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
+                    <button
+                      onClick={() => paginate(totalPages)}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
+                    >
+                      {totalPages}
+                    </button>
+                  </>
+                )}
+
                 <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
