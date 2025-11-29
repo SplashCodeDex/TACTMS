@@ -11,9 +11,9 @@ export const parseAgeStringToYears = (
   ageString: string | undefined,
 ): number | null => {
   if (!ageString || typeof ageString !== "string") return null;
-  // Match "30", "30 years", "Age: 30", "30yrs"
-  const match = ageString.match(/(?:age:?\s*)?(\d+)\s*(?:years?|yrs?)?/i);
-  return match ? parseInt(match[1], 10) : null;
+  // Match "30", "30.5", "30 years", "Age: 30", "30yrs"
+  const match = ageString.match(/(?:age:?\s*)?(\d+(?:\.\d+)?)\s*(?:years?|yrs?)?/i);
+  return match ? Math.floor(parseFloat(match[1])) : null;
 };
 
 // Helper to format date as DD-MMM-YYYY
@@ -114,7 +114,10 @@ export const createTitheList = (
       if (typeof rawAmount === "number") {
         transactionAmount = rawAmount >= 0 ? rawAmount : "";
       } else if (typeof rawAmount === "string" && rawAmount.trim() !== "") {
-        const parsedAmount = parseFloat(rawAmount.trim().replace(/,/g, ""));
+        // Remove everything that is NOT a digit, dot, or minus sign
+        // This handles "GH₵ 1,000.00", "$500", etc.
+        const cleaned = rawAmount.replace(/[^0-9.-]+/g, "");
+        const parsedAmount = parseFloat(cleaned);
         transactionAmount =
           !isNaN(parsedAmount) && parsedAmount >= 0 ? parsedAmount : "";
       }
@@ -162,51 +165,56 @@ export const reconcileMembers = (
     const rawVal = String(m["Membership Number"] || m["Old Membership Number"] || "");
     return parseMemberId(rawVal);
   };
-
-  // Helper to get Name Key (First Name + Surname)
+  // Helper to get Name Key (Surname + First Name)
   const getNameKey = (m: MemberRecordA) => {
-    const firstName = String(m["First Name"] || "").trim().toLowerCase();
-    const surname = String(m.Surname || "").trim().toLowerCase();
-    if (firstName.length >= 2 && surname.length >= 2) {
-      return `${firstName}-${surname}`;
-    }
-    return "";
+    const s = (m.Surname || "").trim().toLowerCase();
+    const f = (m["First Name"] || "").trim().toLowerCase();
+    if (!s && !f) return "";
+    return `${s}|${f}`;
   };
-
-  // 1. Index Master Data
-  // We map BOTH "Membership Number" and "Old Membership Number" to the record
-  const masterById = new Map<string, MemberRecordA>();
-  const masterByName = new Map<string, MemberRecordA[]>(); // Allow duplicates for name
-  const unidentifiableMasterMembers: MemberRecordA[] = [];
-  let maxCustomOrder = 0;
-
-  masterData.forEach((m) => {
-    const id = String(m["Membership Number"] || "").trim();
-    const oldId = String(m["Old Membership Number"] || "").trim();
-    const nameKey = getNameKey(m);
-
-    if (id) masterById.set(id, m);
-    if (oldId) masterById.set(oldId, m); // Map old ID too!
-
-    if (nameKey) {
-      if (!masterByName.has(nameKey)) masterByName.set(nameKey, []);
-      masterByName.get(nameKey)!.push(m);
-    }
-
-    if (!id && !oldId && !nameKey) unidentifiableMasterMembers.push(m);
-
-    if (m.customOrder !== undefined && m.customOrder > maxCustomOrder) {
-      maxCustomOrder = m.customOrder;
-    }
-  });
 
   const newMembers: MemberRecordA[] = [];
   const missingMembers: MemberRecordA[] = [];
   const changedMembers: ChangedMemberDetail[] = [];
   const unidentifiableNewMembers: MemberRecordA[] = [];
+  const unidentifiableMasterMembers: MemberRecordA[] = [];
 
-  // Track which master records have been matched (by their primary ID)
+  // Track which master records have been matched (by their primary ID AND reference)
   const matchedMasterIds = new Set<string>();
+  const matchedMasterRecords = new Set<MemberRecordA>();
+
+  // 1. Index Master Data
+  const masterById = new Map<string, MemberRecordA>();
+  const masterByName = new Map<string, MemberRecordA[]>();
+  let maxCustomOrder = 0;
+
+  masterData.forEach((m) => {
+    if (m.customOrder && m.customOrder > maxCustomOrder) {
+      maxCustomOrder = m.customOrder;
+    }
+
+    const id = getMemberId(m);
+    if (id) {
+      const parts = id.split("|").map(p => p.trim()).filter(p => p);
+      parts.forEach(part => {
+        if (!masterById.has(part)) {
+          masterById.set(part, m);
+        }
+      });
+    } else {
+      if (!getNameKey(m)) {
+        unidentifiableMasterMembers.push(m);
+      }
+    }
+
+    const nameKey = getNameKey(m);
+    if (nameKey) {
+      if (!masterByName.has(nameKey)) {
+        masterByName.set(nameKey, []);
+      }
+      masterByName.get(nameKey)!.push(m);
+    }
+  });
 
   let newMemberOrder = maxCustomOrder + 1;
 
@@ -221,8 +229,13 @@ export const reconcileMembers = (
       const parts = rawId.split("|").map(p => p.trim()).filter(p => p);
       for (const part of parts) {
         if (masterById.has(part)) {
-          matchedMasterRecord = masterById.get(part);
-          break; // Found a match
+          const candidate = masterById.get(part);
+          // Ensure we haven't already matched this specific record reference
+          // (Edge case: multiple IDs pointing to same record, or ID collision)
+          if (candidate && !matchedMasterRecords.has(candidate)) {
+            matchedMasterRecord = candidate;
+            break; // Found a match
+          }
         }
       }
     }
@@ -231,14 +244,12 @@ export const reconcileMembers = (
     if (!matchedMasterRecord && newNameKey && masterByName.has(newNameKey)) {
       const candidates = masterByName.get(newNameKey)!;
       // Find a candidate that hasn't been matched yet
-      matchedMasterRecord = candidates.find(c => {
-        const cId = String(c["Membership Number"] || "").trim();
-        return !matchedMasterIds.has(cId);
-      });
+      matchedMasterRecord = candidates.find(c => !matchedMasterRecords.has(c));
     }
 
     if (matchedMasterRecord) {
       // Mark as matched
+      matchedMasterRecords.add(matchedMasterRecord);
       const masterId = String(matchedMasterRecord["Membership Number"] || "").trim();
       if (masterId) matchedMasterIds.add(masterId);
 
@@ -247,6 +258,7 @@ export const reconcileMembers = (
       const fieldsToCheck: (keyof MemberRecordA)[] = [
         "First Name",
         "Surname",
+        "Other Names",
         "Title",
         "Gender",
         "Marital Status",
@@ -287,14 +299,10 @@ export const reconcileMembers = (
 
   // 3. Identify Missing Members
   masterData.forEach((masterRecord) => {
-    const id = String(masterRecord["Membership Number"] || "").trim();
-    // If it has an ID and wasn't matched, it's missing
-    if (id && !matchedMasterIds.has(id)) {
+    // If the record reference hasn't been matched, it's missing
+    if (!matchedMasterRecords.has(masterRecord)) {
       missingMembers.push(masterRecord);
     }
-    // If it has no ID, we rely on name matching which is harder to track perfectly for missing
-    // without unique IDs. For now, we assume if it has no ID, it's not "missing" in the strict sense
-    // or we'd need more complex tracking.
   });
 
   return {
@@ -314,7 +322,26 @@ export const exportToExcel = (data: TitheRecordB[], fileName?: string): void => 
 
   const actualFileName = fileName && fileName.trim() !== "" ? fileName : "exported_data"; // Use default if fileName is empty or undefined
 
-  const worksheet = XLSX.utils.json_to_sheet(data);
+  // Sanitize data to prevent CSV/Formula injection
+  const sanitizeForExcel = (value: any): any => {
+    if (typeof value === 'string') {
+      // If string starts with =, +, -, or @, prepend a single quote to force it as text
+      if (/^[=+\-@]/.test(value)) {
+        return `'${value}`;
+      }
+    }
+    return value;
+  };
+
+  const sanitizedData = data.map(row => {
+    const newRow: any = {};
+    Object.keys(row).forEach(key => {
+      newRow[key] = sanitizeForExcel(row[key as keyof TitheRecordB]);
+    });
+    return newRow;
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(sanitizedData);
 
   // Auto-fit columns for better readability
   const allKeys = new Set<string>();

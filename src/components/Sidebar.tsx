@@ -55,7 +55,8 @@ const NavItem: React.FC<{
   label: string;
   to: string;
   isCollapsed: boolean;
-}> = ({ icon: Icon, label, to, isCollapsed }) => {
+  onClick?: () => void;
+}> = ({ icon: Icon, label, to, isCollapsed, onClick }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   const [isHovered, setIsHovered] = React.useState(false); // New state for hover
@@ -63,6 +64,7 @@ const NavItem: React.FC<{
   return (
     <Link
       to={to}
+      onClick={onClick}
       className={`w-full flex items-center px-4 py-3 text-sm font-semibold transition-all duration-200 relative ${isCollapsed ? "justify-center" : ""}`}
       aria-current={isActive ? "page" : undefined}
       title={isCollapsed ? label : undefined}
@@ -173,6 +175,7 @@ const GoogleSyncControl: React.FC<
                   leftIcon={<LogIn size={16} />}
                   fullWidth
                   variant="primary"
+                  disabled={!isOnline}
                 >
                   Sign in with Google
                 </Button>
@@ -405,6 +408,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       ? `${import.meta.env.BASE_URL}img/DarkLogoExpanded.svg`
       : `${import.meta.env.BASE_URL}img/LightLogoExpanded.svg`;
 
+  const handleNavItemClick = () => {
+    if (window.innerWidth < 768) {
+      setIsCollapsed(true);
+    }
+  };
+
   return (
     <motion.aside
       className={`sidebar glassmorphism-bg ${isCollapsed ? "collapsed" : ""}`}
@@ -446,36 +455,42 @@ const Sidebar: React.FC<SidebarProps> = ({
           label="Dashboard"
           to="/"
           isCollapsed={isCollapsed}
+          onClick={handleNavItemClick}
         />
         <NavItem
           icon={Cpu}
           label="Tithe Processor"
           to="/processor"
           isCollapsed={isCollapsed}
+          onClick={handleNavItemClick}
         />
         <NavItem
           icon={Database}
           label="Member Database"
           to="/database"
           isCollapsed={isCollapsed}
+          onClick={handleNavItemClick}
         />
         <NavItem
           icon={Star}
           label="Favorites"
           to="/favorites"
           isCollapsed={isCollapsed}
+          onClick={handleNavItemClick}
         />
         <NavItem
           icon={PieChart}
           label="Reports"
           to="/reports"
           isCollapsed={isCollapsed}
+          onClick={handleNavItemClick}
         />
         <NavItem
           icon={BotMessageSquare}
           label="AI Analytics"
           to="/analytics"
           isCollapsed={isCollapsed}
+          onClick={handleNavItemClick}
         />
       </nav>
 
@@ -498,12 +513,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="mb-4 w-full">
           <GoogleSyncControl
-            isCollapsed={isCollapsed}
             isLoggedIn={isLoggedIn}
             userProfile={userProfile}
             syncStatus={syncStatus}
             signIn={signIn}
             signOut={signOut}
+            isCollapsed={isCollapsed}
             isConfigured={isConfigured}
             isOnline={isOnline}
           />

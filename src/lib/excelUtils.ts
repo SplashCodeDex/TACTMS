@@ -11,7 +11,7 @@ export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
           reject(new Error("File data is null"));
           return;
         }
-        const workbook = XLSX.read(data, { type: "binary", cellDates: true });
+        const workbook = XLSX.read(data, { type: "array", cellDates: true });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) {
           reject(new Error("No sheets found in the Excel file."));
@@ -28,6 +28,6 @@ export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
       }
     };
     reader.onerror = (error) => reject(error);
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   });
 };

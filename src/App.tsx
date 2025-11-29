@@ -174,6 +174,8 @@ const App: React.FC = () => {
   const [favoriteNameInput, setFavoriteNameInput] = useState("");
 
   const autoSaveTimerRef = useRef<number | null>(null);
+
+
   // const listOverviewRef = useRef<HTMLElement>(null); // TODO: Use to scroll to the list overview section.
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
@@ -184,6 +186,54 @@ const App: React.FC = () => {
   const [isAssemblySelectionModalOpen, setIsAssemblySelectionModalOpen] =
     useState(false);
   const [pendingData, setPendingData] = useState<PendingData | null>(null);
+
+  const draftDataRef = useRef({
+    titheListData,
+    currentAssembly,
+    selectedDate,
+    descriptionText,
+    concatenationConfig,
+    ageRangeMin,
+    ageRangeMax,
+    fileNameToSave,
+    amountMappingColumn,
+    uploadedFile,
+    originalData,
+    processedDataA,
+    soulsWonCount,
+  });
+
+  useEffect(() => {
+    draftDataRef.current = {
+      titheListData,
+      currentAssembly,
+      selectedDate,
+      descriptionText,
+      concatenationConfig,
+      ageRangeMin,
+      ageRangeMax,
+      fileNameToSave,
+      amountMappingColumn,
+      uploadedFile,
+      originalData,
+      processedDataA,
+      soulsWonCount,
+    };
+  }, [
+    titheListData,
+    currentAssembly,
+    selectedDate,
+    descriptionText,
+    concatenationConfig,
+    ageRangeMin,
+    ageRangeMax,
+    fileNameToSave,
+    amountMappingColumn,
+    uploadedFile,
+    originalData,
+    processedDataA,
+    soulsWonCount,
+  ]);
 
   const [isClearWorkspaceModalOpen, setIsClearWorkspaceModalOpen] =
     useState(false);
@@ -376,26 +426,43 @@ const App: React.FC = () => {
     document.body.classList.add(
       theme === "light" ? "light-theme" : "dark-theme",
     );
-    localStorage.setItem(APP_THEME_STORAGE_KEY, theme);
+    try {
+      localStorage.setItem(APP_THEME_STORAGE_KEY, theme);
+    } catch (e) {
+      console.error("Failed to save theme preference:", e);
+    }
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem(
-      MEMBER_DATABASE_STORAGE_KEY,
-      JSON.stringify(memberDatabase),
-    );
-  }, [memberDatabase]);
+    try {
+      localStorage.setItem(
+        MEMBER_DATABASE_STORAGE_KEY,
+        JSON.stringify(memberDatabase),
+      );
+    } catch (e) {
+      console.error("Failed to save member database:", e);
+      addToast("Storage quota exceeded. Some data may not be persisted locally.", "warning", 5000);
+    }
+  }, [memberDatabase, addToast]);
 
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--primary-hue", accentColor.values.h.toString());
     root.style.setProperty("--primary-saturation", `${accentColor.values.s}%`);
     root.style.setProperty("--primary-lightness", `${accentColor.values.l}%`);
-    localStorage.setItem(APP_ACCENT_COLOR_KEY, accentColor.key);
+    try {
+      localStorage.setItem(APP_ACCENT_COLOR_KEY, accentColor.key);
+    } catch (e) {
+      console.error("Failed to save accent color:", e);
+    }
   }, [accentColor]);
 
   const clearAutoSaveDraft = useCallback(() => {
-    localStorage.removeItem(AUTO_SAVE_KEY);
+    try {
+      localStorage.removeItem(AUTO_SAVE_KEY);
+    } catch (e) {
+      console.error("Failed to clear auto-save draft:", e);
+    }
   }, []);
 
   const clearWorkspace = useCallback(() => {
@@ -403,176 +470,47 @@ const App: React.FC = () => {
     setOriginalData([]);
     setProcessedDataA([]);
     setTitheListData([]);
-    setInputErrors({});
-    setAgeRangeMin("");
-    setAgeRangeMax("");
-    setIsAgeFilterActive(false);
+    setCurrentAssembly(null);
     setSelectedDate(new Date());
     setDescriptionText("Tithe");
     setFileNameToSave("GeneratedTitheList");
-    setHasUnsavedChanges(false);
-    clearAutoSaveDraft();
-    setCurrentAssembly(null);
     setSoulsWonCount(0);
-    setReconciliationReport(null);
+    setHasUnsavedChanges(false);
+    setAgeRangeMin("");
+    setAgeRangeMax("");
+    setIsAgeFilterActive(false);
+    setConcatenationConfig(() => {
+      const savedConfig = localStorage.getItem(DEFAULT_CONCAT_CONFIG_STORAGE_KEY);
+      return savedConfig ? JSON.parse(savedConfig) : DEFAULT_CONCAT_CONFIG;
+    });
     setAmountMappingColumn(null);
-    // Close all modals
-    setIsReconciliationModalOpen(false);
-    setIsFavDetailsModalOpen(false);
-    setIsDeleteFavConfirmModalOpen(false);
-    setIsFullPreviewModalOpen(false);
-    setIsAmountEntryModalOpen(false);
-    setIsAddNewMemberModalOpen(false);
-    setIsCreateTitheListModalOpen(false);
-    setIsSaveFavoriteModalOpen(false);
-    setIsAssemblySelectionModalOpen(false);
-    setIsUpdateConfirmModalOpen(false);
-    setIsEditMemberModalOpen(false);
-    setIsValidationModalOpen(false);
-    setIsCommandPaletteOpen(false);
+    clearAutoSaveDraft();
   }, [clearAutoSaveDraft]);
 
-  const handleDateChange = useCallback(
-    (date: Date) => {
-      const sundayDate = getMostRecentSunday(date); // Adjust input date to Sunday
-      const isSameDay =
-        sundayDate.setHours(0, 0, 0, 0) ===
-        selectedDate.setHours(0, 0, 0, 0); if (isSameDay) {
-          return;
-        }
-
-      if (currentAssembly) {
-        const startOfDay = sundayDate.setHours(0, 0, 0, 0); // Use sundayDate here
-        const logsForDay = transactionLog
-          .filter((log) => {
-            if (log.assemblyName !== currentAssembly) return false;
-            const logDate = getMostRecentSunday(new Date(log.selectedDate)).setHours(0, 0, 0, 0); // Adjust logDate to Sunday
-            return logDate === startOfDay;
-          }).sort((a, b) => b.timestamp - a.timestamp);
-
-        const latestLogForDate = logsForDay[0];
-
-        if (latestLogForDate && latestLogForDate.titheListData) {
-          const sundayDate = getMostRecentSunday(new Date(latestLogForDate.selectedDate));
-          addToast(
-            `Loading saved record for ${formatDateDDMMMYYYY(sundayDate)}.`,
-            "info",
-            3000,
-          );
-
-          setTitheListData(latestLogForDate.titheListData);
-          setConcatenationConfig(latestLogForDate.concatenationConfig);
-          setDescriptionText(latestLogForDate.descriptionText);
-          setAmountMappingColumn(latestLogForDate.amountMappingColumn);
-          setSoulsWonCount(latestLogForDate.soulsWonCount);
-          setSelectedDate(sundayDate);
-
-          setOriginalData([]);
-          setProcessedDataA([]);
-          setAgeRangeMin("");
-          setAgeRangeMax("");
-          setIsAgeFilterActive(false);
-          setUploadedFile(
-            new File(
-              [],
-              `Record from ${formatDateDDMMMYYYY(sundayDate)}`,
-              { type: "text/plain" },
-            ),
-          );
-          setFileNameToSave(
-            `${latestLogForDate.assemblyName}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`,
-          );
-
-          setHasUnsavedChanges(false);
-          clearAutoSaveDraft();
-          return;
-        }
-      }
-
-      // If no log found, prepare the current list for the new date by resetting amounts.
-      setSelectedDate(sundayDate);
-      if (titheListData.length > 0) {
-        const formattedDate = formatDateDDMMMYYYY(sundayDate);
-        const newDescription = descriptionText.replace(
-          /{DD-MMM-YYYY}/gi,
-          formattedDate,
-        );
-
-        const freshList = titheListData.map((record) => ({
-          ...record,
-          "Transaction Amount": "", // Reset amount for the new date
-          "Transaction Date ('DD-MMM-YYYY')": formattedDate,
-          "Narration/Description": newDescription,
-        }));
-
-        setTitheListData(freshList);
-        setSoulsWonCount(0); // Reset souls won for the new period
-        setHasUnsavedChanges(true); // Mark as unsaved
-      }
-
-      if (currentAssembly) {
-        const newFileName = `${currentAssembly}-TitheList-${formatDateDDMMMYYYY(sundayDate)}`;
-        setFileNameToSave(newFileName);
-      }
-    },
-    [
-      currentAssembly,
-      selectedDate,
-      transactionLog,
-      addToast,
-      descriptionText,
-      titheListData,
-      clearAutoSaveDraft,
-    ],
-  );
-  const handleDescriptionChange = useCallback(
-    (text: string) => {
-      setDescriptionText(text);
-      if (titheListData.length > 0) {
-        setTitheListData(
-          createTitheList(
-            processedDataA,
-            concatenationConfig,
-            selectedDate,
-            text,
-            amountMappingColumn,
-          ),
-        );
-        setHasUnsavedChanges(true);
-      }
-    },
-    [
-      titheListData.length,
-      processedDataA,
-      concatenationConfig,
-      selectedDate,
-      amountMappingColumn,
-    ],
-  );
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsSidebarCollapsed(true);
-      } else {
-        setIsSidebarCollapsed(false);
-      }
-    };
-    window.addEventListener("resize", handleResize);
-    handleResize();
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const draftDataRef = useRef({ titheListData, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, currentAssembly, soulsWonCount });
-
-  useEffect(() => {
-    draftDataRef.current = { titheListData, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, currentAssembly, soulsWonCount };
-  }, [titheListData, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, currentAssembly, soulsWonCount]);
+  // ...
 
   const saveDraft = useCallback(() => {
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
     autoSaveTimerRef.current = window.setTimeout(() => {
-      const { titheListData, currentAssembly, selectedDate, descriptionText, concatenationConfig, ageRangeMin, ageRangeMax, fileNameToSave, amountMappingColumn, uploadedFile, originalData, processedDataA, soulsWonCount } = draftDataRef.current;
+      const currentDraftData = draftDataRef.current;
+      const {
+        titheListData,
+        currentAssembly,
+        selectedDate,
+        descriptionText,
+        concatenationConfig,
+        ageRangeMin,
+        ageRangeMax,
+        fileNameToSave,
+        amountMappingColumn,
+        uploadedFile,
+        originalData,
+        processedDataA,
+        soulsWonCount
+      } = currentDraftData;
+
       if (titheListData.length === 0 || !currentAssembly) return;
       const draft: AutoSaveDraft = {
         timestamp: Date.now(),
@@ -590,9 +528,14 @@ const App: React.FC = () => {
         assemblyName: currentAssembly,
         soulsWonCount,
       };
-      localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(draft));
-      setHasUnsavedChanges(false);
-      addToast("Draft auto-saved!", "success", 2000);
+      try {
+        localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(draft));
+        setHasUnsavedChanges(false);
+        addToast("Draft auto-saved!", "success", 2000);
+      } catch (e) {
+        console.error("Failed to auto-save draft:", e);
+        addToast("Auto-save failed: Storage full.", "warning", 3000);
+      }
     }, AUTO_SAVE_DEBOUNCE_TIME);
   }, [addToast]);
 
@@ -951,6 +894,38 @@ const App: React.FC = () => {
     addToast,
   ]);
 
+  const handleDescriptionChange = (newDescription: string) => {
+    setDescriptionText(newDescription);
+    if (originalData.length > 0) {
+      setTitheListData(
+        createTitheList(
+          processedDataA,
+          concatenationConfig,
+          selectedDate,
+          newDescription,
+          amountMappingColumn,
+        ),
+      );
+      setHasUnsavedChanges(true);
+    }
+  };
+
+  const handleDateChange = (newDate: Date) => {
+    setSelectedDate(newDate);
+    if (originalData.length > 0) {
+      setTitheListData(
+        createTitheList(
+          processedDataA,
+          concatenationConfig,
+          newDate,
+          descriptionText,
+          amountMappingColumn,
+        ),
+      );
+      setHasUnsavedChanges(true);
+    }
+  };
+
   const handleConcatenationConfigChange = (key: keyof ConcatenationConfig) => {
     setConcatenationConfig((prev) => {
       const newConfig = { ...prev, [key]: !prev[key] };
@@ -983,11 +958,14 @@ const App: React.FC = () => {
         newOrderMap.set(record["No."], index);
       });
 
-      setMemberDatabase(prev => {
+      setMemberDatabase((prev) => {
         const newDb = { ...prev };
         const assemblyData = newDb[currentAssembly]?.data || [];
-        const updatedAssemblyData = assemblyData.map(member => {
-          const newOrder = member["No."] !== undefined ? newOrderMap.get(member["No."]) : undefined;
+        const updatedAssemblyData = assemblyData.map((member) => {
+          const newOrder =
+            member["No."] !== undefined
+              ? newOrderMap.get(member["No."])
+              : undefined;
           if (newOrder !== undefined) {
             return { ...member, customOrder: newOrder };
           }
