@@ -21,7 +21,7 @@ interface MemberDatabaseSectionProps {
     message: string,
     type: "success" | "error" | "info" | "warning",
   ) => void;
-  onDeleteAssembly: (assemblyName: string) => void;
+
 }
 
 const MemberDatabaseSection: React.FC = () => {
@@ -31,7 +31,7 @@ const MemberDatabaseSection: React.FC = () => {
     onCreateTitheList,
     onEditMember,
     addToast,
-    onDeleteAssembly,
+
   } = useOutletContext<MemberDatabaseSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(
     Object.keys(memberDatabase)[0] || null,
@@ -261,14 +261,7 @@ const MemberDatabaseSection: React.FC = () => {
                 />
               </div>
 
-              {/* Delete Assembly Button */}
-              <Button
-                variant="danger"
-                onClick={() => selectedAssembly && onDeleteAssembly(selectedAssembly)}
-                className="bg-red-500 hover:bg-red-600 text-white"
-              >
-                {selectedAssembly === "ALL MEMBERS" ? "Reset All" : "Delete"}
-              </Button>
+
 
               <label className="cursor-pointer">
                 <input

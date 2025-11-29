@@ -66,6 +66,7 @@ import ValidationReportModal from "./components/ValidationReportModal";
 import CommandPalette from "./components/CommandPalette";
 import ParsingIndicator from "./components/ParsingIndicator";
 
+
 interface PendingData {
   data: MemberRecordA[];
   fileName: string;
@@ -1433,6 +1434,7 @@ const App: React.FC = () => {
     "/favorites": "Favorites",
     "/reports": "Reports",
     "/analytics": "AI Analytics",
+    "/settings": "Settings",
   };
 
   return (

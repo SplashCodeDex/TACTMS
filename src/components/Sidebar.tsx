@@ -13,6 +13,7 @@ import {
   Check,
   Database,
   LayoutDashboard,
+  Settings,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "./Button";
@@ -489,6 +490,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           icon={BotMessageSquare}
           label="AI Analytics"
           to="/analytics"
+          isCollapsed={isCollapsed}
+          onClick={handleNavItemClick}
+        />
+        <NavItem
+          icon={Settings}
+          label="Settings"
+          to="/settings"
           isCollapsed={isCollapsed}
           onClick={handleNavItemClick}
         />

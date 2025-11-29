@@ -24,6 +24,9 @@ const ListOverviewActionsSection = React.lazy(
 const ConfigurationSection = React.lazy(
   () => import("./sections/ConfigurationSection"),
 );
+const SettingsSection = React.lazy(
+  () => import("./sections/SettingsSection"),
+);
 
 const ContextualDashboard = () => <DashboardSection {...useOutletContext()} />;
 const ContextualFavorites = () => <FavoritesView {...useOutletContext()} />;
@@ -37,6 +40,9 @@ const ContextualListOverview = () => (
 );
 const ContextualConfiguration = () => (
   <ConfigurationSection {...useOutletContext()} />
+);
+const ContextualSettings = () => (
+  <SettingsSection {...useOutletContext()} />
 );
 
 export const createRouter = (props: any) =>
@@ -54,6 +60,7 @@ export const createRouter = (props: any) =>
           { path: "reports", element: <ContextualReports /> },
           { path: "analytics", element: <ContextualAnalytics /> },
           { path: "configuration", element: <ContextualConfiguration /> },
+          { path: "settings", element: <ContextualSettings /> },
           { path: "*", element: <NotFound /> },
         ],
       },
