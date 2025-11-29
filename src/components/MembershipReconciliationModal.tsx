@@ -200,7 +200,7 @@ const MembershipReconciliationModal: React.FC<
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <ReconciliationList
-            title="New Members"
+            title="Members Missing from Master List"
             icon={<UserPlus size={20} className="text-[var(--success-text)]" />}
             members={report.newMembers}
             emptyText="No new members."

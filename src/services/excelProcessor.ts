@@ -264,6 +264,8 @@ export const reconcileMembers = (
         "Marital Status",
         "Type of Marriage",
         "Age",
+        "Phone Number",
+        "Whatsapp Number",
         // Add other fields as needed
       ];
 
