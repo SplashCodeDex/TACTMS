@@ -117,11 +117,18 @@ const MemberDatabaseSection: React.FC = () => {
   }, [memberDatabase, selectedAssembly, searchTerm, sortConfig, ageRangeMin, ageRangeMax]);
 
   const handleSort = (key: keyof MemberRecordA) => {
-    let direction: "asc" | "desc" = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === "asc") {
+        // Toggle to Descending
+        setSortConfig({ key, direction: "desc" });
+      } else {
+        // Reset to Default (Custom Order)
+        setSortConfig({ key: "customOrder", direction: "asc" });
+      }
+    } else {
+      // Set new key to Ascending
+      setSortConfig({ key, direction: "asc" });
     }
-    setSortConfig({ key, direction });
   };
 
   const toggleSortOrder = () => {
