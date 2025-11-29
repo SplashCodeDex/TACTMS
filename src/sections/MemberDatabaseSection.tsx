@@ -21,6 +21,7 @@ interface MemberDatabaseSectionProps {
     message: string,
     type: "success" | "error" | "info" | "warning",
   ) => void;
+  onDeleteAssembly: (assemblyName: string) => void;
 }
 
 const MemberDatabaseSection: React.FC = () => {
@@ -30,6 +31,7 @@ const MemberDatabaseSection: React.FC = () => {
     onCreateTitheList,
     onEditMember,
     addToast,
+    onDeleteAssembly,
   } = useOutletContext<MemberDatabaseSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(
     Object.keys(memberDatabase)[0] || null,
@@ -131,13 +133,7 @@ const MemberDatabaseSection: React.FC = () => {
     }
   };
 
-  const toggleSortOrder = () => {
-    if (sortConfig.key === 'customOrder') {
-      setSortConfig({ key: 'First Name', direction: 'asc' });
-    } else {
-      setSortConfig({ key: 'customOrder', direction: 'asc' });
-    }
-  };
+
 
   // Get current members for pagination
   const indexOfLastMember = currentPage * membersPerPage;
@@ -255,29 +251,41 @@ const MemberDatabaseSection: React.FC = () => {
               </div>
 
               <div className="relative">
-                <Search
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
                   placeholder="Search members..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="form-input-light w-full sm:w-64 pl-10"
+                  className="pl-10 pr-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-[var(--primary-accent-start)] focus:border-transparent w-64"
                 />
               </div>
-              {/* Removed Sort Alphabetically Button as requested */}
 
-              <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md cursor-pointer hover:bg-blue-700">
-                <Upload size={16} />
-                <span>Upload Master List</span>
+              {/* Delete Assembly Button */}
+              <Button
+                variant="danger"
+                onClick={() => selectedAssembly && onDeleteAssembly(selectedAssembly)}
+                className="bg-red-500 hover:bg-red-600 text-white"
+              >
+                {selectedAssembly === "ALL MEMBERS" ? "Reset All" : "Delete"}
+              </Button>
+
+              <label className="cursor-pointer">
                 <input
                   type="file"
-                  className="hidden"
                   accept=".xlsx, .xls"
-                  onChange={(e) => handleFileChange(e, selectedAssembly)}
+                  onChange={(e) => selectedAssembly && handleFileChange(e, selectedAssembly)}
+                  className="hidden"
+                  disabled={selectedAssembly === "ALL MEMBERS"}
                 />
+                <Button
+                  variant="primary"
+                  leftIcon={<Upload size={16} />}
+                  disabled={selectedAssembly === "ALL MEMBERS"}
+                  className="pointer-events-none" // Add this to ensure clicks pass through to label if needed, or just let it bubble
+                >
+                  Upload Master List
+                </Button>
               </label>
             </div>
           </div>
@@ -388,73 +396,75 @@ const MemberDatabaseSection: React.FC = () => {
               </tbody>
             </table>
           </div>
-          {sortedAndFilteredMembers.length > membersPerPage && (
-            <div className="flex justify-center mt-4 items-center gap-2">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mr-4">
-                Page {currentPage} of {totalPages}
+          {
+            sortedAndFilteredMembers.length > membersPerPage && (
+              <div className="flex justify-center mt-4 items-center gap-2">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mr-4">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+
+                  {/* First Page */}
+                  {currentPage > 3 && (
+                    <>
+                      <button
+                        onClick={() => paginate(1)}
+                        className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
+                      >
+                        1
+                      </button>
+                      {currentPage > 4 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
+                    </>
+                  )}
+
+                  {/* Page Numbers Window */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => page >= Number(currentPage) - 2 && page <= Number(currentPage) + 2)
+                    .map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => paginate(page)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
+                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
+                          : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                  {/* Last Page */}
+                  {currentPage < totalPages - 2 && (
+                    <>
+                      {currentPage < totalPages - 3 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
+                      <button
+                        onClick={() => paginate(totalPages)}
+                        className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </nav>
               </div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <button
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-
-                {/* First Page */}
-                {currentPage > 3 && (
-                  <>
-                    <button
-                      onClick={() => paginate(1)}
-                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
-                    >
-                      1
-                    </button>
-                    {currentPage > 4 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
-                  </>
-                )}
-
-                {/* Page Numbers Window */}
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(page => page >= Number(currentPage) - 2 && page <= Number(currentPage) + 2)
-                  .map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => paginate(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
-                        ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
-                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
-                        }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-
-                {/* Last Page */}
-                {currentPage < totalPages - 2 && (
-                  <>
-                    {currentPage < totalPages - 3 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
-                    <button
-                      onClick={() => paginate(totalPages)}
-                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
-
-                <button
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </nav>
-            </div>
-          )}
-        </div>
+            )
+          }
+        </div >
       ) : (
         <div className="text-center py-12 content-card">
           <p className="text-gray-500 dark:text-gray-400">
@@ -465,7 +475,7 @@ const MemberDatabaseSection: React.FC = () => {
           </p>
         </div>
       )}
-    </div>
+    </div >
   );
 };
 

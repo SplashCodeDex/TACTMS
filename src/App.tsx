@@ -647,6 +647,32 @@ const App: React.FC = () => {
     );
   };
 
+  const handleDeleteAssembly = (assemblyName: string) => {
+    if (assemblyName === "ALL MEMBERS") {
+      if (
+        window.confirm(
+          "Are you sure you want to reset the entire database? This action cannot be undone.",
+        )
+      ) {
+        setMemberDatabase({});
+        addToast("All member data has been reset.", "success");
+      }
+    } else {
+      if (
+        window.confirm(
+          `Are you sure you want to delete the data for ${assemblyName}?`,
+        )
+      ) {
+        setMemberDatabase((prev) => {
+          const newState = { ...prev };
+          delete newState[assemblyName];
+          return newState;
+        });
+        addToast(`Data for ${assemblyName} has been deleted.`, "success");
+      }
+    }
+  };
+
   const navigate = useNavigate();
   const handleConfirmAssemblySelection = useCallback(
     async (assembly: string) => {
@@ -1506,6 +1532,7 @@ const App: React.FC = () => {
                   setMemberToEdit({ member, assemblyName });
                   setIsEditMemberModalOpen(true);
                 },
+                onDeleteAssembly: handleDeleteAssembly,
                 // ListOverviewActions
                 currentTotalTithe: totalTitheAmount,
                 hasUnsavedChanges,
@@ -1719,42 +1746,208 @@ const App: React.FC = () => {
           onConfirm={handleConfirmClearWorkspace}
         />
       )}
-      {isUpdateConfirmModalOpen && pendingUpdate && (
-        <UpdateMasterListConfirmModal
-          isOpen={isUpdateConfirmModalOpen}
-          onClose={() => setIsUpdateConfirmModalOpen(false)}
-          onConfirm={() => {
-            handleMasterListUpdate(
-              pendingUpdate.assemblyName,
-              pendingUpdate.newData,
-              pendingUpdate.newFileName,
-            );
-            setIsUpdateConfirmModalOpen(false);
-          }}
-          existingData={memberDatabase[pendingUpdate.assemblyName]}
-          pendingUpdate={pendingUpdate}
-        />
-      )}
-      {isEditMemberModalOpen && memberToEdit && (
-        <EditMemberModal
-          isOpen={isEditMemberModalOpen}
-          onClose={() => setIsEditMemberModalOpen(false)}
-          onSave={handleEditMemberInDB}
-          memberData={memberToEdit.member}
-          assemblyName={memberToEdit.assemblyName}
-        />
-      )}
-      {isValidationModalOpen && (
-        <ValidationReportModal
-          isOpen={isValidationModalOpen}
-          onClose={() => setIsValidationModalOpen(false)}
-          reportContent={validationReportContent}
-          isLoading={isGeneratingReport}
-        />
-      )}
+
+      {
+        isAmountEntryModalOpen && (
+          <AmountEntryModal
+            isOpen={isAmountEntryModalOpen}
+            onClose={() => setIsAmountEntryModalOpen(false)}
+            titheListData={titheListData}
+            onSave={handleSaveFromPreview}
+          />
+        )
+      }
+
+      {
+        isAddNewMemberModalOpen && (
+          <AddNewMemberModal
+            isOpen={isAddNewMemberModalOpen}
+            onClose={() => setIsAddNewMemberModalOpen(false)}
+            onConfirm={handleAddNewMemberToList}
+            onAddExistingMember={handleAddExistingMemberToList}
+            currentAssembly={currentAssembly}
+            memberDatabase={
+              currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
+            }
+            titheListData={titheListData}
+          />
+        )
+      }
+
+      {
+        isCreateTitheListModalOpen && (
+          <CreateTitheListModal
+            isOpen={isCreateTitheListModalOpen}
+            onClose={() => setIsCreateTitheListModalOpen(false)}
+            onConfirm={() => {
+              if (pendingTitheListMembers && pendingTitheListAssembly) {
+                handleCreateTitheListFromDB(
+                  pendingTitheListMembers,
+                  pendingTitheListAssembly,
+                );
+              }
+            }}
+            memberCount={pendingTitheListMembers?.length || 0}
+            assemblyName={pendingTitheListAssembly || ""}
+          />
+        )
+      }
+      {
+        isSaveFavoriteModalOpen && (
+          <Modal
+            isOpen={isSaveFavoriteModalOpen}
+            onClose={() => setIsSaveFavoriteModalOpen(false)}
+            title="Save Configuration to Favorites"
+            closeOnOutsideClick={false}
+          >
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="favName" className="form-label">
+                  Favorite Name
+                </label>
+                <input
+                  id="favName"
+                  type="text"
+                  value={favoriteNameInput}
+                  onChange={(e) => setFavoriteNameInput(e.target.value)}
+                  className="form-input-light w-full"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsSaveFavoriteModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveFavorite}
+                leftIcon={<Save size={16} />}
+              >
+                Save Favorite
+              </Button>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        isDeleteFavConfirmModalOpen && (
+          <Modal
+            isOpen={isDeleteFavConfirmModalOpen}
+            onClose={() => setIsDeleteFavConfirmModalOpen(false)}
+            title="Delete Favorite?"
+            closeOnOutsideClick={false}
+          >
+            <p>
+              Are you sure you want to delete this favorite? This action cannot be
+              undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteFavConfirmModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmDeleteFavorite}
+                leftIcon={<Trash2 size={16} />}
+              >
+                Delete
+              </Button>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        selectedFavoriteForDetails && (
+          <Modal
+            isOpen={isFavDetailsModalOpen}
+            onClose={() => setIsFavDetailsModalOpen(false)}
+            title={`Details for "${selectedFavoriteForDetails.name}"`}
+            size="lg"
+          >
+            <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
+              {JSON.stringify(selectedFavoriteForDetails, null, 2)}
+            </pre>
+          </Modal>
+        )
+      }
+      {
+        isAssemblySelectionModalOpen && pendingData && (
+          <AssemblySelectionModal
+            isOpen={isAssemblySelectionModalOpen}
+            onClose={() => setIsAssemblySelectionModalOpen(false)}
+            onConfirm={handleConfirmAssemblySelection}
+            fileName={pendingData.fileName}
+            suggestedAssembly={pendingData.suggestedAssembly}
+          />
+        )
+      }
+      {
+        isReconciliationModalOpen && reconciliationReport && (
+          <MembershipReconciliationModal
+            isOpen={isReconciliationModalOpen}
+            onClose={() => setIsReconciliationModalOpen(false)}
+            report={reconciliationReport}
+            onKeepMembers={handleKeepReconciliationMembers}
+          />
+        )
+      }
+      {
+        isClearWorkspaceModalOpen && (
+          <ClearWorkspaceModal
+            isOpen={isClearWorkspaceModalOpen}
+            onClose={() => setIsClearWorkspaceModalOpen(false)}
+            onConfirm={handleConfirmClearWorkspace}
+          />
+        )
+      }
+      {
+        isUpdateConfirmModalOpen && pendingUpdate && (
+          <UpdateMasterListConfirmModal
+            isOpen={isUpdateConfirmModalOpen}
+            onClose={() => setIsUpdateConfirmModalOpen(false)}
+            onConfirm={() => {
+              handleMasterListUpdate(
+                pendingUpdate.assemblyName,
+                pendingUpdate.newData,
+                pendingUpdate.newFileName,
+              );
+              setIsUpdateConfirmModalOpen(false);
+            }}
+            existingData={memberDatabase[pendingUpdate.assemblyName]}
+            pendingUpdate={pendingUpdate}
+          />
+        )
+      }
+      {
+        isEditMemberModalOpen && memberToEdit && (
+          <EditMemberModal
+            isOpen={isEditMemberModalOpen}
+            onClose={() => setIsEditMemberModalOpen(false)}
+            onSave={handleEditMemberInDB}
+            memberData={memberToEdit.member}
+            assemblyName={memberToEdit.assemblyName}
+          />
+        )
+      }
+      {
+        isValidationModalOpen && (
+          <ValidationReportModal
+            isOpen={isValidationModalOpen}
+            onClose={() => setIsValidationModalOpen(false)}
+            reportContent={validationReportContent}
+            isLoading={isGeneratingReport}
+          />
+        )
+      }
 
       <ParsingIndicator isOpen={isParsing} />
-    </div>
+    </div >
   );
 };
 
