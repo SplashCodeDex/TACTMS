@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "../components/Button";
-import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
+import { filterMembersByAge } from "../services/excelProcessor";
 
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
@@ -46,6 +47,10 @@ const MemberDatabaseSection: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [membersPerPage] = useState(10); // You can make this configurable if needed
 
+  // Age Filter state
+  const [ageRangeMin, setAgeRangeMin] = useState<string>("");
+  const [ageRangeMax, setAgeRangeMax] = useState<string>("");
+
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
     assemblyName: string,
@@ -60,6 +65,7 @@ const MemberDatabaseSection: React.FC = () => {
     if (!selectedAssembly) return [];
     let members = memberDatabase[selectedAssembly]?.data || [];
 
+    // 1. Filter by Search Term
     if (searchTerm) {
       members = members.filter((member) =>
         Object.values(member).some((value) =>
@@ -68,6 +74,16 @@ const MemberDatabaseSection: React.FC = () => {
       );
     }
 
+    // 2. Filter by Age
+    if (ageRangeMin || ageRangeMax) {
+      members = filterMembersByAge(
+        members,
+        Number(ageRangeMin) || undefined,
+        Number(ageRangeMax) || undefined
+      );
+    }
+
+    // 3. Sort
     if (sortConfig.key) {
       members.sort((a, b) => {
         if (sortConfig.key === 'customOrder') {
@@ -86,7 +102,7 @@ const MemberDatabaseSection: React.FC = () => {
       });
     }
     return members;
-  }, [memberDatabase, selectedAssembly, searchTerm, sortConfig]);
+  }, [memberDatabase, selectedAssembly, searchTerm, sortConfig, ageRangeMin, ageRangeMax]);
 
   const handleSort = (key: keyof MemberRecordA) => {
     let direction: "asc" | "desc" = "asc";
@@ -165,11 +181,10 @@ const MemberDatabaseSection: React.FC = () => {
           <button
             key={assemblyName}
             onClick={() => setSelectedAssembly(assemblyName)}
-            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-              selectedAssembly === assemblyName
-                ? "border-b-2 border-[var(--primary-accent-start)] text-[var(--primary-accent-start)]"
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            }`}
+            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${selectedAssembly === assemblyName
+              ? "border-b-2 border-[var(--primary-accent-start)] text-[var(--primary-accent-start)]"
+              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
           >
             {assemblyName}
           </button>
@@ -185,7 +200,26 @@ const MemberDatabaseSection: React.FC = () => {
                 {memberDatabase[selectedAssembly].data.length} members
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2 bg-[var(--bg-secondary)] p-1 rounded-md border border-[var(--border-color)]">
+                <Filter size={16} className="text-gray-400 ml-2" />
+                <input
+                  type="number"
+                  placeholder="Min Age"
+                  value={ageRangeMin}
+                  onChange={(e) => setAgeRangeMin(e.target.value)}
+                  className="bg-transparent border-none text-sm w-20 focus:ring-0 p-1"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="number"
+                  placeholder="Max Age"
+                  value={ageRangeMax}
+                  onChange={(e) => setAgeRangeMax(e.target.value)}
+                  className="bg-transparent border-none text-sm w-20 focus:ring-0 p-1"
+                />
+              </div>
+
               <div className="relative">
                 <Search
                   size={18}
@@ -335,11 +369,10 @@ const MemberDatabaseSection: React.FC = () => {
                   <button
                     key={i + 1}
                     onClick={() => paginate(i + 1)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                      currentPage === i + 1
-                        ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
-                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
-                    }`}
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
+                      ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                      }`}
                   >
                     {i + 1}
                   </button>
