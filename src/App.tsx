@@ -729,8 +729,9 @@ const App: React.FC = () => {
               const change = changesMap.get(member);
               if (change) {
                 return {
-                  ...change.newRecord,
-                  // Preserve internal metadata from the existing record
+                  ...member, // MERGE STRATEGY: Keep existing data (e.g. Notes, Custom Fields)
+                  ...change.newRecord, // Overwrite only with fields present in the new file
+                  // Preserve internal metadata from the existing record (explicitly, to be safe)
                   firstSeenDate: member.firstSeenDate,
                   firstSeenSource: member.firstSeenSource,
                   customOrder: member.customOrder,
