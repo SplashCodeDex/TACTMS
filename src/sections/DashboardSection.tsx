@@ -75,12 +75,15 @@ const DashboardSection: React.FC = () => {
   };
 
   const stats = useMemo(() => {
+    const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
 
     const ytdTithe = transactionLog
       .filter(
-        (log: TransactionLogEntry) =>
-          new Date(log.selectedDate).getFullYear() === currentYear,
+        (log: TransactionLogEntry) => {
+          const logDate = new Date(log.selectedDate);
+          return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
+        }
       )
       .reduce(
         (sum: number, log: TransactionLogEntry) => sum + log.totalTitheAmount,
@@ -93,8 +96,10 @@ const DashboardSection: React.FC = () => {
         listData.data.forEach((member: MemberRecordA) => {
           if (member.firstSeenDate) {
             try {
+              const memberDate = new Date(member.firstSeenDate);
               if (
-                new Date(member.firstSeenDate).getFullYear() === currentYear
+                memberDate.getMonth() === currentMonth &&
+                memberDate.getFullYear() === currentYear
               ) {
                 ytdSouls++;
               }
@@ -237,7 +242,7 @@ const DashboardSection: React.FC = () => {
       >
         <StatDisplayCard
           icon={<DollarSign />}
-          label={`Year-to-Date Tithe (${new Date().getFullYear()})`}
+          label={`Monthly Tithe (${new Date().toLocaleString('default', { month: 'long' })})`}
           value={
             <>
               GH₵{" "}
@@ -255,7 +260,7 @@ const DashboardSection: React.FC = () => {
         />
         <StatDisplayCard
           icon={<TrendingUp />}
-          label={`Year-to-Date Souls Won`}
+          label={`Monthly Souls Won`}
           value={<AnimatedNumber n={stats.ytdSouls} />}
         />
         <StatDisplayCard
@@ -284,12 +289,6 @@ const DashboardSection: React.FC = () => {
               </p>
               <div className="flex items-end gap-3">
                 <div className="flex-grow">
-                  <label
-                    htmlFor="assembly-start-select-dash"
-                    className="form-label"
-                  >
-                    Select Assembly
-                  </label>
                   <Select
                     value={selectedAssembly}
                     onValueChange={setSelectedAssembly}
@@ -326,37 +325,22 @@ const DashboardSection: React.FC = () => {
                 </Button>
               </div>
             </div>
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`p-6 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-color)] text-left space-y-4 flex flex-col justify-center transition-all duration-300 ${
-                isDragOver ? "border-dashed border-[var(--primary-accent-start)] bg-[var(--primary-accent-start)]/10" : ""
-              }`}
-            >
+            <div className="p-6 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-color)] text-left space-y-4 flex flex-col justify-center">
               <h3 className="font-semibold text-[var(--text-primary)]">
                 Upload a New List File
               </h3>
               <p className="text-sm text-[var(--text-secondary)]">
                 If you have a new file to process from an assembly.
               </p>
-              {isDragOver ? (
-                <div className="text-center py-4">
-                  <p className="text-lg font-semibold text-[var(--primary-accent-start)]">
-                    Drop the file to upload
-                  </p>
-                </div>
-              ) : (
-                <Button
-                  onClick={handleUploadClick}
-                  fullWidth
-                  variant="secondary"
-                  size="lg"
-                  leftIcon={<UploadCloud size={18} />}
-                >
-                  Upload Excel File
-                </Button>
-              )}
+              <Button
+                onClick={handleUploadClick}
+                fullWidth
+                variant="secondary"
+                size="lg"
+                leftIcon={<UploadCloud size={18} />}
+              >
+                Upload Excel File
+              </Button>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -364,6 +348,30 @@ const DashboardSection: React.FC = () => {
                 accept=".xlsx,.xls"
                 onChange={handleFileChange}
               />
+            </div>
+          </div>
+
+          {/* Restored Drag and Drop Zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`mt-6 p-8 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center space-y-3 ${isDragOver
+              ? "border-[var(--primary-accent-start)] bg-[var(--primary-accent-start)]/10"
+              : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-subtle-accent)]"
+              }`}
+            style={{ minHeight: "150px" }}
+          >
+            <div className={`p-4 rounded-full ${isDragOver ? "bg-[var(--primary-accent-start)]/20" : "bg-[var(--bg-elevated)]"}`}>
+              <UploadCloud size={32} className={isDragOver ? "text-[var(--primary-accent-start)]" : "text-[var(--text-muted)]"} />
+            </div>
+            <div>
+              <p className="text-lg font-medium text-[var(--text-primary)]">
+                {isDragOver ? "Drop file here" : "Drag & drop files here"}
+              </p>
+              <p className="text-sm text-[var(--text-secondary)]">
+                or click "Upload Excel File" above
+              </p>
             </div>
           </div>
         </motion.section>
@@ -374,36 +382,36 @@ const DashboardSection: React.FC = () => {
               <Users size={22} className="mr-3 icon-primary" />
               Recently Added Members
             </h2>
-                        {recentlyAddedMembers.length > 0 ? (
-                          <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
-                            <ul className="space-y-3 pr-4">
-                              {recentlyAddedMembers.map((member) => (
-                                <li
-                                  key={member["No."]}
-                                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                                >
-                                  <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--accent-purple)] to-[var(--accent-blue)] rounded-lg flex items-center justify-center text-white">
-                                    <User size={20} />
-                                  </div>
-                                  <div className="overflow-hidden">
-                                    <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
-                                      {member["First Name"]} {member.Surname}
-                                    </p>
-                                    <p className="text-xs text-[var(--text-secondary)]">
-                                      {member.firstSeenSource}
-                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
-                                      {formatDateDDMMMYYYY(new Date(member.firstSeenDate!))}
-                                    </p>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </ScrollArea>
-                        ) : (
-                          <p className="text-sm text-center py-8 text-[var(--text-muted)]">
-                            No new members recorded recently.
-                          </p>
-                        )}
+            {recentlyAddedMembers.length > 0 ? (
+              <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
+                <ul className="space-y-3 pr-4">
+                  {recentlyAddedMembers.map((member) => (
+                    <li
+                      key={member["No."]}
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
+                    >
+                      <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--accent-purple)] to-[var(--accent-blue)] rounded-lg flex items-center justify-center text-white">
+                        <User size={20} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                          {member["First Name"]} {member.Surname}
+                        </p>
+                        <p className="text-xs text-[var(--text-secondary)]">
+                          {member.firstSeenSource}
+                          <span className="text-[var(--text-muted)] mx-1"> • </span>
+                          {formatDateDDMMMYYYY(new Date(member.firstSeenDate!))}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            ) : (
+              <p className="text-sm text-center py-8 text-[var(--text-muted)]">
+                No new members recorded recently.
+              </p>
+            )}
           </motion.section>
 
           <motion.section variants={itemVariants} className="content-card">
@@ -411,51 +419,51 @@ const DashboardSection: React.FC = () => {
               <Activity size={22} className="mr-3 icon-primary" />
               Recent Activity
             </h2>
-                        {stats.recentActivities.length > 0 ? (
-                          <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
-                            <ul className="space-y-3 pr-4">
-                              {stats.recentActivities.map((log) => (
-                                <li
-                                  key={log.id + log.timestamp}
-                                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                                >
-                                  <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] rounded-lg flex items-center justify-center text-white">
-                                    <User size={20} />
-                                  </div>
-                                  <div className="overflow-hidden">
-                                    <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
-                                      {log.assemblyName} Assembly
-                                    </p>
-                                    <p className="text-xs text-[var(--text-secondary)]">
-                                      {formatDateDDMMMYYYY(new Date(log.selectedDate))}
-                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
-                                      <span className="font-medium text-[var(--success-text)]">
-                                        GH₵ {log.totalTitheAmount.toLocaleString()}
-                                      </span>
-                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
-                                      <span className="font-medium text-[var(--text-primary)]">
-                                        {log.titherCount} Tithers
-                                      </span>
-                                      <span className="text-[var(--text-muted)] mx-1"> • </span>
-                                      <span className="font-medium text-[var(--accent-purple)]">
-                                        {log.soulsWonCount} Souls Won
-                                      </span>
-                                    </p>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </ScrollArea>
-                        ) : (
-                          <p className="text-sm text-center py-8 text-[var(--text-muted)]">
-                            No recent transactions logged.
-                          </p>
-                        )}
+            {stats.recentActivities.length > 0 ? (
+              <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
+                <ul className="space-y-3 pr-4">
+                  {stats.recentActivities.map((log) => (
+                    <li
+                      key={log.id + log.timestamp}
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
+                    >
+                      <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] rounded-lg flex items-center justify-center text-white">
+                        <User size={20} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                          {log.assemblyName} Assembly
+                        </p>
+                        <p className="text-xs text-[var(--text-secondary)]">
+                          {formatDateDDMMMYYYY(new Date(log.selectedDate))}
+                          <span className="text-[var(--text-muted)] mx-1"> • </span>
+                          <span className="font-medium text-[var(--success-text)]">
+                            GH₵ {log.totalTitheAmount.toLocaleString()}
+                          </span>
+                          <span className="text-[var(--text-muted)] mx-1"> • </span>
+                          <span className="font-medium text-[var(--text-primary)]">
+                            {log.titherCount} Tithers
+                          </span>
+                          <span className="text-[var(--text-muted)] mx-1"> • </span>
+                          <span className="font-medium text-[var(--accent-purple)]">
+                            {log.soulsWonCount} Souls Won
+                          </span>
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            ) : (
+              <p className="text-sm text-center py-8 text-[var(--text-muted)]">
+                No recent transactions logged.
+              </p>
+            )}
           </motion.section>
         </div>
         <motion.section
           variants={itemVariants}
-          className="lg:col-span-3 content-card"
+          className="lg:col-span-3 content-card relative"
         >
           <h2 className="section-heading">
             <TrendingUp size={22} className="mr-3 icon-primary" />
@@ -465,6 +473,12 @@ const DashboardSection: React.FC = () => {
             Showing data for the last 6 weeks.
           </p>
           <BarChart data={weeklyTitheData} />
+          {weeklyTitheData.every((d) => d.count === 0) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-muted)] bg-[var(--bg-card)]/50 backdrop-blur-sm rounded-xl">
+              <TrendingUp size={32} className="mb-2 opacity-50" />
+              <p>No tithe data recorded recently</p>
+            </div>
+          )}
         </motion.section>
       </div>
     </motion.div>
