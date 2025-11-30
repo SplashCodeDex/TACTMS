@@ -128,9 +128,16 @@ export interface ChangedMemberDetail {
   matchType: 'ID' | 'OldID';
 }
 
+export interface ConflictingMemberDetail {
+  newRecord: MemberRecordA;
+  existingMember: MemberRecordA;
+  similarityScore?: number;
+}
+
 export interface MembershipReconciliationReport {
   newMembers: MemberRecordA[];
   changedMembers: ChangedMemberDetail[];
+  conflicts: ConflictingMemberDetail[];
   unidentifiableNewMembers: MemberRecordA[];
   unidentifiableMasterMembers: MemberRecordA[];
   previousFileDate: string;

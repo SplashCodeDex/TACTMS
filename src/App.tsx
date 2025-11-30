@@ -760,7 +760,8 @@ const processData = (
 
     if (
       report.newMembers.length > 0 ||
-      report.changedMembers.length > 0
+      report.changedMembers.length > 0 ||
+      report.conflicts.length > 0
     ) {
       setReconciliationReport({
         ...report,
@@ -1416,6 +1417,66 @@ const viewTitles: Record<string, string> = {
   "/settings": "Settings",
 };
 
+const handleResolveConflict = (
+  conflict: import("./types").ConflictingMemberDetail,
+  resolution: "new" | "merge"
+) => {
+  if (!selectedAssembly) return;
+
+  setMemberDatabase((prev) => {
+    const prevAssemblyData = prev[selectedAssembly]?.data || [];
+    let updatedData = [...prevAssemblyData];
+
+    if (resolution === "new") {
+      const maxOrder = Math.max(0, ...updatedData.map((m) => m.customOrder || 0));
+      updatedData.push({
+        ...conflict.newRecord,
+        customOrder: maxOrder + 1,
+        firstSeenDate: new Date().toISOString(),
+        firstSeenSource: prev[selectedAssembly]?.fileName || "Manual Resolution",
+      });
+    } else {
+      // Merge: Update existing member with new data (including new ID)
+      updatedData = updatedData.map((m) => {
+        // Match by ID
+        if (m["Membership Number"] === conflict.existingMember["Membership Number"]) {
+          return {
+            ...m,
+            ...conflict.newRecord,
+            firstSeenDate: m.firstSeenDate,
+            firstSeenSource: m.firstSeenSource,
+            customOrder: m.customOrder
+          };
+        }
+        return m;
+      });
+    }
+
+    return {
+      ...prev,
+      [selectedAssembly]: {
+        ...prev[selectedAssembly],
+        data: updatedData,
+        lastUpdated: Date.now(),
+      },
+    };
+  });
+
+  setReconciliationReport((prev) => {
+    if (!prev) return null;
+    const newConflicts = prev.conflicts.filter((c) => c !== conflict);
+    return {
+      ...prev,
+      conflicts: newConflicts,
+    };
+  });
+
+  addToast(
+    resolution === "new" ? "Member added as new." : "Member merged with existing record.",
+    "success"
+  );
+};
+
 return (
   <div
     className={`app-container ${!isSidebarCollapsed && window.innerWidth < 768 ? "sidebar-open" : ""}`}
@@ -1437,18 +1498,20 @@ return (
       isOnline={!isOffline}
     />
     <AnimatePresence>
-      {isCommandPaletteOpen && (
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={() => setIsCommandPaletteOpen(false)}
-          setTheme={setTheme}
-          onStartNewWeek={startNewWeek}
-          favorites={favorites}
-          theme={theme}
-          setActiveView={(view) => navigate(view)}
-        />
-      )}
-    </AnimatePresence>
+      {
+        isCommandPaletteOpen && (
+          <CommandPalette
+            isOpen={isCommandPaletteOpen}
+            onClose={() => setIsCommandPaletteOpen(false)}
+            setTheme={setTheme}
+            onStartNewWeek={startNewWeek}
+            favorites={favorites}
+            theme={theme}
+            setActiveView={(view) => navigate(view)}
+          />
+        )
+      }
+    </AnimatePresence >
     <div
       className="app-container-overlay"
       onClick={() => setIsSidebarCollapsed(true)}
@@ -1569,164 +1632,24 @@ return (
 
     <Toaster richColors theme={theme} />
 
-    {isFullPreviewModalOpen && (
-      <FullTithePreviewModal
-        isOpen={isFullPreviewModalOpen}
-        onClose={() => setIsFullPreviewModalOpen(false)}
-        titheListData={titheListData}
-        onSave={handleSaveFromPreview}
-        itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
-        addToast={addToast}
-        searchTerm={fullPreviewSearchTerm}
-        setSearchTerm={setFullPreviewSearchTerm}
-        sortConfig={fullPreviewSortConfig}
-        setSortConfig={setFullPreviewSortConfig}
-        openAddMemberToListModal={openAddMemberToListModal}
-        assemblyName={currentAssembly || ""}
-      />
-    )}
-
-    {isAmountEntryModalOpen && (
-      <AmountEntryModal
-        isOpen={isAmountEntryModalOpen}
-        onClose={() => setIsAmountEntryModalOpen(false)}
-        titheListData={titheListData}
-        onSave={handleSaveFromPreview}
-      />
-    )}
-
-    {isAddNewMemberModalOpen && (
-      <AddNewMemberModal
-        isOpen={isAddNewMemberModalOpen}
-        onClose={() => setIsAddNewMemberModalOpen(false)}
-        onConfirm={handleAddNewMemberToList}
-        onAddExistingMember={handleAddExistingMemberToList}
-        currentAssembly={currentAssembly}
-        memberDatabase={
-          currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
-        }
-        titheListData={titheListData}
-      />
-    )}
-
-    {isCreateTitheListModalOpen && (
-      <CreateTitheListModal
-        isOpen={isCreateTitheListModalOpen}
-        onClose={() => setIsCreateTitheListModalOpen(false)}
-        onConfirm={() => {
-          if (pendingTitheListMembers && pendingTitheListAssembly) {
-            handleCreateTitheListFromDB(
-              pendingTitheListMembers,
-              pendingTitheListAssembly,
-            );
-          }
-        }}
-        memberCount={pendingTitheListMembers?.length || 0}
-        assemblyName={pendingTitheListAssembly || ""}
-      />
-    )}
-    {isSaveFavoriteModalOpen && (
-      <Modal
-        isOpen={isSaveFavoriteModalOpen}
-        onClose={() => setIsSaveFavoriteModalOpen(false)}
-        title="Save Configuration to Favorites"
-        closeOnOutsideClick={false}
-      >
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="favName" className="form-label">
-              Favorite Name
-            </label>
-            <input
-              id="favName"
-              type="text"
-              value={favoriteNameInput}
-              onChange={(e) => setFavoriteNameInput(e.target.value)}
-              className="form-input-light w-full"
-            />
-          </div>
-        </div>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setIsSaveFavoriteModalOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSaveFavorite}
-            leftIcon={<Save size={16} />}
-          >
-            Save Favorite
-          </Button>
-        </div>
-      </Modal>
-    )}
-    {isDeleteFavConfirmModalOpen && (
-      <Modal
-        isOpen={isDeleteFavConfirmModalOpen}
-        onClose={() => setIsDeleteFavConfirmModalOpen(false)}
-        title="Delete Favorite?"
-        closeOnOutsideClick={false}
-      >
-        <p>
-          Are you sure you want to delete this favorite? This action cannot be
-          undone.
-        </p>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setIsDeleteFavConfirmModalOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={confirmDeleteFavorite}
-            leftIcon={<Trash2 size={16} />}
-          >
-            Delete
-          </Button>
-        </div>
-      </Modal>
-    )}
-    {selectedFavoriteForDetails && (
-      <Modal
-        isOpen={isFavDetailsModalOpen}
-        onClose={() => setIsFavDetailsModalOpen(false)}
-        title={`Details for "${selectedFavoriteForDetails.name}"`}
-        size="lg"
-      >
-        <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
-          {JSON.stringify(selectedFavoriteForDetails, null, 2)}
-        </pre>
-      </Modal>
-    )}
-    {isAssemblySelectionModalOpen && pendingData && (
-      <AssemblySelectionModal
-        isOpen={isAssemblySelectionModalOpen}
-        onClose={() => setIsAssemblySelectionModalOpen(false)}
-        onConfirm={handleConfirmAssemblySelection}
-        fileName={pendingData.fileName}
-        suggestedAssembly={pendingData.suggestedAssembly}
-      />
-    )}
-    {isReconciliationModalOpen && reconciliationReport && (
-      <MembershipReconciliationModal
-        isOpen={isReconciliationModalOpen}
-        onClose={() => setIsReconciliationModalOpen(false)}
-        report={reconciliationReport}
-        onKeepMembers={handleKeepReconciliationMembers}
-      />
-    )}
-    {isClearWorkspaceModalOpen && (
-      <ClearWorkspaceModal
-        isOpen={isClearWorkspaceModalOpen}
-        onClose={() => setIsClearWorkspaceModalOpen(false)}
-        onConfirm={handleConfirmClearWorkspace}
-      />
-    )}
+    {
+      isFullPreviewModalOpen && (
+        <FullTithePreviewModal
+          isOpen={isFullPreviewModalOpen}
+          onClose={() => setIsFullPreviewModalOpen(false)}
+          titheListData={titheListData}
+          onSave={handleSaveFromPreview}
+          itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
+          addToast={addToast}
+          searchTerm={fullPreviewSearchTerm}
+          setSearchTerm={setFullPreviewSearchTerm}
+          sortConfig={fullPreviewSortConfig}
+          setSortConfig={setFullPreviewSortConfig}
+          openAddMemberToListModal={openAddMemberToListModal}
+          assemblyName={currentAssembly || ""}
+        />
+      )
+    }
 
     {
       isAmountEntryModalOpen && (
@@ -1874,6 +1797,167 @@ return (
           isOpen={isReconciliationModalOpen}
           onClose={() => setIsReconciliationModalOpen(false)}
           report={reconciliationReport}
+          onKeepMembers={handleKeepReconciliationMembers}
+        />
+      )
+    }
+    {
+      isClearWorkspaceModalOpen && (
+        <ClearWorkspaceModal
+          isOpen={isClearWorkspaceModalOpen}
+          onClose={() => setIsClearWorkspaceModalOpen(false)}
+          onConfirm={handleConfirmClearWorkspace}
+        />
+      )
+    }
+
+    {
+      isAmountEntryModalOpen && (
+        <AmountEntryModal
+          isOpen={isAmountEntryModalOpen}
+          onClose={() => setIsAmountEntryModalOpen(false)}
+          titheListData={titheListData}
+          onSave={handleSaveFromPreview}
+        />
+      )
+    }
+
+    {
+      isAddNewMemberModalOpen && (
+        <AddNewMemberModal
+          isOpen={isAddNewMemberModalOpen}
+          onClose={() => setIsAddNewMemberModalOpen(false)}
+          onConfirm={handleAddNewMemberToList}
+          onAddExistingMember={handleAddExistingMemberToList}
+          currentAssembly={currentAssembly}
+          memberDatabase={
+            currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
+          }
+          titheListData={titheListData}
+        />
+      )
+    }
+
+    {
+      isCreateTitheListModalOpen && (
+        <CreateTitheListModal
+          isOpen={isCreateTitheListModalOpen}
+          onClose={() => setIsCreateTitheListModalOpen(false)}
+          onConfirm={() => {
+            if (pendingTitheListMembers && pendingTitheListAssembly) {
+              handleCreateTitheListFromDB(
+                pendingTitheListMembers,
+                pendingTitheListAssembly,
+              );
+            }
+          }}
+          memberCount={pendingTitheListMembers?.length || 0}
+          assemblyName={pendingTitheListAssembly || ""}
+        />
+      )
+    }
+    {
+      isSaveFavoriteModalOpen && (
+        <Modal
+          isOpen={isSaveFavoriteModalOpen}
+          onClose={() => setIsSaveFavoriteModalOpen(false)}
+          title="Save Configuration to Favorites"
+          closeOnOutsideClick={false}
+        >
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="favName" className="form-label">
+                Favorite Name
+              </label>
+              <input
+                id="favName"
+                type="text"
+                value={favoriteNameInput}
+                onChange={(e) => setFavoriteNameInput(e.target.value)}
+                className="form-input-light w-full"
+              />
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsSaveFavoriteModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSaveFavorite}
+              leftIcon={<Save size={16} />}
+            >
+              Save Favorite
+            </Button>
+          </div>
+        </Modal>
+      )
+    }
+    {
+      isDeleteFavConfirmModalOpen && (
+        <Modal
+          isOpen={isDeleteFavConfirmModalOpen}
+          onClose={() => setIsDeleteFavConfirmModalOpen(false)}
+          title="Delete Favorite?"
+          closeOnOutsideClick={false}
+        >
+          <p>
+            Are you sure you want to delete this favorite? This action cannot be
+            undone.
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteFavConfirmModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmDeleteFavorite}
+              leftIcon={<Trash2 size={16} />}
+            >
+              Delete
+            </Button>
+          </div>
+        </Modal>
+      )
+    }
+    {
+      selectedFavoriteForDetails && (
+        <Modal
+          isOpen={isFavDetailsModalOpen}
+          onClose={() => setIsFavDetailsModalOpen(false)}
+          title={`Details for "${selectedFavoriteForDetails.name}"`}
+          size="lg"
+        >
+          <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
+            {JSON.stringify(selectedFavoriteForDetails, null, 2)}
+          </pre>
+        </Modal>
+      )
+    }
+    {
+      isAssemblySelectionModalOpen && pendingData && (
+        <AssemblySelectionModal
+          isOpen={isAssemblySelectionModalOpen}
+          onClose={() => setIsAssemblySelectionModalOpen(false)}
+          onConfirm={handleConfirmAssemblySelection}
+          fileName={pendingData.fileName}
+          suggestedAssembly={pendingData.suggestedAssembly}
+        />
+      )
+    }
+    {
+      isReconciliationModalOpen && reconciliationReport && (
+        <MembershipReconciliationModal
+          isOpen={isReconciliationModalOpen}
+          onClose={() => setIsReconciliationModalOpen(false)}
+          report={reconciliationReport}
+          onResolveConflict={handleResolveConflict}
         />
       )
     }

@@ -173,6 +173,7 @@ export const reconcileMembers = (
 
   const newMembers: MemberRecordA[] = [];
   const changedMembers: ChangedMemberDetail[] = [];
+  const conflicts: import("../types").ConflictingMemberDetail[] = [];
   const unidentifiableNewMembers: MemberRecordA[] = [];
   const unidentifiableMasterMembers: MemberRecordA[] = [];
 
@@ -214,6 +215,15 @@ export const reconcileMembers = (
 
     if (!currentId && !oldId) {
       unidentifiableMasterMembers.push(m);
+    }
+  });
+
+  // Index by Name for Conflict Detection (Twins)
+  const masterByName = new Map<string, MemberRecordA>();
+  masterData.forEach((m) => {
+    const nameKey = `${m.Surname || ""}|${m["First Name"] || ""}`.toLowerCase();
+    if (m.Surname && m["First Name"]) {
+      masterByName.set(nameKey, m);
     }
   });
 
@@ -360,11 +370,23 @@ export const reconcileMembers = (
         });
       }
     } else {
-      // No match found -> New Member
-      if (!newCurrentId && !newOldId) {
-        unidentifiableNewMembers.push(newRecord);
+      // No match found by ID.
+      // Check for Potential Conflict (Twin: Same Name, Different ID)
+      const nameKey = `${newRecord.Surname || ""}|${newRecord["First Name"] || ""}`.toLowerCase();
+
+      if (newRecord.Surname && newRecord["First Name"] && masterByName.has(nameKey)) {
+        // Conflict Detected!
+        conflicts.push({
+          newRecord: newRecord,
+          existingMember: masterByName.get(nameKey)!,
+        });
       } else {
-        newMembers.push({ ...newRecord, customOrder: newMemberOrder++ });
+        // Truly New Member
+        if (!newCurrentId && !newOldId) {
+          unidentifiableNewMembers.push(newRecord);
+        } else {
+          newMembers.push({ ...newRecord, customOrder: newMemberOrder++ });
+        }
       }
     }
   });
@@ -372,6 +394,7 @@ export const reconcileMembers = (
   return {
     newMembers,
     changedMembers,
+    conflicts,
     unidentifiableNewMembers,
     unidentifiableMasterMembers,
   };

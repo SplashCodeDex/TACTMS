@@ -202,17 +202,21 @@ describe("reconcileMembers", () => {
     expect(report.changedMembers[0].matchType).toBe("OldID");
   });
 
-  it("should NOT match by Name (Same Name, Different ID) -> New Member", () => {
+  it("should detect Conflict (Same Name, Different ID)", () => {
     // "Twin" scenario
     const currentData: MemberRecordA[] = [
       { "No.": 1, "First Name": "John", Surname: "Doe", "Membership Number": "9999" }, // Different ID
     ];
     const report = reconcileMembers(currentData, masterList);
 
-    // Should NOT match John Doe (1001)
+    // Should NOT match John Doe (1001) automatically
     expect(report.changedMembers).toHaveLength(0);
-    expect(report.newMembers).toHaveLength(1);
-    expect(report.newMembers[0]["Membership Number"]).toBe("9999");
+    // Should NOT be a New Member automatically
+    expect(report.newMembers).toHaveLength(0);
+    // Should be a Conflict
+    expect(report.conflicts).toHaveLength(1);
+    expect(report.conflicts[0].newRecord["Membership Number"]).toBe("9999");
+    expect(report.conflicts[0].existingMember["Membership Number"]).toBe("1001");
   });
 
   it("should handle composite IDs correctly", () => {
