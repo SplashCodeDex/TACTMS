@@ -125,6 +125,7 @@ export interface ChangedMemberDetail {
   oldRecord: MemberRecordA;
   newRecord: MemberRecordA;
   changes: { field: string; oldValue: any; newValue: any }[];
+  matchType: 'ID' | 'OldID';
 }
 
 export interface MembershipReconciliationReport {
@@ -144,6 +145,7 @@ export interface MasterListData {
   data: MemberRecordA[];
   lastUpdated: number;
   fileName: string;
+  sourceFileDate?: number | null; // Timestamp of the source file
 }
 export type MemberDatabase = Record<string, MasterListData>;
 

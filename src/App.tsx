@@ -593,1007 +593,1154 @@ const App: React.FC = () => {
               file.name.toLowerCase().includes(name.toLowerCase()),
             ) || "";
 
-          setPendingData({
-            data: parsedData,
-            fileName: file.name,
-            file,
-            suggestedAssembly: detectedAssembly,
+          suggestedAssembly: detectedAssembly,
             isMasterList: false,
           });
-          setIsAssemblySelectionModalOpen(true);
-        }
+  setIsAssemblySelectionModalOpen(true);
+}
       } catch (e: any) {
-        const errorMessage =
-          e.message || "An unknown error occurred during parsing.";
-        addToast(`Error parsing file: ${errorMessage}`, "error", 5000);
-      } finally {
-        setIsParsing(false); // Set isParsing to false
-      }
+  const errorMessage =
+    e.message || "An unknown error occurred during parsing.";
+  addToast(`Error parsing file: ${errorMessage}`, "error", 5000);
+} finally {
+  setIsParsing(false); // Set isParsing to false
+}
     },
-    [hasUnsavedChanges, addToast, memberDatabase, clearWorkspace],
+[hasUnsavedChanges, addToast, memberDatabase, clearWorkspace],
   );
 
-  useEffect(() => {
-    if ("launchQueue" in window) {
-      (window as any).launchQueue.setConsumer(
-        async (launchParams: { files: any[] }) => {
-          if (!launchParams.files || launchParams.files.length === 0) {
-            return;
-          }
-          for (const fileHandle of launchParams.files) {
-            const file = await fileHandle.getFile();
-            handleFileAccepted(file, false);
-          }
-        },
-      );
-    }
-  }, [handleFileAccepted]);
-
-  const handleMasterListUpdate = (
-    assemblyName: string,
-    newData: MemberRecordA[],
-    newFileName: string,
-  ) => {
-    setMemberDatabase((prev) => ({
-      ...prev,
-      [assemblyName]: {
-        data: newData,
-        lastUpdated: Date.now(),
-        fileName: newFileName,
+useEffect(() => {
+  if ("launchQueue" in window) {
+    (window as any).launchQueue.setConsumer(
+      async (launchParams: { files: any[] }) => {
+        if (!launchParams.files || launchParams.files.length === 0) {
+          return;
+        }
+        for (const fileHandle of launchParams.files) {
+          const file = await fileHandle.getFile();
+          handleFileAccepted(file, false);
+        }
       },
-    }));
-    addToast(
-      `${assemblyName} master list has been updated with ${newData.length} records.`,
-      "success",
     );
-  };
+  }
+}, [handleFileAccepted]);
 
-  const handleDeleteAssembly = (assemblyName: string) => {
-    if (assemblyName === "ALL MEMBERS") {
-      if (
-        window.confirm(
-          "Are you sure you want to reset the entire database? This action cannot be undone.",
-        )
-      ) {
-        setMemberDatabase({});
-        addToast("All member data has been reset.", "success");
-      }
-    } else {
-      if (
-        window.confirm(
-          `Are you sure you want to delete the data for ${assemblyName}?`,
-        )
-      ) {
-        setMemberDatabase((prev) => {
-          const newState = { ...prev };
-          delete newState[assemblyName];
-          return newState;
-        });
-        addToast(`Data for ${assemblyName} has been deleted.`, "success");
-      }
-    }
-  };
-
-  const navigate = useNavigate();
-  const handleConfirmAssemblySelection = useCallback(
-    async (assembly: string) => {
-      if (!pendingData) return;
-
-      clearWorkspace();
-      setUploadedFile(pendingData.file);
-      setCurrentAssembly(assembly);
-
-      processData(pendingData.data, assembly, pendingData.file.name);
-
-      navigate("/processor");
-      setIsAssemblySelectionModalOpen(false);
-      setPendingData(null);
+const handleMasterListUpdate = (
+  assemblyName: string,
+  newData: MemberRecordA[],
+  newFileName: string,
+) => {
+  setMemberDatabase((prev) => ({
+    ...prev,
+    [assemblyName]: {
+      data: newData,
+      lastUpdated: Date.now(),
+      fileName: newFileName,
+      sourceFileDate: uploadedFile?.lastModified || Date.now(), // Capture file date
     },
-    [pendingData, clearWorkspace, navigate],
+  }));
+  addToast(
+    `${assemblyName} master list has been updated with ${newData.length} records.`,
+    "success",
   );
+};
 
-  const processData = (
-    data: MemberRecordA[],
-    assembly: string,
-    sourceFileName: string,
-  ) => {
-    setOriginalData(data);
+const handleDeleteAssembly = (assemblyName: string) => {
+  if (assemblyName === "ALL MEMBERS") {
+    if (
+      window.confirm(
+        "Are you sure you want to reset the entire database? This action cannot be undone.",
+      )
+    ) {
+      setMemberDatabase({});
+      addToast("All member data has been reset.", "success");
+    }
+  } else {
+    if (
+      window.confirm(
+        `Are you sure you want to delete the data for ${assemblyName}?`,
+      )
+    ) {
+      setMemberDatabase((prev) => {
+        const newState = { ...prev };
+        delete newState[assemblyName];
+        return newState;
+      });
+      addToast(`Data for ${assemblyName} has been deleted.`, "success");
+    }
+  }
+};
 
-    const masterList = memberDatabase[assembly];
-    if (masterList?.data) {
-      const report = reconcileMembers(data, masterList.data);
-      let enrichedNewMembers: MemberRecordA[] = [];
+const navigate = useNavigate();
+const handleConfirmAssemblySelection = useCallback(
+  async (assembly: string) => {
+    if (!pendingData) return;
 
-      if (report.newMembers.length > 0) {
-        const now = new Date().toISOString();
+    clearWorkspace();
+    setUploadedFile(pendingData.file);
+    setCurrentAssembly(assembly);
 
-        enrichedNewMembers = report.newMembers.map((member) => ({
-          ...member,
-          firstSeenDate: now,
-          firstSeenSource: sourceFileName,
-        }));
-      }
+    processData(pendingData.data, assembly, pendingData.file.name);
 
-      // Consolidate updates: Apply changes AND add new members
-      if (enrichedNewMembers.length > 0 || report.changedMembers.length > 0) {
-        setMemberDatabase((prev) => {
-          const prevAssemblyData = prev[assembly]?.data || [];
-          let updatedData = [...prevAssemblyData];
+    navigate("/processor");
+    setIsAssemblySelectionModalOpen(false);
+    setPendingData(null);
+  },
+  [pendingData, clearWorkspace, navigate],
+);
 
-          // 1. Apply Changes to existing members
-          if (report.changedMembers.length > 0) {
-            const changesMap = new Map(
-              report.changedMembers.map((c) => [c.oldRecord, c]),
-            );
-            updatedData = updatedData.map((member) => {
-              const change = changesMap.get(member);
-              if (change) {
-                return {
-                  ...member, // MERGE STRATEGY: Keep existing data (e.g. Notes, Custom Fields)
-                  ...change.newRecord, // Overwrite only with fields present in the new file
-                  // Preserve internal metadata from the existing record (explicitly, to be safe)
-                  firstSeenDate: member.firstSeenDate,
-                  firstSeenSource: member.firstSeenSource,
-                  customOrder: member.customOrder,
-                };
-              }
-              return member;
-            });
-          }
+const processData = (
+  data: MemberRecordA[],
+  assembly: string,
+  sourceFileName: string,
+) => {
+  setOriginalData(data);
 
-          // 2. Append New Members
-          if (enrichedNewMembers.length > 0) {
-            updatedData = [...updatedData, ...enrichedNewMembers];
-          }
+  const masterList = memberDatabase[assembly];
+  if (masterList?.data) {
+    const report = reconcileMembers(data, masterList.data);
+    let enrichedNewMembers: MemberRecordA[] = [];
 
-          return {
-            ...prev,
-            [assembly]: {
-              ...(prev[assembly] || {
-                lastUpdated: Date.now(),
-              }),
-              fileName: sourceFileName, // Always update with the latest source file name
-              data: updatedData,
-              lastUpdated: Date.now(),
-            },
-          };
-        });
-      }
-
-      if (
-        report.newMembers.length > 0 ||
-        report.changedMembers.length > 0
-      ) {
-        setReconciliationReport({
-          ...report,
-          newMembers:
-            enrichedNewMembers.length > 0
-              ? enrichedNewMembers
-              : report.newMembers,
-          previousFileDate: `Master List (updated ${new Date(masterList.lastUpdated).toLocaleDateString()})`,
-        });
-        setSoulsWonCount(report.newMembers.length);
-        setIsReconciliationModalOpen(true);
-      } else {
-        setSoulsWonCount(0);
-        addToast(
-          "No changes detected. The uploaded file matches the master list.",
-          "info",
-        );
-      }
-    } else {
-      setSoulsWonCount(data.length);
-      addToast(
-        `${data.length} members added as the first master list for ${assembly}.`,
-        "success",
-      );
+    if (report.newMembers.length > 0) {
       const now = new Date().toISOString();
-      const enrichedData = data.map((member) => ({
+
+      enrichedNewMembers = report.newMembers.map((member) => ({
         ...member,
         firstSeenDate: now,
         firstSeenSource: sourceFileName,
       }));
-      setMemberDatabase((prev) => ({
-        ...prev,
-        [assembly]: {
-          data: enrichedData,
-          lastUpdated: Date.now(),
-          fileName: sourceFileName,
-        },
-      }));
     }
 
-    let filteredData = data;
-    if (ageRangeMin || ageRangeMax) {
-      filteredData = filterMembersByAge(
-        data,
-        Number(ageRangeMin) || undefined,
-        Number(ageRangeMax) || undefined,
-      );
-      setIsAgeFilterActive(true);
-    } else {
-      setIsAgeFilterActive(false);
+    // Consolidate updates: Apply changes AND add new members
+    if (enrichedNewMembers.length > 0 || report.changedMembers.length > 0) {
+      setMemberDatabase((prev) => {
+        const prevAssemblyData = prev[assembly]?.data || [];
+        let updatedData = [...prevAssemblyData];
+
+        // 1. Apply Changes to existing members
+        if (report.changedMembers.length > 0) {
+          const changesMap = new Map(
+            report.changedMembers.map((c) => [c.oldRecord, c]),
+          );
+          updatedData = updatedData.map((member) => {
+            const change = changesMap.get(member);
+            if (change) {
+              return {
+                ...member, // MERGE STRATEGY: Keep existing data (e.g. Notes, Custom Fields)
+                ...change.newRecord, // Overwrite only with fields present in the new file
+                // Preserve internal metadata from the existing record (explicitly, to be safe)
+                firstSeenDate: member.firstSeenDate,
+                firstSeenSource: member.firstSeenSource,
+                customOrder: member.customOrder,
+              };
+            }
+            return member;
+          });
+        }
+
+        // 2. Append New Members
+        if (enrichedNewMembers.length > 0) {
+          updatedData = [...updatedData, ...enrichedNewMembers];
+        }
+
+        return {
+          ...prev,
+          [assembly]: {
+            ...(prev[assembly] || {
+              lastUpdated: Date.now(),
+            }),
+            fileName: sourceFileName, // Always update with the latest source file name
+            sourceFileDate: uploadedFile?.lastModified || Date.now(), // Update source file date
+            data: updatedData,
+            lastUpdated: Date.now(),
+          },
+        };
+      });
     }
+
+    if (
+      report.newMembers.length > 0 ||
+      report.changedMembers.length > 0
+    ) {
+      setReconciliationReport({
+        ...report,
+        newMembers:
+          enrichedNewMembers.length > 0
+            ? enrichedNewMembers
+            : report.newMembers,
+              : report.newMembers,
+  previousFileDate: `Master List (updated ${new Date(masterList.lastUpdated).toLocaleDateString()})`,
+        });
+
+// Time Travel Check
+const currentFileDate = uploadedFile?.lastModified || 0;
+const dbFileDate = masterList.sourceFileDate || 0;
+
+if (dbFileDate > currentFileDate) {
+  addToast(
+    "Warning: The uploaded file appears to be older than the current database version.",
+    "warning",
+    8000
+  );
+}
+
+setSoulsWonCount(report.newMembers.length);
+setIsReconciliationModalOpen(true);
+      } else {
+  setSoulsWonCount(0);
+  addToast(
+    "No changes detected. The uploaded file matches the master list.",
+    "info",
+  );
+}
+    } else {
+  setSoulsWonCount(data.length);
+  addToast(
+    `${data.length} members added as the first master list for ${assembly}.`,
+    "success",
+  );
+  const now = new Date().toISOString();
+  const enrichedData = data.map((member) => ({
+    ...member,
+    firstSeenDate: now,
+    firstSeenSource: sourceFileName,
+  }));
+  setMemberDatabase((prev) => ({
+    if(ageRangeMin || ageRangeMax) {
+    filteredData = filterMembersByAge(
+      data,
+      Number(ageRangeMin) || undefined,
+      Number(ageRangeMax) || undefined,
+    );
+    setIsAgeFilterActive(true);
+  } else {
+    setIsAgeFilterActive(false);
+  }
 
     setProcessedDataA(filteredData);
 
-    const listData = createTitheList(
-      filteredData,
+  const listData = createTitheList(
+    filteredData,
+    concatenationConfig,
+    selectedDate,
+    descriptionText,
+    amountMappingColumn,
+  );
+
+  setTitheListData(listData);
+  setFileNameToSave(
+    `${assembly}-TitheList-${formatDateDDMMMYYYY(new Date())}`,
+  );
+  addToast(
+    `${assembly} data processed. ${data.length} records loaded.`,
+    "success",
+  );
+};
+
+
+
+const handleApplyAgeFilter = useCallback(() => {
+  const min = Number(ageRangeMin) || 0;
+  const max = Number(ageRangeMax) || Infinity;
+
+  if (min > max && ageRangeMax) {
+    setInputErrors({ age: "Min age cannot be greater than max age." });
+    return;
+  }
+
+  setInputErrors({});
+  const filtered = filterMembersByAge(originalData, min, max);
+  setProcessedDataA(filtered);
+  setIsAgeFilterActive(true);
+  setTitheListData(
+    createTitheList(
+      filtered,
       concatenationConfig,
       selectedDate,
       descriptionText,
       amountMappingColumn,
-    );
+    ),
+  );
+  addToast(`Age filter applied. ${filtered.length} records match.`, "info");
+  setHasUnsavedChanges(true);
+}, [
+  ageRangeMin,
+  ageRangeMax,
+  originalData,
+  concatenationConfig,
+  selectedDate,
+  descriptionText,
+  amountMappingColumn,
+  addToast,
+]);
 
-    setTitheListData(listData);
-    setFileNameToSave(
-      `${assembly}-TitheList-${formatDateDDMMMYYYY(new Date())}`,
-    );
-    addToast(
-      `${assembly} data processed. ${data.length} records loaded.`,
-      "success",
-    );
-  };
+const handleRemoveAgeFilter = useCallback(() => {
+  setAgeRangeMin("");
+  setAgeRangeMax("");
+  setInputErrors({});
+  setProcessedDataA(originalData);
+  setIsAgeFilterActive(false);
+  setTitheListData(
+    createTitheList(
+      originalData,
+      concatenationConfig,
+      selectedDate,
+      descriptionText,
+      amountMappingColumn,
+    ),
+  );
+  addToast("Age filter removed.", "info");
+  setHasUnsavedChanges(true);
+}, [
+  originalData,
+  concatenationConfig,
+  selectedDate,
+  descriptionText,
+  amountMappingColumn,
+  addToast,
+]);
 
-
-
-  const handleApplyAgeFilter = useCallback(() => {
-    const min = Number(ageRangeMin) || 0;
-    const max = Number(ageRangeMax) || Infinity;
-
-    if (min > max && ageRangeMax) {
-      setInputErrors({ age: "Min age cannot be greater than max age." });
-      return;
-    }
-
-    setInputErrors({});
-    const filtered = filterMembersByAge(originalData, min, max);
-    setProcessedDataA(filtered);
-    setIsAgeFilterActive(true);
+const handleDescriptionChange = (newDescription: string) => {
+  setDescriptionText(newDescription);
+  if (originalData.length > 0) {
     setTitheListData(
       createTitheList(
-        filtered,
+        processedDataA,
         concatenationConfig,
         selectedDate,
+        newDescription,
+        amountMappingColumn,
+      ),
+    );
+    setHasUnsavedChanges(true);
+  }
+};
+
+const handleDateChange = (newDate: Date) => {
+  setSelectedDate(newDate);
+  if (originalData.length > 0) {
+    setTitheListData(
+      createTitheList(
+        processedDataA,
+        concatenationConfig,
+        newDate,
         descriptionText,
         amountMappingColumn,
       ),
     );
-    addToast(`Age filter applied. ${filtered.length} records match.`, "info");
     setHasUnsavedChanges(true);
-  }, [
-    ageRangeMin,
-    ageRangeMax,
-    originalData,
-    concatenationConfig,
-    selectedDate,
-    descriptionText,
-    amountMappingColumn,
-    addToast,
-  ]);
+  }
+};
 
-  const handleRemoveAgeFilter = useCallback(() => {
-    setAgeRangeMin("");
-    setAgeRangeMax("");
-    setInputErrors({});
-    setProcessedDataA(originalData);
-    setIsAgeFilterActive(false);
-    setTitheListData(
-      createTitheList(
-        originalData,
-        concatenationConfig,
-        selectedDate,
-        descriptionText,
-        amountMappingColumn,
-      ),
+const handleConcatenationConfigChange = (key: keyof ConcatenationConfig) => {
+  setConcatenationConfig((prev) => {
+    const newConfig = { ...prev, [key]: !prev[key] };
+    localStorage.setItem(
+      DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
+      JSON.stringify(newConfig),
     );
-    addToast("Age filter removed.", "info");
-    setHasUnsavedChanges(true);
-  }, [
-    originalData,
-    concatenationConfig,
-    selectedDate,
-    descriptionText,
-    amountMappingColumn,
-    addToast,
-  ]);
-
-  const handleDescriptionChange = (newDescription: string) => {
-    setDescriptionText(newDescription);
     if (originalData.length > 0) {
       setTitheListData(
         createTitheList(
           processedDataA,
-          concatenationConfig,
+          newConfig,
           selectedDate,
-          newDescription,
-          amountMappingColumn,
-        ),
-      );
-      setHasUnsavedChanges(true);
-    }
-  };
-
-  const handleDateChange = (newDate: Date) => {
-    setSelectedDate(newDate);
-    if (originalData.length > 0) {
-      setTitheListData(
-        createTitheList(
-          processedDataA,
-          concatenationConfig,
-          newDate,
           descriptionText,
           amountMappingColumn,
         ),
       );
       setHasUnsavedChanges(true);
     }
-  };
+    return newConfig;
+  });
+};
 
-  const handleConcatenationConfigChange = (key: keyof ConcatenationConfig) => {
-    setConcatenationConfig((prev) => {
-      const newConfig = { ...prev, [key]: !prev[key] };
-      localStorage.setItem(
-        DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
-        JSON.stringify(newConfig),
-      );
-      if (originalData.length > 0) {
-        setTitheListData(
-          createTitheList(
-            processedDataA,
-            newConfig,
-            selectedDate,
-            descriptionText,
-            amountMappingColumn,
-          ),
-        );
-        setHasUnsavedChanges(true);
-      }
-      return newConfig;
-    });
-  };
+const handleSaveFromPreview = (updatedList: TitheRecordB[]) => {
+  setTitheListData(updatedList);
 
-  const handleSaveFromPreview = (updatedList: TitheRecordB[]) => {
-    setTitheListData(updatedList);
-
-    if (currentAssembly) {
-      const newOrderMap = new Map<string | number, number>();
-      updatedList.forEach((record, index) => {
-        newOrderMap.set(record["No."], index);
-      });
-
-      setMemberDatabase((prev) => {
-        const newDb = { ...prev };
-        const assemblyData = newDb[currentAssembly]?.data || [];
-        const updatedAssemblyData = assemblyData.map((member) => {
-          const newOrder =
-            member["No."] !== undefined
-              ? newOrderMap.get(member["No."])
-              : undefined;
-          if (newOrder !== undefined) {
-            return { ...member, customOrder: newOrder };
-          }
-          return member;
-        });
-
-        newDb[currentAssembly] = {
-          ...(newDb[currentAssembly] || {}),
-          data: updatedAssemblyData,
-        };
-
-        return newDb;
-      });
-    }
-
-    setHasUnsavedChanges(true); // Mark the workspace as dirty
-    addToast(
-      "Changes from list view have been saved to the workspace.",
-      "success",
-    );
-    setIsFullPreviewModalOpen(false);
-  };
-
-  const { tithersCount, totalTitheAmount } = useMemo(() => {
-    let tithers = 0;
-    const totalAmount = titheListData.reduce((sum, record) => {
-      const amount = Number(record["Transaction Amount"]);
-      if (!isNaN(amount) && amount > 0) {
-        tithers++;
-        return sum + amount;
-      }
-      return sum;
-    }, 0);
-
-    return {
-      tithersCount: tithers,
-      totalTitheAmount: totalAmount,
-    };
-  }, [titheListData]);
-
-  const handleDownloadExcel = useCallback(() => {
-    if (!fileNameToSave.trim()) {
-      setInputErrors((prev) => ({
-        ...prev,
-        fileName: "File name is required.",
-      }));
-      return;
-    }
-    setInputErrors((prev) => ({ ...prev, fileName: "" }));
-
-    const dataToExport = titheListData.map((record, index) => ({
-      ...record,
-      "No.": index + 1,
-    }));
-
-    exportToExcel(dataToExport, fileNameToSave);
-    pushAnalyticsEvent({
-      type: "download_excel",
-      payload: { fileName: fileNameToSave, records: dataToExport.length },
+  if (currentAssembly) {
+    const newOrderMap = new Map<string | number, number>();
+    updatedList.forEach((record, index) => {
+      newOrderMap.set(record["No."], index);
     });
 
-    // Log the transaction
-    if (currentAssembly && titheListData.length > 0) {
-      const newLogEntry: TransactionLogEntry = {
-        id: `${currentAssembly}-${formatDateDDMMMYYYY(selectedDate)}`, // Use formatted date for ID
-        assemblyName: currentAssembly,
-        timestamp: Date.now(),
-        selectedDate: formatDateDDMMMYYYY(selectedDate), // Use formatted date for selectedDate
-        totalTitheAmount: totalTitheAmount,
-        soulsWonCount: soulsWonCount ?? 0,
-        titherCount: tithersCount,
-        recordCount: titheListData.length,
-        // Snapshot data
-        titheListData: titheListData,
-        concatenationConfig: concatenationConfig,
-        descriptionText: descriptionText,
-        amountMappingColumn: amountMappingColumn,
-      };
-      setTransactionLog((prevLog) => {
-        const existingIndex = prevLog.findIndex(
-          (log) => log.id === newLogEntry.id,
-        );
-        if (existingIndex > -1) {
-          const updatedLog = [...prevLog];
-          updatedLog[existingIndex] = newLogEntry;
-          return updatedLog;
+    setMemberDatabase((prev) => {
+      const newDb = { ...prev };
+      const assemblyData = newDb[currentAssembly]?.data || [];
+      const updatedAssemblyData = assemblyData.map((member) => {
+        const newOrder =
+          member["No."] !== undefined
+            ? newOrderMap.get(member["No."])
+            : undefined;
+        if (newOrder !== undefined) {
+          return { ...member, customOrder: newOrder };
         }
-        return [...prevLog, newLogEntry];
+        return member;
       });
-      addToast("Transaction has been logged for reporting.", "info");
+
+      newDb[currentAssembly] = {
+        ...(newDb[currentAssembly] || {}),
+        data: updatedAssemblyData,
+      };
+
+      return newDb;
+    });
+  }
+
+  setHasUnsavedChanges(true); // Mark the workspace as dirty
+  addToast(
+    "Changes from list view have been saved to the workspace.",
+    "success",
+  );
+  setIsFullPreviewModalOpen(false);
+};
+
+const { tithersCount, totalTitheAmount } = useMemo(() => {
+  let tithers = 0;
+  const totalAmount = titheListData.reduce((sum, record) => {
+    const amount = Number(record["Transaction Amount"]);
+    if (!isNaN(amount) && amount > 0) {
+      tithers++;
+      return sum + amount;
     }
-  }, [
-    fileNameToSave,
-    titheListData,
-    currentAssembly,
-    selectedDate,
-    totalTitheAmount,
-    soulsWonCount,
-    tithersCount,
-    setTransactionLog,
-    addToast,
+    return sum;
+  }, 0);
+
+  return {
+    tithersCount: tithers,
+    totalTitheAmount: totalAmount,
+  };
+}, [titheListData]);
+
+const handleDownloadExcel = useCallback(() => {
+  if (!fileNameToSave.trim()) {
+    setInputErrors((prev) => ({
+      ...prev,
+      fileName: "File name is required.",
+    }));
+    return;
+  }
+  setInputErrors((prev) => ({ ...prev, fileName: "" }));
+
+  const dataToExport = titheListData.map((record, index) => ({
+    ...record,
+    "No.": index + 1,
+  }));
+
+  exportToExcel(dataToExport, fileNameToSave);
+  pushAnalyticsEvent({
+    type: "download_excel",
+    payload: { fileName: fileNameToSave, records: dataToExport.length },
+  });
+
+  // Log the transaction
+  if (currentAssembly && titheListData.length > 0) {
+    const newLogEntry: TransactionLogEntry = {
+      id: `${currentAssembly}-${formatDateDDMMMYYYY(selectedDate)}`, // Use formatted date for ID
+      assemblyName: currentAssembly,
+      timestamp: Date.now(),
+      selectedDate: formatDateDDMMMYYYY(selectedDate), // Use formatted date for selectedDate
+      totalTitheAmount: totalTitheAmount,
+      soulsWonCount: soulsWonCount ?? 0,
+      titherCount: tithersCount,
+      recordCount: titheListData.length,
+      // Snapshot data
+      titheListData: titheListData,
+      concatenationConfig: concatenationConfig,
+      descriptionText: descriptionText,
+      amountMappingColumn: amountMappingColumn,
+    };
+    setTransactionLog((prevLog) => {
+      const existingIndex = prevLog.findIndex(
+        (log) => log.id === newLogEntry.id,
+      );
+      if (existingIndex > -1) {
+        const updatedLog = [...prevLog];
+        updatedLog[existingIndex] = newLogEntry;
+        return updatedLog;
+      }
+      return [...prevLog, newLogEntry];
+    });
+    addToast("Transaction has been logged for reporting.", "info");
+  }
+}, [
+  fileNameToSave,
+  titheListData,
+  currentAssembly,
+  selectedDate,
+  totalTitheAmount,
+  soulsWonCount,
+  tithersCount,
+  setTransactionLog,
+  addToast,
+  concatenationConfig,
+  descriptionText,
+  amountMappingColumn,
+]);
+
+const openSaveFavoriteModal = () => {
+  const name = `${currentAssembly} - ${formatDateDDMMMYYYY(selectedDate)}`;
+  setFavoriteNameInput(name);
+  setIsSaveFavoriteModalOpen(true);
+};
+
+const handleSaveFavorite = () => {
+  if (!favoriteNameInput.trim()) {
+    addToast("Favorite name cannot be empty.", "error");
+    return;
+  }
+  if (!currentAssembly) {
+    addToast("Cannot save favorite without an assembly.", "error");
+    return;
+  }
+
+  const favId = `${Date.now()}`;
+  const newFavorite: FavoriteConfig = {
+    id: favId,
+    name: favoriteNameInput,
+    timestamp: Date.now(),
+    originalFileName: uploadedFile?.name || "Manual/Database Start",
+    assemblyName: currentAssembly,
+    ageRangeMin: Number(ageRangeMin) || undefined,
+    ageRangeMax: Number(ageRangeMax) || undefined,
     concatenationConfig,
+    selectedDate: formatDateDDMMMYYYY(selectedDate), // Use formatted date for selectedDate
     descriptionText,
     amountMappingColumn,
+    originalData: originalData.length > 0 ? originalData : undefined,
+    processedDataA: processedDataA,
+    titheListData,
+    soulsWonCount: soulsWonCount ?? 0,
+    processedRecordsCount: processedDataA.length,
+    totalTitheAmount: totalTitheAmount,
+  };
+
+  setFavorites((prev) => [
+    newFavorite,
+    ...prev.filter((f) => f.name !== newFavorite.name),
   ]);
+  addToast("Saved to favorites!", "success");
+  setIsSaveFavoriteModalOpen(false);
+};
 
-  const openSaveFavoriteModal = () => {
-    const name = `${currentAssembly} - ${formatDateDDMMMYYYY(selectedDate)}`;
-    setFavoriteNameInput(name);
-    setIsSaveFavoriteModalOpen(true);
-  };
-
-  const handleSaveFavorite = () => {
-    if (!favoriteNameInput.trim()) {
-      addToast("Favorite name cannot be empty.", "error");
-      return;
-    }
-    if (!currentAssembly) {
-      addToast("Cannot save favorite without an assembly.", "error");
-      return;
-    }
-
-    const favId = `${Date.now()}`;
-    const newFavorite: FavoriteConfig = {
-      id: favId,
-      name: favoriteNameInput,
-      timestamp: Date.now(),
-      originalFileName: uploadedFile?.name || "Manual/Database Start",
-      assemblyName: currentAssembly,
-      ageRangeMin: Number(ageRangeMin) || undefined,
-      ageRangeMax: Number(ageRangeMax) || undefined,
-      concatenationConfig,
-      selectedDate: formatDateDDMMMYYYY(selectedDate), // Use formatted date for selectedDate
-      descriptionText,
-      amountMappingColumn,
-      originalData: originalData.length > 0 ? originalData : undefined,
-      processedDataA: processedDataA,
-      titheListData,
-      soulsWonCount: soulsWonCount ?? 0,
-      processedRecordsCount: processedDataA.length,
-      totalTitheAmount: totalTitheAmount,
-    };
-
-    setFavorites((prev) => [
-      newFavorite,
-      ...prev.filter((f) => f.name !== newFavorite.name),
-    ]);
-    addToast("Saved to favorites!", "success");
-    setIsSaveFavoriteModalOpen(false);
-  };
-
-  const loadFavorite = useCallback(
-    (favId: string) => {
-      const fav = favorites.find((f) => f.id === favId);
-      if (!fav) {
-        addToast(`Favorite not found.`, "error");
-        return;
-      }
-
-      clearWorkspace();
-
-      // Restore state from favorite
-      setUploadedFile(
-        fav.originalFileName
-          ? new File([], fav.originalFileName, { type: "text/plain" })
-          : null,
-      );
-      setOriginalData(fav.originalData || []);
-      setProcessedDataA(fav.processedDataA || []);
-      setTitheListData(fav.titheListData || []);
-
-      setAgeRangeMin(String(fav.ageRangeMin || ""));
-      setAgeRangeMax(String(fav.ageRangeMax || ""));
-      setIsAgeFilterActive(!!(fav.ageRangeMin || fav.ageRangeMax));
-
-      setConcatenationConfig(fav.concatenationConfig);
-      setSelectedDate(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
-      setDescriptionText(fav.descriptionText);
-      setAmountMappingColumn(fav.amountMappingColumn || null);
-
-      const formattedDate = formatDateDDMMMYYYY(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
-      setFileNameToSave(`${fav.assemblyName}-TitheList-${formattedDate}`);
-      setCurrentAssembly(fav.assemblyName);
-      setSoulsWonCount(fav.soulsWonCount ?? 0);
-
-      setHasUnsavedChanges(false);
-      clearAutoSaveDraft();
-
-      addToast(`Loaded favorite: "${fav.name}"`, "success");
-      navigate("/processor");
-    },
-    [favorites, addToast, clearWorkspace, clearAutoSaveDraft, navigate],
-  );
-
-
-
-  const startNewWeek = (assemblyName: string) => {
-    const masterList = memberDatabase[assemblyName];
-    if (!masterList || !masterList.data || masterList.data.length === 0) {
-      addToast(
-        `No member data found for ${assemblyName} in the database. Please upload a master list first.`,
-        "warning",
-      );
+const loadFavorite = useCallback(
+  (favId: string) => {
+    const fav = favorites.find((f) => f.id === favId);
+    if (!fav) {
+      addToast(`Favorite not found.`, "error");
       return;
     }
 
     clearWorkspace();
 
-    const memberSourceRecords = masterList.data;
-    const sundayDate = getMostRecentSunday(new Date()); // Use the helper function
-    const formattedDate = formatDateDDMMMYYYY(sundayDate);
-    const newDescription = `Tithe for ${formattedDate}`;
+    // Restore state from favorite
+    setUploadedFile(
+      fav.originalFileName
+        ? new File([], fav.originalFileName, { type: "text/plain" })
+        : null,
+    );
+    setOriginalData(fav.originalData || []);
+    setProcessedDataA(fav.processedDataA || []);
+    setTitheListData(fav.titheListData || []);
 
-    const freshTitheList = createTitheList(
-      memberSourceRecords,
-      concatenationConfig,
-      sundayDate, // Use sundayDate here
-      newDescription,
-      amountMappingColumn,
-    ).map((record) => ({ ...record, "Transaction Amount": "" }));
+    setAgeRangeMin(String(fav.ageRangeMin || ""));
+    setAgeRangeMax(String(fav.ageRangeMax || ""));
+    setIsAgeFilterActive(!!(fav.ageRangeMin || fav.ageRangeMax));
 
-    setTitheListData(freshTitheList);
+    setConcatenationConfig(fav.concatenationConfig);
+    setSelectedDate(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
+    setDescriptionText(fav.descriptionText);
+    setAmountMappingColumn(fav.amountMappingColumn || null);
 
-    setOriginalData(memberSourceRecords);
-    setProcessedDataA(memberSourceRecords);
-    setDescriptionText(newDescription);
-    setCurrentAssembly(assemblyName);
-    setFileNameToSave(`${assemblyName}-TitheList-${formattedDate}`);
-    setSoulsWonCount(0);
-    setSelectedDate(sundayDate); // Set the Sunday date
+    const formattedDate = formatDateDDMMMYYYY(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
+    setFileNameToSave(`${fav.assemblyName}-TitheList-${formattedDate}`);
+    setCurrentAssembly(fav.assemblyName);
+    setSoulsWonCount(fav.soulsWonCount ?? 0);
+
     setHasUnsavedChanges(false);
     clearAutoSaveDraft();
 
+    addToast(`Loaded favorite: "${fav.name}"`, "success");
     navigate("/processor");
+  },
+  [favorites, addToast, clearWorkspace, clearAutoSaveDraft, navigate],
+);
+
+
+
+const startNewWeek = (assemblyName: string) => {
+  const masterList = memberDatabase[assemblyName];
+  if (!masterList || !masterList.data || masterList.data.length === 0) {
     addToast(
-      `Started new week for ${assemblyName} using the master member list.`,
-      "success",
+      `No member data found for ${assemblyName} in the database. Please upload a master list first.`,
+      "warning",
     );
-  };
+    return;
+  }
 
-  const deleteFavorite = (favId: string) => {
-    setFavToDeleteId(favId);
-    setIsDeleteFavConfirmModalOpen(true);
-  };
+  clearWorkspace();
 
-  const confirmDeleteFavorite = () => {
-    if (!favToDeleteId) return;
-    setFavorites((prev) => prev.filter((f) => f.id !== favToDeleteId));
-    addToast("Favorite deleted.", "success");
-    setIsDeleteFavConfirmModalOpen(false);
-    setFavToDeleteId(null);
-  };
+  const memberSourceRecords = masterList.data;
+  const sundayDate = getMostRecentSunday(new Date()); // Use the helper function
+  const formattedDate = formatDateDDMMMYYYY(sundayDate);
+  const newDescription = `Tithe for ${formattedDate}`;
 
-  const updateFavoriteName = (favId: string, newName: string) => {
-    setFavorites((prev) =>
-      prev.map((f) =>
-        f.id === favId ? { ...f, name: newName, timestamp: Date.now() } : f
-      ),
-    );
-  };
+  const freshTitheList = createTitheList(
+    memberSourceRecords,
+    concatenationConfig,
+    sundayDate, // Use sundayDate here
+    newDescription,
+    amountMappingColumn,
+  ).map((record) => ({ ...record, "Transaction Amount": "" }));
 
-  const viewFavoriteDetails = (fav: FavoriteConfig) => {
-    setSelectedFavoriteForDetails(fav);
-    setIsFavDetailsModalOpen(true);
-  };
+  setTitheListData(freshTitheList);
 
-  const handleConfirmClearWorkspace = () => {
-    clearWorkspace();
-    addToast("Workspace cleared.", "info");
-    setIsClearWorkspaceModalOpen(false);
-    navigate("/"); // Navigate to dashboard after clearing workspace
-  };
+  setOriginalData(memberSourceRecords);
+  setProcessedDataA(memberSourceRecords);
+  setDescriptionText(newDescription);
+  setCurrentAssembly(assemblyName);
+  setFileNameToSave(`${assemblyName}-TitheList-${formattedDate}`);
+  setSoulsWonCount(0);
+  setSelectedDate(sundayDate); // Set the Sunday date
+  setHasUnsavedChanges(false);
+  clearAutoSaveDraft();
 
-  const handleAddNewMemberToList = (newMember: MemberRecordA) => {
-    if (currentAssembly) {
-      const enrichedMember = {
-        ...newMember,
-        firstSeenDate: new Date().toISOString(),
-        firstSeenSource: "manual_add",
-      };
+  navigate("/processor");
+  addToast(
+    `Started new week for ${assemblyName} using the master member list.`,
+    "success",
+  );
+};
 
-      setMemberDatabase((prev) => {
-        const assemblyData = prev[currentAssembly]?.data || [];
-        const updatedAssemblyData = [...assemblyData, enrichedMember];
-        return {
-          ...prev,
-          [currentAssembly]: {
-            ...(prev[currentAssembly] || {
-              lastUpdated: Date.now(),
-            }),
-            fileName: "Mixed Source", // Always set to Mixed Source on manual add
-            data: updatedAssemblyData,
+const deleteFavorite = (favId: string) => {
+  setFavToDeleteId(favId);
+  setIsDeleteFavConfirmModalOpen(true);
+};
+
+const confirmDeleteFavorite = () => {
+  if (!favToDeleteId) return;
+  setFavorites((prev) => prev.filter((f) => f.id !== favToDeleteId));
+  addToast("Favorite deleted.", "success");
+  setIsDeleteFavConfirmModalOpen(false);
+  setFavToDeleteId(null);
+};
+
+const updateFavoriteName = (favId: string, newName: string) => {
+  setFavorites((prev) =>
+    prev.map((f) =>
+      f.id === favId ? { ...f, name: newName, timestamp: Date.now() } : f
+    ),
+  );
+};
+
+const viewFavoriteDetails = (fav: FavoriteConfig) => {
+  setSelectedFavoriteForDetails(fav);
+  setIsFavDetailsModalOpen(true);
+};
+
+const handleConfirmClearWorkspace = () => {
+  clearWorkspace();
+  addToast("Workspace cleared.", "info");
+  setIsClearWorkspaceModalOpen(false);
+  navigate("/"); // Navigate to dashboard after clearing workspace
+};
+
+const handleAddNewMemberToList = (newMember: MemberRecordA) => {
+  if (currentAssembly) {
+    const enrichedMember = {
+      ...newMember,
+      firstSeenDate: new Date().toISOString(),
+      firstSeenSource: "manual_add",
+    };
+
+    setMemberDatabase((prev) => {
+      const assemblyData = prev[currentAssembly]?.data || [];
+      const updatedAssemblyData = [...assemblyData, enrichedMember];
+      return {
+        ...prev,
+        [currentAssembly]: {
+          ...(prev[currentAssembly] || {
             lastUpdated: Date.now(),
-          },
-        };
-      });
+          }),
+          fileName: "Mixed Source", // Always set to Mixed Source on manual add
+          data: updatedAssemblyData,
+          lastUpdated: Date.now(),
+        },
+      };
+    });
 
-      const sundayDate = getMostRecentSunday(new Date());
-      const formattedDate = formatDateDDMMMYYYY(sundayDate);
-      const defaultDescription = `Tithe for ${formattedDate}`;
-
-      const newTitheRecord = createTitheList(
-        [enrichedMember],
-        concatenationConfig,
-        sundayDate, // Use sundayDate here
-        defaultDescription, // Use defaultDescription here
-        null,
-      )[0];
-      setTitheListData((prev) => [...prev, newTitheRecord]);
-      setSoulsWonCount((prev) => (prev || 0) + 1);
-      addToast(
-        `Added new member: ${newMember["First Name"]} ${newMember.Surname}`,
-        "success",
-      );
-      setIsAddNewMemberModalOpen(false);
-    }
-  };
-
-  const handleAddExistingMemberToList = (member: MemberRecordA) => {
     const sundayDate = getMostRecentSunday(new Date());
     const formattedDate = formatDateDDMMMYYYY(sundayDate);
     const defaultDescription = `Tithe for ${formattedDate}`;
 
     const newTitheRecord = createTitheList(
-      [member],
+      [enrichedMember],
       concatenationConfig,
       sundayDate, // Use sundayDate here
       defaultDescription, // Use defaultDescription here
       null,
     )[0];
     setTitheListData((prev) => [...prev, newTitheRecord]);
+    setSoulsWonCount((prev) => (prev || 0) + 1);
     addToast(
-      `Added existing member: ${member["First Name"]} ${member.Surname}`,
+      `Added new member: ${newMember["First Name"]} ${newMember.Surname}`,
       "success",
     );
-  };
+    setIsAddNewMemberModalOpen(false);
+  }
+};
 
-  const handleCreateTitheListFromDB = (
-    members: MemberRecordA[],
-    assembly: string,
-  ) => {
-    clearWorkspace();
-    setCurrentAssembly(assembly);
-    setOriginalData(members);
-    setProcessedDataA(members);
+const handleAddExistingMemberToList = (member: MemberRecordA) => {
+  const sundayDate = getMostRecentSunday(new Date());
+  const formattedDate = formatDateDDMMMYYYY(sundayDate);
+  const defaultDescription = `Tithe for ${formattedDate}`;
 
-    const sundayDate = getMostRecentSunday(new Date()); // Use the helper function
-    const formattedDate = formatDateDDMMMYYYY(sundayDate);
-    const defaultDescription = `Tithe for ${formattedDate}`;
-    setDescriptionText(defaultDescription);
-    setSelectedDate(sundayDate); // Set the Sunday date
+  const newTitheRecord = createTitheList(
+    [member],
+    concatenationConfig,
+    sundayDate, // Use sundayDate here
+    defaultDescription, // Use defaultDescription here
+    null,
+  )[0];
+  setTitheListData((prev) => [...prev, newTitheRecord]);
+  addToast(
+    `Added existing member: ${member["First Name"]} ${member.Surname}`,
+    "success",
+  );
+};
 
-    const list = createTitheList(
-      members,
-      concatenationConfig,
-      sundayDate, // Use sundayDate here
-      defaultDescription,
-      null,
-    );
-    setTitheListData(list);
-    setFileNameToSave(
-      `${assembly}-TitheList-${formattedDate}`,
-    );
-    navigate("/processor");
-    setIsCreateTitheListModalOpen(false);
-    addToast(
-      `Created a new list with ${members.length} members from the database.`,
-      "success",
-    );
-  };
+const handleCreateTitheListFromDB = (
+  members: MemberRecordA[],
+  assembly: string,
+) => {
+  clearWorkspace();
+  setCurrentAssembly(assembly);
+  setOriginalData(members);
+  setProcessedDataA(members);
 
-  const handleEditMemberInDB = (member: MemberRecordA) => {
-    if (!memberToEdit) return;
-    const { assemblyName } = memberToEdit;
+  const sundayDate = getMostRecentSunday(new Date()); // Use the helper function
+  const formattedDate = formatDateDDMMMYYYY(sundayDate);
+  const defaultDescription = `Tithe for ${formattedDate}`;
+  setDescriptionText(defaultDescription);
+  setSelectedDate(sundayDate); // Set the Sunday date
 
-    setMemberDatabase((prev) => {
-      const assemblyData = prev[assemblyName]?.data || [];
-      const isNewMember = String(member["No."]).startsWith("new_");
-      let updatedData;
+  const list = createTitheList(
+    members,
+    concatenationConfig,
+    sundayDate, // Use sundayDate here
+    defaultDescription,
+    null,
+  );
+  setTitheListData(list);
+  setFileNameToSave(
+    `${assembly}-TitheList-${formattedDate}`,
+  );
+  navigate("/processor");
+  setIsCreateTitheListModalOpen(false);
+  addToast(
+    `Created a new list with ${members.length} members from the database.`,
+    "success",
+  );
+};
 
-      if (isNewMember) {
-        const finalNewMember = {
-          ...member,
-          "No.": assemblyData.length + 1,
-          firstSeenDate: new Date().toISOString(),
-          firstSeenSource: "manual_db_add",
-        };
-        updatedData = [...assemblyData, finalNewMember];
-        addToast(`New member added to ${assemblyName} database.`, "success");
-      } else {
-        updatedData = assemblyData.map((m) => {
-          if (m["No."] === member["No."]) {
-            return { ...m, ...member };
-          }
-          return m;
-        });
-        addToast(
-          `Member details updated in ${assemblyName} database.`,
-          "success",
-        );
-      }
+const handleEditMemberInDB = (member: MemberRecordA) => {
+  if (!memberToEdit) return;
+  const { assemblyName } = memberToEdit;
 
-      return {
-        ...prev,
-        [assemblyName]: {
-          ...(prev[assemblyName] || {}), // Removed fileName: "Mixed Source" from here
-          fileName: "Mixed Source", // Always set to Mixed Source on edit/add via this function
-          data: updatedData,
-          lastUpdated: Date.now(),
-        },
+  setMemberDatabase((prev) => {
+    const assemblyData = prev[assemblyName]?.data || [];
+    const isNewMember = String(member["No."]).startsWith("new_");
+    let updatedData;
+
+    if (isNewMember) {
+      const finalNewMember = {
+        ...member,
+        "No.": assemblyData.length + 1,
+        firstSeenDate: new Date().toISOString(),
+        firstSeenSource: "manual_db_add",
       };
-    });
-
-    setIsEditMemberModalOpen(false);
-    setMemberToEdit(null);
-  };
-
-  const openAddMemberToListModal = () => {
-    if (!currentAssembly) {
-      addToast("An assembly must be active to add a member.", "warning");
-      return;
+      updatedData = [...assemblyData, finalNewMember];
+      addToast(`New member added to ${assemblyName} database.`, "success");
+    } else {
+      updatedData = assemblyData.map((m) => {
+        if (m["No."] === member["No."]) {
+          return { ...m, ...member };
+        }
+        return m;
+      });
+      addToast(
+        `Member details updated in ${assemblyName} database.`,
+        "success",
+      );
     }
-    setIsAddNewMemberModalOpen(true);
-  };
 
-  const getMostRecentSunday = (date: Date): Date => {
-    const day = date.getDay(); // Sunday - 0, Monday - 1, ..., Saturday - 6
-    const diff = date.getDate() - day; // Calculate difference to get to Sunday
-    const sunday = new Date(date.setDate(diff));
-    sunday.setHours(0, 0, 0, 0); // Set to the beginning of the day to normalize
-    return sunday;
-  };
+    return {
+      ...prev,
+      [assemblyName]: {
+        ...(prev[assemblyName] || {}), // Removed fileName: "Mixed Source" from here
+        fileName: "Mixed Source", // Always set to Mixed Source on edit/add via this function
+        data: updatedData,
+        lastUpdated: Date.now(),
+      },
+    };
+  });
 
-  const location = useLocation();
-  const viewTitles: Record<string, string> = {
-    "/": "Dashboard",
-    "/processor": "Tithe Processor",
-    "/database": "Member Database",
-    "/favorites": "Favorites",
-    "/reports": "Reports",
-    "/analytics": "AI Analytics",
-    "/settings": "Settings",
-  };
+  setIsEditMemberModalOpen(false);
+  setMemberToEdit(null);
+};
 
-  return (
-    <div
-      className={`app-container ${!isSidebarCollapsed && window.innerWidth < 768 ? "sidebar-open" : ""}`}
-    >
-      <Sidebar
-        theme={theme}
-        setTheme={setTheme}
-        accentColor={accentColor}
-        setAccentColor={setAccentColor}
-        isCollapsed={isSidebarCollapsed}
-        setIsCollapsed={setIsSidebarCollapsed}
-        isLoggedIn={isDriveLoggedIn}
-        userProfile={driveUserProfile}
-        syncStatus={driveSyncStatus}
-        signIn={driveSignIn}
-        signOut={driveSignOut}
-        isConfigured={isDriveConfigured}
-        openCommandPalette={() => setIsCommandPaletteOpen(true)}
-        isOnline={!isOffline}
-      />
-      <AnimatePresence>
-        {isCommandPaletteOpen && (
-          <CommandPalette
-            isOpen={isCommandPaletteOpen}
-            onClose={() => setIsCommandPaletteOpen(false)}
-            setTheme={setTheme}
-            onStartNewWeek={startNewWeek}
-            favorites={favorites}
-            theme={theme}
-            setActiveView={(view) => navigate(view)}
-          />
-        )}
-      </AnimatePresence>
-      <div
-        className="app-container-overlay"
-        onClick={() => setIsSidebarCollapsed(true)}
-      />
-      <main className="main-content">
-        <MobileHeader
-          onMenuClick={() => setIsSidebarCollapsed(false)}
-          title={viewTitles[location.pathname] || "TACTMS"}
-          globalNotifications={globalNotifications}
-          accentColor={accentColor}
-        />
-        <DesktopNotifications
-          globalNotifications={globalNotifications}
-          accentColor={accentColor}
-        />
-        <AnimatePresence mode="wait">
-          <MotionDiv
-            key={location.pathname}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Outlet
-              context={{
-                // Dashboard
-                transactionLog,
-                memberDatabase,
-                favorites,
-                onStartNewWeek: startNewWeek,
-                userProfile: driveUserProfile,
-                onUploadFile: handleFileAccepted,
-                onGenerateValidationReport: () => {
-                  generateValidationReport(originalData);
-                  setIsValidationModalOpen(true);
-                },
-                // Favorites
-                favoritesSearchTerm,
-                setFavoritesSearchTerm,
-                loadFavorite,
-                deleteFavorite,
-                viewFavoriteDetails,
-                updateFavoriteName,
-                addToast,
-                // Analytics
-                titheListData,
-                currentAssembly,
-                selectedDate,
-                // Reports
-                // MemberDatabase
-                onUploadMasterList: (file: File, assembly: string) =>
-                  handleFileAccepted(file, true, assembly),
-                onCreateTitheList: (
-                  members: MemberRecordA[],
-                  assembly: string,
-                ) => {
-                  setPendingTitheListMembers(members);
-                  setPendingTitheListAssembly(assembly);
-                  setIsCreateTitheListModalOpen(true);
-                },
-                onEditMember: (member: MemberRecordA, assemblyName: string) => {
-                  setMemberToEdit({ member, assemblyName });
-                  setIsEditMemberModalOpen(true);
-                },
-                onDeleteAssembly: handleDeleteAssembly,
-                // ListOverviewActions
-                currentTotalTithe: totalTitheAmount,
-                hasUnsavedChanges,
-                tithersCount,
-                nonTithersCount: processedDataA.length - tithersCount,
-                tithersPercentage:
-                  processedDataA.length > 0
-                    ? (tithersCount / processedDataA.length) * 100
-                    : 0,
-                setIsFullPreviewModalOpen,
-                setIsAmountEntryModalOpen,
-                fileNameToSave,
-                setFileNameToSave,
-                inputErrors,
-                setInputErrors,
-                handleDownloadExcel,
-                openSaveFavoriteModal,
-                onClearWorkspace: () => setIsClearWorkspaceModalOpen(true),
-                soulsWonCount,
-                // Configuration
-                isLoggedIn: isDriveLoggedIn,
-                syncStatus: driveSyncStatus,
-                signIn: driveSignIn,
-                signOut: driveSignOut,
-                isConfigured: isDriveConfigured,
-                ageRangeMin,
-                setAgeRangeMin,
-                ageRangeMax,
-                setAgeRangeMax,
-                isAgeFilterActive,
-                handleApplyAgeFilter,
-                handleRemoveAgeFilter,
-                concatenationConfig,
-                handleConcatenationConfigChange,
-                descriptionText,
-                handleDescriptionChange,
-                amountMappingColumn,
-                setAmountMappingColumn,
-                theme,
-                setTheme,
-                accentColor,
-                setAccentColor,
-                isSubscribed,
-                requestNotificationPermission,
-                onDateChange: handleDateChange, // Add this line
-              }}
-            />
-          </MotionDiv>
-        </AnimatePresence>
-      </main>
+const openAddMemberToListModal = () => {
+  if (!currentAssembly) {
+    addToast("An assembly must be active to add a member.", "warning");
+    return;
+  }
+  setIsAddNewMemberModalOpen(true);
+};
 
+const getMostRecentSunday = (date: Date): Date => {
+  const day = date.getDay(); // Sunday - 0, Monday - 1, ..., Saturday - 6
+  const diff = date.getDate() - day; // Calculate difference to get to Sunday
+  const sunday = new Date(date.setDate(diff));
+  sunday.setHours(0, 0, 0, 0); // Set to the beginning of the day to normalize
+  return sunday;
+};
 
+const location = useLocation();
+const viewTitles: Record<string, string> = {
+  "/": "Dashboard",
+  "/processor": "Tithe Processor",
+  "/database": "Member Database",
+  "/favorites": "Favorites",
+  "/reports": "Reports",
+  "/analytics": "AI Analytics",
+  "/settings": "Settings",
+};
 
-      <Toaster richColors theme={theme} />
-
-      {isFullPreviewModalOpen && (
-        <FullTithePreviewModal
-          isOpen={isFullPreviewModalOpen}
-          onClose={() => setIsFullPreviewModalOpen(false)}
-          titheListData={titheListData}
-          onSave={handleSaveFromPreview}
-          itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
-          addToast={addToast}
-          searchTerm={fullPreviewSearchTerm}
-          setSearchTerm={setFullPreviewSearchTerm}
-          sortConfig={fullPreviewSortConfig}
-          setSortConfig={setFullPreviewSortConfig}
-          openAddMemberToListModal={openAddMemberToListModal}
-          assemblyName={currentAssembly || ""}
+return (
+  <div
+    className={`app-container ${!isSidebarCollapsed && window.innerWidth < 768 ? "sidebar-open" : ""}`}
+  >
+    <Sidebar
+      theme={theme}
+      setTheme={setTheme}
+      accentColor={accentColor}
+      setAccentColor={setAccentColor}
+      isCollapsed={isSidebarCollapsed}
+      setIsCollapsed={setIsSidebarCollapsed}
+      isLoggedIn={isDriveLoggedIn}
+      userProfile={driveUserProfile}
+      syncStatus={driveSyncStatus}
+      signIn={driveSignIn}
+      signOut={driveSignOut}
+      isConfigured={isDriveConfigured}
+      openCommandPalette={() => setIsCommandPaletteOpen(true)}
+      isOnline={!isOffline}
+    />
+    <AnimatePresence>
+      {isCommandPaletteOpen && (
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          setTheme={setTheme}
+          onStartNewWeek={startNewWeek}
+          favorites={favorites}
+          theme={theme}
+          setActiveView={(view) => navigate(view)}
         />
       )}
+    </AnimatePresence>
+    <div
+      className="app-container-overlay"
+      onClick={() => setIsSidebarCollapsed(true)}
+    />
+    <main className="main-content">
+      <MobileHeader
+        onMenuClick={() => setIsSidebarCollapsed(false)}
+        title={viewTitles[location.pathname] || "TACTMS"}
+        globalNotifications={globalNotifications}
+        accentColor={accentColor}
+      />
+      <DesktopNotifications
+        globalNotifications={globalNotifications}
+        accentColor={accentColor}
+      />
+      <AnimatePresence mode="wait">
+        <MotionDiv
+          key={location.pathname}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Outlet
+            context={{
+              // Dashboard
+              transactionLog,
+              memberDatabase,
+              favorites,
+              onStartNewWeek: startNewWeek,
+              userProfile: driveUserProfile,
+              onUploadFile: handleFileAccepted,
+              onGenerateValidationReport: () => {
+                generateValidationReport(originalData);
+                setIsValidationModalOpen(true);
+              },
+              // Favorites
+              favoritesSearchTerm,
+              setFavoritesSearchTerm,
+              loadFavorite,
+              deleteFavorite,
+              viewFavoriteDetails,
+              updateFavoriteName,
+              addToast,
+              // Analytics
+              titheListData,
+              currentAssembly,
+              selectedDate,
+              // Reports
+              // MemberDatabase
+              onUploadMasterList: (file: File, assembly: string) =>
+                handleFileAccepted(file, true, assembly),
+              onCreateTitheList: (
+                members: MemberRecordA[],
+                assembly: string,
+              ) => {
+                setPendingTitheListMembers(members);
+                setPendingTitheListAssembly(assembly);
+                setIsCreateTitheListModalOpen(true);
+              },
+              onEditMember: (member: MemberRecordA, assemblyName: string) => {
+                setMemberToEdit({ member, assemblyName });
+                setIsEditMemberModalOpen(true);
+              },
+              onDeleteAssembly: handleDeleteAssembly,
+              // ListOverviewActions
+              currentTotalTithe: totalTitheAmount,
+              hasUnsavedChanges,
+              tithersCount,
+              nonTithersCount: processedDataA.length - tithersCount,
+              tithersPercentage:
+                processedDataA.length > 0
+                  ? (tithersCount / processedDataA.length) * 100
+                  : 0,
+              setIsFullPreviewModalOpen,
+              setIsAmountEntryModalOpen,
+              fileNameToSave,
+              setFileNameToSave,
+              inputErrors,
+              setInputErrors,
+              handleDownloadExcel,
+              openSaveFavoriteModal,
+              onClearWorkspace: () => setIsClearWorkspaceModalOpen(true),
+              soulsWonCount,
+              // Configuration
+              isLoggedIn: isDriveLoggedIn,
+              syncStatus: driveSyncStatus,
+              signIn: driveSignIn,
+              signOut: driveSignOut,
+              isConfigured: isDriveConfigured,
+              ageRangeMin,
+              setAgeRangeMin,
+              ageRangeMax,
+              setAgeRangeMax,
+              isAgeFilterActive,
+              handleApplyAgeFilter,
+              handleRemoveAgeFilter,
+              concatenationConfig,
+              handleConcatenationConfigChange,
+              descriptionText,
+              handleDescriptionChange,
+              amountMappingColumn,
+              setAmountMappingColumn,
+              theme,
+              setTheme,
+              accentColor,
+              setAccentColor,
+              isSubscribed,
+              requestNotificationPermission,
+              onDateChange: handleDateChange, // Add this line
+            }}
+          />
+        </MotionDiv>
+      </AnimatePresence>
+    </main>
 
-      {isAmountEntryModalOpen && (
+
+
+    <Toaster richColors theme={theme} />
+
+    {isFullPreviewModalOpen && (
+      <FullTithePreviewModal
+        isOpen={isFullPreviewModalOpen}
+        onClose={() => setIsFullPreviewModalOpen(false)}
+        titheListData={titheListData}
+        onSave={handleSaveFromPreview}
+        itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
+        addToast={addToast}
+        searchTerm={fullPreviewSearchTerm}
+        setSearchTerm={setFullPreviewSearchTerm}
+        sortConfig={fullPreviewSortConfig}
+        setSortConfig={setFullPreviewSortConfig}
+        openAddMemberToListModal={openAddMemberToListModal}
+        assemblyName={currentAssembly || ""}
+      />
+    )}
+
+    {isAmountEntryModalOpen && (
+      <AmountEntryModal
+        isOpen={isAmountEntryModalOpen}
+        onClose={() => setIsAmountEntryModalOpen(false)}
+        titheListData={titheListData}
+        onSave={handleSaveFromPreview}
+      />
+    )}
+
+    {isAddNewMemberModalOpen && (
+      <AddNewMemberModal
+        isOpen={isAddNewMemberModalOpen}
+        onClose={() => setIsAddNewMemberModalOpen(false)}
+        onConfirm={handleAddNewMemberToList}
+        onAddExistingMember={handleAddExistingMemberToList}
+        currentAssembly={currentAssembly}
+        memberDatabase={
+          currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
+        }
+        titheListData={titheListData}
+      />
+    )}
+
+    {isCreateTitheListModalOpen && (
+      <CreateTitheListModal
+        isOpen={isCreateTitheListModalOpen}
+        onClose={() => setIsCreateTitheListModalOpen(false)}
+        onConfirm={() => {
+          if (pendingTitheListMembers && pendingTitheListAssembly) {
+            handleCreateTitheListFromDB(
+              pendingTitheListMembers,
+              pendingTitheListAssembly,
+            );
+          }
+        }}
+        memberCount={pendingTitheListMembers?.length || 0}
+        assemblyName={pendingTitheListAssembly || ""}
+      />
+    )}
+    {isSaveFavoriteModalOpen && (
+      <Modal
+        isOpen={isSaveFavoriteModalOpen}
+        onClose={() => setIsSaveFavoriteModalOpen(false)}
+        title="Save Configuration to Favorites"
+        closeOnOutsideClick={false}
+      >
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="favName" className="form-label">
+              Favorite Name
+            </label>
+            <input
+              id="favName"
+              type="text"
+              value={favoriteNameInput}
+              onChange={(e) => setFavoriteNameInput(e.target.value)}
+              className="form-input-light w-full"
+            />
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setIsSaveFavoriteModalOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSaveFavorite}
+            leftIcon={<Save size={16} />}
+          >
+            Save Favorite
+          </Button>
+        </div>
+      </Modal>
+    )}
+    {isDeleteFavConfirmModalOpen && (
+      <Modal
+        isOpen={isDeleteFavConfirmModalOpen}
+        onClose={() => setIsDeleteFavConfirmModalOpen(false)}
+        title="Delete Favorite?"
+        closeOnOutsideClick={false}
+      >
+        <p>
+          Are you sure you want to delete this favorite? This action cannot be
+          undone.
+        </p>
+        <div className="mt-6 flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setIsDeleteFavConfirmModalOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={confirmDeleteFavorite}
+            leftIcon={<Trash2 size={16} />}
+          >
+            Delete
+          </Button>
+        </div>
+      </Modal>
+    )}
+    {selectedFavoriteForDetails && (
+      <Modal
+        isOpen={isFavDetailsModalOpen}
+        onClose={() => setIsFavDetailsModalOpen(false)}
+        title={`Details for "${selectedFavoriteForDetails.name}"`}
+        size="lg"
+      >
+        <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
+          {JSON.stringify(selectedFavoriteForDetails, null, 2)}
+        </pre>
+      </Modal>
+    )}
+    {isAssemblySelectionModalOpen && pendingData && (
+      <AssemblySelectionModal
+        isOpen={isAssemblySelectionModalOpen}
+        onClose={() => setIsAssemblySelectionModalOpen(false)}
+        onConfirm={handleConfirmAssemblySelection}
+        fileName={pendingData.fileName}
+        suggestedAssembly={pendingData.suggestedAssembly}
+      />
+    )}
+    {isReconciliationModalOpen && reconciliationReport && (
+      <MembershipReconciliationModal
+        isOpen={isReconciliationModalOpen}
+        onClose={() => setIsReconciliationModalOpen(false)}
+        report={reconciliationReport}
+        onKeepMembers={handleKeepReconciliationMembers}
+      />
+    )}
+    {isClearWorkspaceModalOpen && (
+      <ClearWorkspaceModal
+        isOpen={isClearWorkspaceModalOpen}
+        onClose={() => setIsClearWorkspaceModalOpen(false)}
+        onConfirm={handleConfirmClearWorkspace}
+      />
+    )}
+
+    {
+      isAmountEntryModalOpen && (
         <AmountEntryModal
           isOpen={isAmountEntryModalOpen}
           onClose={() => setIsAmountEntryModalOpen(false)}
           titheListData={titheListData}
           onSave={handleSaveFromPreview}
         />
-      )}
+      )
+    }
 
-      {isAddNewMemberModalOpen && (
+    {
+      isAddNewMemberModalOpen && (
         <AddNewMemberModal
           isOpen={isAddNewMemberModalOpen}
           onClose={() => setIsAddNewMemberModalOpen(false)}
@@ -1605,9 +1752,11 @@ const App: React.FC = () => {
           }
           titheListData={titheListData}
         />
-      )}
+      )
+    }
 
-      {isCreateTitheListModalOpen && (
+    {
+      isCreateTitheListModalOpen && (
         <CreateTitheListModal
           isOpen={isCreateTitheListModalOpen}
           onClose={() => setIsCreateTitheListModalOpen(false)}
@@ -1622,8 +1771,10 @@ const App: React.FC = () => {
           memberCount={pendingTitheListMembers?.length || 0}
           assemblyName={pendingTitheListAssembly || ""}
         />
-      )}
-      {isSaveFavoriteModalOpen && (
+      )
+    }
+    {
+      isSaveFavoriteModalOpen && (
         <Modal
           isOpen={isSaveFavoriteModalOpen}
           onClose={() => setIsSaveFavoriteModalOpen(false)}
@@ -1660,8 +1811,10 @@ const App: React.FC = () => {
             </Button>
           </div>
         </Modal>
-      )}
-      {isDeleteFavConfirmModalOpen && (
+      )
+    }
+    {
+      isDeleteFavConfirmModalOpen && (
         <Modal
           isOpen={isDeleteFavConfirmModalOpen}
           onClose={() => setIsDeleteFavConfirmModalOpen(false)}
@@ -1688,8 +1841,10 @@ const App: React.FC = () => {
             </Button>
           </div>
         </Modal>
-      )}
-      {selectedFavoriteForDetails && (
+      )
+    }
+    {
+      selectedFavoriteForDetails && (
         <Modal
           isOpen={isFavDetailsModalOpen}
           onClose={() => setIsFavDetailsModalOpen(false)}
@@ -1700,8 +1855,10 @@ const App: React.FC = () => {
             {JSON.stringify(selectedFavoriteForDetails, null, 2)}
           </pre>
         </Modal>
-      )}
-      {isAssemblySelectionModalOpen && pendingData && (
+      )
+    }
+    {
+      isAssemblySelectionModalOpen && pendingData && (
         <AssemblySelectionModal
           isOpen={isAssemblySelectionModalOpen}
           onClose={() => setIsAssemblySelectionModalOpen(false)}
@@ -1709,224 +1866,69 @@ const App: React.FC = () => {
           fileName={pendingData.fileName}
           suggestedAssembly={pendingData.suggestedAssembly}
         />
-      )}
-      {isReconciliationModalOpen && reconciliationReport && (
+      )
+    }
+    {
+      isReconciliationModalOpen && reconciliationReport && (
         <MembershipReconciliationModal
           isOpen={isReconciliationModalOpen}
           onClose={() => setIsReconciliationModalOpen(false)}
           report={reconciliationReport}
-          onKeepMembers={handleKeepReconciliationMembers}
         />
-      )}
-      {isClearWorkspaceModalOpen && (
+      )
+    }
+    {
+      isClearWorkspaceModalOpen && (
         <ClearWorkspaceModal
           isOpen={isClearWorkspaceModalOpen}
           onClose={() => setIsClearWorkspaceModalOpen(false)}
           onConfirm={handleConfirmClearWorkspace}
         />
-      )}
+      )
+    }
+    {
+      isUpdateConfirmModalOpen && pendingUpdate && (
+        <UpdateMasterListConfirmModal
+          isOpen={isUpdateConfirmModalOpen}
+          onClose={() => setIsUpdateConfirmModalOpen(false)}
+          onConfirm={() => {
+            handleMasterListUpdate(
+              pendingUpdate.assemblyName,
+              pendingUpdate.newData,
+              pendingUpdate.newFileName,
+            );
+            setIsUpdateConfirmModalOpen(false);
+          }}
+          existingData={memberDatabase[pendingUpdate.assemblyName]}
+          pendingUpdate={pendingUpdate}
+        />
+      )
+    }
+    {
+      isEditMemberModalOpen && memberToEdit && (
+        <EditMemberModal
+          isOpen={isEditMemberModalOpen}
+          onClose={() => setIsEditMemberModalOpen(false)}
+          onSave={handleEditMemberInDB}
+          memberData={memberToEdit.member}
+          assemblyName={memberToEdit.assemblyName}
+        />
+      )
+    }
+    {
+      isValidationModalOpen && (
+        <ValidationReportModal
+          isOpen={isValidationModalOpen}
+          onClose={() => setIsValidationModalOpen(false)}
+          reportContent={validationReportContent}
+          isLoading={isGeneratingReport}
+        />
+      )
+    }
 
-      {
-        isAmountEntryModalOpen && (
-          <AmountEntryModal
-            isOpen={isAmountEntryModalOpen}
-            onClose={() => setIsAmountEntryModalOpen(false)}
-            titheListData={titheListData}
-            onSave={handleSaveFromPreview}
-          />
-        )
-      }
-
-      {
-        isAddNewMemberModalOpen && (
-          <AddNewMemberModal
-            isOpen={isAddNewMemberModalOpen}
-            onClose={() => setIsAddNewMemberModalOpen(false)}
-            onConfirm={handleAddNewMemberToList}
-            onAddExistingMember={handleAddExistingMemberToList}
-            currentAssembly={currentAssembly}
-            memberDatabase={
-              currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
-            }
-            titheListData={titheListData}
-          />
-        )
-      }
-
-      {
-        isCreateTitheListModalOpen && (
-          <CreateTitheListModal
-            isOpen={isCreateTitheListModalOpen}
-            onClose={() => setIsCreateTitheListModalOpen(false)}
-            onConfirm={() => {
-              if (pendingTitheListMembers && pendingTitheListAssembly) {
-                handleCreateTitheListFromDB(
-                  pendingTitheListMembers,
-                  pendingTitheListAssembly,
-                );
-              }
-            }}
-            memberCount={pendingTitheListMembers?.length || 0}
-            assemblyName={pendingTitheListAssembly || ""}
-          />
-        )
-      }
-      {
-        isSaveFavoriteModalOpen && (
-          <Modal
-            isOpen={isSaveFavoriteModalOpen}
-            onClose={() => setIsSaveFavoriteModalOpen(false)}
-            title="Save Configuration to Favorites"
-            closeOnOutsideClick={false}
-          >
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="favName" className="form-label">
-                  Favorite Name
-                </label>
-                <input
-                  id="favName"
-                  type="text"
-                  value={favoriteNameInput}
-                  onChange={(e) => setFavoriteNameInput(e.target.value)}
-                  className="form-input-light w-full"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setIsSaveFavoriteModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSaveFavorite}
-                leftIcon={<Save size={16} />}
-              >
-                Save Favorite
-              </Button>
-            </div>
-          </Modal>
-        )
-      }
-      {
-        isDeleteFavConfirmModalOpen && (
-          <Modal
-            isOpen={isDeleteFavConfirmModalOpen}
-            onClose={() => setIsDeleteFavConfirmModalOpen(false)}
-            title="Delete Favorite?"
-            closeOnOutsideClick={false}
-          >
-            <p>
-              Are you sure you want to delete this favorite? This action cannot be
-              undone.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setIsDeleteFavConfirmModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={confirmDeleteFavorite}
-                leftIcon={<Trash2 size={16} />}
-              >
-                Delete
-              </Button>
-            </div>
-          </Modal>
-        )
-      }
-      {
-        selectedFavoriteForDetails && (
-          <Modal
-            isOpen={isFavDetailsModalOpen}
-            onClose={() => setIsFavDetailsModalOpen(false)}
-            title={`Details for "${selectedFavoriteForDetails.name}"`}
-            size="lg"
-          >
-            <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
-              {JSON.stringify(selectedFavoriteForDetails, null, 2)}
-            </pre>
-          </Modal>
-        )
-      }
-      {
-        isAssemblySelectionModalOpen && pendingData && (
-          <AssemblySelectionModal
-            isOpen={isAssemblySelectionModalOpen}
-            onClose={() => setIsAssemblySelectionModalOpen(false)}
-            onConfirm={handleConfirmAssemblySelection}
-            fileName={pendingData.fileName}
-            suggestedAssembly={pendingData.suggestedAssembly}
-          />
-        )
-      }
-      {
-        isReconciliationModalOpen && reconciliationReport && (
-          <MembershipReconciliationModal
-            isOpen={isReconciliationModalOpen}
-            onClose={() => setIsReconciliationModalOpen(false)}
-            report={reconciliationReport}
-          />
-        )
-      }
-      {
-        isClearWorkspaceModalOpen && (
-          <ClearWorkspaceModal
-            isOpen={isClearWorkspaceModalOpen}
-            onClose={() => setIsClearWorkspaceModalOpen(false)}
-            onConfirm={handleConfirmClearWorkspace}
-          />
-        )
-      }
-      {
-        isUpdateConfirmModalOpen && pendingUpdate && (
-          <UpdateMasterListConfirmModal
-            isOpen={isUpdateConfirmModalOpen}
-            onClose={() => setIsUpdateConfirmModalOpen(false)}
-            onConfirm={() => {
-              handleMasterListUpdate(
-                pendingUpdate.assemblyName,
-                pendingUpdate.newData,
-                pendingUpdate.newFileName,
-              );
-              setIsUpdateConfirmModalOpen(false);
-            }}
-            existingData={memberDatabase[pendingUpdate.assemblyName]}
-            pendingUpdate={pendingUpdate}
-          />
-        )
-      }
-      {
-        isEditMemberModalOpen && memberToEdit && (
-          <EditMemberModal
-            isOpen={isEditMemberModalOpen}
-            onClose={() => setIsEditMemberModalOpen(false)}
-            onSave={handleEditMemberInDB}
-            memberData={memberToEdit.member}
-            assemblyName={memberToEdit.assemblyName}
-          />
-        )
-      }
-      {
-        isValidationModalOpen && (
-          <ValidationReportModal
-            isOpen={isValidationModalOpen}
-            onClose={() => setIsValidationModalOpen(false)}
-            reportContent={validationReportContent}
-            isLoading={isGeneratingReport}
-          />
-        )
-      }
-
-      <ParsingIndicator isOpen={isParsing} />
-    </div >
-  );
+    <ParsingIndicator isOpen={isParsing} />
+  </div >
+);
 };
 
 export default App;

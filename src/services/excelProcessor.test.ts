@@ -199,6 +199,7 @@ describe("reconcileMembers", () => {
     const report = reconcileMembers(currentData, masterList);
     expect(report.changedMembers).toHaveLength(1);
     expect(report.changedMembers[0].memberId).toBe("1001");
+    expect(report.changedMembers[0].matchType).toBe("OldID");
   });
 
   it("should NOT match by Name (Same Name, Different ID) -> New Member", () => {

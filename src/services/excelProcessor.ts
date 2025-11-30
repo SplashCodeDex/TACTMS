@@ -318,11 +318,45 @@ export const reconcileMembers = (
       });
 
       if (changes.length > 0) {
+        // Determine match type
+        let matchType: 'ID' | 'OldID' = 'ID';
+        const currentId = getMemberId(newRecord);
+        if (!currentId) {
+          // If no current ID, but matched, must be via Old ID (or name fallback if we had it, but we don't anymore)
+          matchType = 'OldID';
+        } else {
+          // If Current ID exists, check if it matches Master's Current ID
+          const parts = currentId.split("|").map(p => p.trim()).filter(p => p);
+          const masterCurrentId = String(matchedMasterRecord["Membership Number"] || "").trim();
+          // Simple check: if new ID is in master's ID (or vice versa due to composite), it's an ID match.
+          // If not, it implies we matched via Old ID.
+          // A more robust way: capture how we matched in the matching loop.
+          // But since we know the logic:
+          // 1. Try Match by Current ID
+          // 2. Try Match by Old ID
+
+          // Let's rely on the fact that if newCurrentId matches master, it's 'ID'.
+          // If newCurrentId DOES NOT match master, but we have a match, it MUST be 'OldID'.
+
+          let isIdMatch = false;
+          if (masterCurrentId) {
+            const masterParts = masterCurrentId.split("|").map(p => p.trim());
+            if (parts.some(p => masterParts.includes(p))) {
+              isIdMatch = true;
+            }
+          }
+
+          if (!isIdMatch) {
+            matchType = 'OldID';
+          }
+        }
+
         changedMembers.push({
           memberId: masterId,
           oldRecord: matchedMasterRecord,
           newRecord: newRecord,
           changes,
+          matchType,
         });
       }
     } else {

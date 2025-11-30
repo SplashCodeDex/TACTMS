@@ -99,6 +99,11 @@ const ChangedMembersList: React.FC<{
               >
                 <p className="font-medium text-[var(--text-primary)] truncate" title={name}>
                   {name}
+                  {item.matchType === 'OldID' && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      Linked via Old ID
+                    </span>
+                  )}
                 </p>
                 <div className="text-xs text-[var(--text-muted)] mt-1 space-y-1">
                   {item.changes.map((change, i) => (
