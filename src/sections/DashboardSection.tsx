@@ -273,9 +273,9 @@ const DashboardSection: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <motion.section
           variants={itemVariants}
-          className="lg:col-span-2 content-card space-y-6"
+          className="lg:col-span-2 content-card flex flex-col h-full gap-6"
         >
-          <h2 className="section-heading">
+          <h2 className="section-heading mb-0 pb-3 border-b border-[var(--border-color)]">
             <ListPlus size={22} className="mr-3 icon-primary" />
             Quick Actions
           </h2>
@@ -356,7 +356,7 @@ const DashboardSection: React.FC = () => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`mt-6 p-8 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center space-y-3 ${isDragOver
+            className={`p-8 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center space-y-3 flex-grow ${isDragOver
               ? "border-[var(--primary-accent-start)] bg-[var(--primary-accent-start)]/10"
               : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-subtle-accent)]"
               }`}
