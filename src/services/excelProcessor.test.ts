@@ -2,7 +2,7 @@
 import { formatDateDDMMMYYYY, createTitheList, filterMembersByAge, reconcileMembers, exportToExcel } from "./excelProcessor";
 import { parseExcelFile } from "../lib/excelUtils";
 import { MemberRecordA, ConcatenationConfig, TitheRecordB } from "../types";
-import * as XLSX from "xlsx"; // Import XLSX to use vi.mocked
+import * as XLSX from "xlsx";
 
 vi.mock("xlsx", () => ({
   read: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("xlsx", () => ({
     json_to_sheet: vi.fn(() => ({})),
     book_append_sheet: vi.fn(),
   },
-  writeFile: vi.fn(), // Used by exportToExcel
+  writeFile: vi.fn(),
 }));
 
 describe("formatDateDDMMMYYYY", () => {
@@ -47,7 +47,6 @@ describe("createTitheList", () => {
     Surname: true,
     "Other Names": true,
     "Membership Number": true,
-    // "Old Membership Number": true, // This was likely for a legacy feature to include old membership numbers in the concatenated name. It has been removed from the type definition.
   };
 
   const selectedDate = new Date(2025, 7, 15);
@@ -97,10 +96,10 @@ describe("filterMembersByAge", () => {
     { "No.": 5, "First Name": "Eve", Age: "15 years" },
     { "No.": 6, "First Name": "Frank", Age: "60 years" },
     { "No.": 7, "First Name": "Grace", Age: "20 years" },
-    { "No.": 8, "First Name": "Heidi", Age: "30 years 5 months" }, // Test with more complex age string
-    { "No.": 9, "First Name": "Ivan", Age: "Unknown" }, // Test with non-numeric age
-    { "No.": 10, "First Name": "Judy", Age: "Age: 28" }, // New format
-    { "No.": 11, "First Name": "Kevin", Age: "32yrs" }, // New format
+    { "No.": 8, "First Name": "Heidi", Age: "30 years 5 months" },
+    { "No.": 9, "First Name": "Ivan", Age: "Unknown" },
+    { "No.": 10, "First Name": "Judy", Age: "Age: 28" },
+    { "No.": 11, "First Name": "Kevin", Age: "32yrs" },
   ];
 
   it("should return all members if no age range is specified", () => {
@@ -110,7 +109,7 @@ describe("filterMembersByAge", () => {
 
   it("should filter members by minimum age", () => {
     const filtered = filterMembersByAge(members, 25);
-    expect(filtered).toHaveLength(7); // Alice, Bob, David, Frank, Heidi, Judy, Kevin
+    expect(filtered).toHaveLength(7);
     expect(filtered.map((m) => m["First Name"])).toEqual(
       expect.arrayContaining(["Alice", "Bob", "David", "Frank", "Heidi", "Judy", "Kevin"]),
     );
@@ -118,7 +117,7 @@ describe("filterMembersByAge", () => {
 
   it("should filter members by maximum age", () => {
     const filtered = filterMembersByAge(members, undefined, 30);
-    expect(filtered).toHaveLength(7); // Alice, Bob, Charlie, Eve, Grace, Heidi, Judy
+    expect(filtered).toHaveLength(7);
     expect(filtered.map((m) => m["First Name"])).toEqual(
       expect.arrayContaining(["Alice", "Bob", "Charlie", "Eve", "Grace", "Heidi", "Judy"]),
     );
@@ -126,7 +125,7 @@ describe("filterMembersByAge", () => {
 
   it("should filter members by both minimum and maximum age", () => {
     const filtered = filterMembersByAge(members, 20, 40);
-    expect(filtered).toHaveLength(7); // Alice, Bob, David, Grace, Heidi, Judy, Kevin
+    expect(filtered).toHaveLength(7);
     expect(filtered.map((m) => m["First Name"])).toEqual(
       expect.arrayContaining(["Alice", "Bob", "David", "Grace", "Heidi", "Judy", "Kevin"]),
     );
@@ -134,7 +133,7 @@ describe("filterMembersByAge", () => {
 
   it("should handle members with complex age strings", () => {
     const filtered = filterMembersByAge(members, 28, 35);
-    expect(filtered).toHaveLength(4); // Bob, Heidi, Judy, Kevin
+    expect(filtered).toHaveLength(4);
     expect(filtered.map((m) => m["First Name"])).toEqual(
       expect.arrayContaining(["Bob", "Heidi", "Judy", "Kevin"]),
     );
@@ -142,7 +141,7 @@ describe("filterMembersByAge", () => {
 
   it("should exclude members with non-numeric age strings", () => {
     const filtered = filterMembersByAge(members, 1, 100);
-    expect(filtered).toHaveLength(10); // All except Ivan
+    expect(filtered).toHaveLength(10);
     expect(filtered.map((m) => m["First Name"])).not.toContain("Ivan");
   });
 
@@ -164,7 +163,7 @@ describe("reconcileMembers", () => {
     { "No.": 3, "First Name": "Peter", Surname: "Jones", "Membership Number": "1003" },
   ];
 
-  it("should identify new members when they are not in the master list", () => {
+  it("should identify new members when they are not in the master list (ID mismatch)", () => {
     const currentData: MemberRecordA[] = [
       ...masterList,
       { "No.": 4, "First Name": "Alice", Surname: "Brown", "Membership Number": "1004" },
@@ -174,20 +173,68 @@ describe("reconcileMembers", () => {
     expect(report.newMembers[0]["First Name"]).toBe("Alice");
   });
 
-  it("should identify both new and missing members (only new reported)", () => {
+  it("should match by ID (Direct Match)", () => {
     const currentData: MemberRecordA[] = [
-      { "No.": 1, "First Name": "John", Surname: "Doe", "Membership Number": "1001" },
-      { "No.": 4, "First Name": "Alice", Surname: "Brown", "Membership Number": "1004" },
+      { "No.": 1, "First Name": "John", Surname: "Doe Updated", "Membership Number": "1001" },
     ];
     const report = reconcileMembers(currentData, masterList);
+    expect(report.changedMembers).toHaveLength(1);
+    expect(report.changedMembers[0].memberId).toBe("1001");
+    expect(report.changedMembers[0].changes).toContainEqual(
+      expect.objectContaining({ field: "Surname", newValue: "Doe Updated" })
+    );
+  });
+
+  it("should match by Old ID (ID Change)", () => {
+    // Master has ID "1001". New Record has ID "NEW_1001" but Old ID "1001".
+    const currentData: MemberRecordA[] = [
+      {
+        "No.": 1,
+        "First Name": "John",
+        "Surname": "Doe",
+        "Membership Number": "NEW_1001",
+        "Old Membership Number": "1001"
+      },
+    ];
+    const report = reconcileMembers(currentData, masterList);
+    expect(report.changedMembers).toHaveLength(1);
+    expect(report.changedMembers[0].memberId).toBe("1001");
+  });
+
+  it("should NOT match by Name (Same Name, Different ID) -> New Member", () => {
+    // "Twin" scenario
+    const currentData: MemberRecordA[] = [
+      { "No.": 1, "First Name": "John", Surname: "Doe", "Membership Number": "9999" }, // Different ID
+    ];
+    const report = reconcileMembers(currentData, masterList);
+
+    // Should NOT match John Doe (1001)
+    expect(report.changedMembers).toHaveLength(0);
     expect(report.newMembers).toHaveLength(1);
-    expect(report.newMembers[0]["First Name"]).toBe("Alice");
+    expect(report.newMembers[0]["Membership Number"]).toBe("9999");
+  });
+
+  it("should handle composite IDs correctly", () => {
+    const masterWithComposite: MemberRecordA[] = [
+      { "First Name": "Comp", Surname: "Osite", "Membership Number": "A|B" }
+    ];
+
+    // Match by part A
+    const inputA: MemberRecordA[] = [{ "First Name": "Comp", Surname: "Osite", "Membership Number": "A" }];
+    const reportA = reconcileMembers(inputA, masterWithComposite);
+    expect(reportA.changedMembers).toHaveLength(1);
+
+    // Match by part B
+    const inputB: MemberRecordA[] = [{ "First Name": "Comp", Surname: "Osite", "Membership Number": "B" }];
+    const reportB = reconcileMembers(inputB, masterWithComposite);
+    expect(reportB.changedMembers).toHaveLength(1);
   });
 
   it("should return empty arrays if no changes", () => {
     const currentData: MemberRecordA[] = [...masterList];
     const report = reconcileMembers(currentData, masterList);
     expect(report.newMembers).toHaveLength(0);
+    expect(report.changedMembers).toHaveLength(0);
   });
 
   it("should handle empty current data", () => {
@@ -203,59 +250,16 @@ describe("reconcileMembers", () => {
     const report = reconcileMembers(currentData, []);
     expect(report.newMembers).toHaveLength(1);
   });
-
-  it("should use 'Membership Number' for reconciliation if available", () => {
-    const masterListWithMembershipNumber: MemberRecordA[] = [
-      { "First Name": "John", Surname: "Doe", "Membership Number": "MN001" },
-    ];
-    const currentDataWithMembershipNumber: MemberRecordA[] = [
-      { "First Name": "John", Surname: "Doe", "Membership Number": "MN001" },
-      { "First Name": "Jane", Surname: "Smith", "Membership Number": "MN002" },
-    ];
-    const report = reconcileMembers(currentDataWithMembershipNumber, masterListWithMembershipNumber);
-    expect(report.newMembers).toHaveLength(1);
-    expect(report.newMembers[0]["Membership Number"]).toBe("MN002");
-  });
-
-  it("should use 'First Name' and 'Surname' for reconciliation if 'Membership Number' is not available", () => {
-    const masterListWithoutMembershipNumber: MemberRecordA[] = [
-      { "First Name": "John", Surname: "Doe" },
-    ];
-    const currentDataWithoutMembershipNumber: MemberRecordA[] = [
-      { "First Name": "John", Surname: "Doe" },
-      { "First Name": "Jane", Surname: "Smith" },
-    ];
-    const report = reconcileMembers(currentDataWithoutMembershipNumber, masterListWithoutMembershipNumber);
-    expect(report.newMembers[0]["First Name"]).toBe("Jane");
-  });
-
-  it("should NOT generate an ID if names are too short (prevent false positives)", () => {
-    const masterListShortNames: MemberRecordA[] = [
-      { "First Name": "J", Surname: "D" },
-    ];
-    const currentDataShortNames: MemberRecordA[] = [
-      { "First Name": "J", Surname: "D" },
-    ];
-    // Since no ID is generated, they are treated as "unidentifiable" and thus "new" (or handled separately depending on logic, but definitely not matched)
-    // Actually, unidentifiable members are pushed to unidentifiable lists, not new/missing directly in the main return if they can't be mapped.
-    // Let's check unidentifiable lists.
-    const report = reconcileMembers(currentDataShortNames, masterListShortNames);
-    expect(report.unidentifiableNewMembers).toHaveLength(1);
-    expect(report.unidentifiableMasterMembers).toHaveLength(1);
-    expect(report.newMembers).toHaveLength(0);
-  });
 });
 
 describe("parseExcelFile", () => {
-  // Mock FileReader
   class MockFileReader {
     onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
     onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => any) | null = null;
     result: ArrayBuffer | string | null = null;
     readAsArrayBuffer(_blob: Blob) {
-      // Simulate async read
       setTimeout(() => {
-        this.result = new ArrayBuffer(8); // Dummy buffer
+        this.result = new ArrayBuffer(8);
         if (this.onload) {
           const mockEvent = {
             target: { result: this.result },
@@ -265,9 +269,8 @@ describe("parseExcelFile", () => {
       }, 100);
     }
     readAsBinaryString(_file: File) {
-      // Simulate async read for binary string
       setTimeout(() => {
-        this.result = "dummy binary string"; // Dummy binary string
+        this.result = "dummy binary string";
         if (this.onload) {
           const mockEvent = {
             target: { result: this.result },
@@ -278,16 +281,13 @@ describe("parseExcelFile", () => {
     }
   }
 
-  // Mock File object
   const mockFile = new File(["dummy content"], "test.xlsx", {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
   beforeEach(() => {
     vi.resetAllMocks();
-    // Mock global FileReader
     vi.stubGlobal("FileReader", MockFileReader);
-    // Reset mocks for xlsx
     vi.mocked(XLSX.read).mockClear();
     vi.mocked(XLSX.utils.sheet_to_json).mockClear();
   });
@@ -315,7 +315,7 @@ describe("parseExcelFile", () => {
   });
 
   it("should throw an error if no sheets are found", async () => {
-    vi.mocked(XLSX.read).mockReturnValueOnce({ SheetNames: [], Sheets: {} }); // No sheets
+    vi.mocked(XLSX.read).mockReturnValueOnce({ SheetNames: [], Sheets: {} });
 
     await expect(parseExcelFile(mockFile)).rejects.toThrow("No sheets found in the Excel file.");
   });

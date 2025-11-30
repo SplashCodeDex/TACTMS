@@ -162,30 +162,25 @@ export const reconcileMembers = (
 ): Omit<MembershipReconciliationReport, "previousFileDate"> => {
   // Helper to get ID (Membership Number) - handles "Name (ID)" extraction
   const getMemberId = (m: MemberRecordA) => {
-    const rawVal = String(m["Membership Number"] || m["Old Membership Number"] || "");
+    const rawVal = String(m["Membership Number"] || "").trim();
     return parseMemberId(rawVal);
   };
-  // Helper to get Name Key (Surname + First Name)
-  const getNameKey = (m: MemberRecordA) => {
-    const s = (m.Surname || "").trim().toLowerCase();
-    const f = (m["First Name"] || "").trim().toLowerCase();
-    if (!s && !f) return "";
-    return `${s}|${f}`;
+
+  const getOldMemberId = (m: MemberRecordA) => {
+    const rawVal = String(m["Old Membership Number"] || "").trim();
+    return parseMemberId(rawVal);
   };
 
   const newMembers: MemberRecordA[] = [];
-
   const changedMembers: ChangedMemberDetail[] = [];
   const unidentifiableNewMembers: MemberRecordA[] = [];
   const unidentifiableMasterMembers: MemberRecordA[] = [];
 
   // Track which master records have been matched (by their primary ID AND reference)
-  const matchedMasterIds = new Set<string>();
   const matchedMasterRecords = new Set<MemberRecordA>();
 
-  // 1. Index Master Data
+  // 1. Index Master Data by Current ID and Old ID
   const masterById = new Map<string, MemberRecordA>();
-  const masterByName = new Map<string, MemberRecordA[]>();
   let maxCustomOrder = 0;
 
   masterData.forEach((m) => {
@@ -193,26 +188,32 @@ export const reconcileMembers = (
       maxCustomOrder = m.customOrder;
     }
 
-    const id = getMemberId(m);
-    if (id) {
-      const parts = id.split("|").map(p => p.trim()).filter(p => p);
+    const currentId = getMemberId(m);
+    const oldId = getOldMemberId(m);
+
+    // Index by Current ID
+    if (currentId) {
+      // Handle composite IDs if any (though usually strictly one ID per field)
+      const parts = currentId.split("|").map(p => p.trim()).filter(p => p);
       parts.forEach(part => {
         if (!masterById.has(part)) {
           masterById.set(part, m);
         }
       });
-    } else {
-      if (!getNameKey(m)) {
-        unidentifiableMasterMembers.push(m);
-      }
     }
 
-    const nameKey = getNameKey(m);
-    if (nameKey) {
-      if (!masterByName.has(nameKey)) {
-        masterByName.set(nameKey, []);
-      }
-      masterByName.get(nameKey)!.push(m);
+    // Index by Old ID (for linking history)
+    if (oldId) {
+      const parts = oldId.split("|").map(p => p.trim()).filter(p => p);
+      parts.forEach(part => {
+        if (!masterById.has(part)) {
+          masterById.set(part, m);
+        }
+      });
+    }
+
+    if (!currentId && !oldId) {
+      unidentifiableMasterMembers.push(m);
     }
   });
 
@@ -220,38 +221,45 @@ export const reconcileMembers = (
 
   // 2. Process New Data
   newData.forEach((newRecord) => {
-    const rawId = getMemberId(newRecord); // Can be "ID" or "ID|OldID"
-    const newNameKey = getNameKey(newRecord);
+    const newCurrentId = getMemberId(newRecord);
+    const newOldId = getOldMemberId(newRecord);
+
     let matchedMasterRecord: MemberRecordA | undefined;
 
-    // PASS 1: Match by ID (Composite aware)
-    if (rawId) {
-      const parts = rawId.split("|").map(p => p.trim()).filter(p => p);
+    // SMART ID MATCHING STRATEGY
+    // Check 1: Does New.CurrentID match any Master Record?
+    if (newCurrentId) {
+      const parts = newCurrentId.split("|").map(p => p.trim()).filter(p => p);
       for (const part of parts) {
         if (masterById.has(part)) {
-          const candidate = masterById.get(part);
-          // Ensure we haven't already matched this specific record reference
-          // (Edge case: multiple IDs pointing to same record, or ID collision)
-          if (candidate && !matchedMasterRecords.has(candidate)) {
-            matchedMasterRecord = candidate;
-            break; // Found a match
-          }
+          matchedMasterRecord = masterById.get(part);
+          break;
         }
       }
     }
 
-    // PASS 2: Match by Name (if no ID match found)
-    if (!matchedMasterRecord && newNameKey && masterByName.has(newNameKey)) {
-      const candidates = masterByName.get(newNameKey)!;
-      // Find a candidate that hasn't been matched yet
-      matchedMasterRecord = candidates.find(c => !matchedMasterRecords.has(c));
+    // Check 2: Does New.OldID match any Master Record? (If not already matched)
+    if (!matchedMasterRecord && newOldId) {
+      const parts = newOldId.split("|").map(p => p.trim()).filter(p => p);
+      for (const part of parts) {
+        if (masterById.has(part)) {
+          matchedMasterRecord = masterById.get(part);
+          break;
+        }
+      }
+    }
+
+    // Ensure we haven't already matched this specific master record (prevent double matching)
+    if (matchedMasterRecord && matchedMasterRecords.has(matchedMasterRecord)) {
+      // If this master record is already matched, we treat this as a NEW member (or a duplicate in the upload file).
+      // For safety, we treat it as NEW to avoid overwriting the previous match.
+      matchedMasterRecord = undefined;
     }
 
     if (matchedMasterRecord) {
       // Mark as matched
       matchedMasterRecords.add(matchedMasterRecord);
       const masterId = String(matchedMasterRecord["Membership Number"] || "").trim();
-      if (masterId) matchedMasterIds.add(masterId);
 
       // Check for changes
       const changes: { field: string; oldValue: any; newValue: any }[] = [];
@@ -293,6 +301,8 @@ export const reconcileMembers = (
         "Water Baptism? (Yes/No)",
         "Right Hand of Fellowship? (Yes/No)",
         "Salaried Staff Ministers (SSNIT Number)",
+        "Membership Number",
+        "Old Membership Number",
       ];
 
       fieldsToCheck.forEach((field) => {
@@ -317,7 +327,7 @@ export const reconcileMembers = (
       }
     } else {
       // No match found -> New Member
-      if (!rawId && !newNameKey) {
+      if (!newCurrentId && !newOldId) {
         unidentifiableNewMembers.push(newRecord);
       } else {
         newMembers.push({ ...newRecord, customOrder: newMemberOrder++ });
