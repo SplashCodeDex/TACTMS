@@ -125,6 +125,16 @@ export interface ChangedMemberDetail {
   oldRecord: MemberRecordA;
   newRecord: MemberRecordA;
   changes: { field: string; oldValue: any; newValue: any }[];
+}
+
+export interface MembershipReconciliationReport {
+  newMembers: MemberRecordA[];
+  changedMembers: ChangedMemberDetail[];
+  unidentifiableNewMembers: MemberRecordA[];
+  unidentifiableMasterMembers: MemberRecordA[];
+  previousFileDate: string;
+}
+export type AppView =
   | "analytics"
   | "reports"
   | "database";

@@ -174,7 +174,7 @@ export const reconcileMembers = (
   };
 
   const newMembers: MemberRecordA[] = [];
-  const missingMembers: MemberRecordA[] = [];
+
   const changedMembers: ChangedMemberDetail[] = [];
   const unidentifiableNewMembers: MemberRecordA[] = [];
   const unidentifiableMasterMembers: MemberRecordA[] = [];
@@ -264,9 +264,35 @@ export const reconcileMembers = (
         "Marital Status",
         "Type of Marriage",
         "Age",
+        "Place of Birth",
+        "Hometown",
+        "Hometown Region",
+        "Nationality",
+        "Email",
         "Phone Number",
         "Whatsapp Number",
-        // Add other fields as needed
+        "Other Phone Numbers",
+        "Postal Address",
+        "Residential Address",
+        "Zip Code",
+        "Digital Address",
+        "Baptized By",
+        "Place of Baptism",
+        "Date of Baptism (DD-MMM-YYYY)",
+        "Previous Denomination",
+        "Languages Spoken",
+        "Spiritual Gifts",
+        "Level of Education",
+        "Course Studied",
+        "Type of Employment",
+        "Place of Work",
+        "Profession/Occupation",
+        "Is Communicant? (Yes/No)",
+        "Any Spiritual Gifts? (Yes/No)",
+        "Holy Spirit Baptism? (Yes/No)",
+        "Water Baptism? (Yes/No)",
+        "Right Hand of Fellowship? (Yes/No)",
+        "Salaried Staff Ministers (SSNIT Number)",
       ];
 
       fieldsToCheck.forEach((field) => {
