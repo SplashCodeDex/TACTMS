@@ -143,9 +143,15 @@ export interface MembershipReconciliationReport {
   previousFileDate: string;
 }
 export type AppView =
-  | "analytics"
+  | "dashboard"
+  | "processor"
+  | "database"
+  | "favorites"
   | "reports"
-  | "database";
+  | "analytics"
+  | "settings";
+
+export type ViewType = AppView;
 
 // New types for Member Database
 export interface MasterListData {

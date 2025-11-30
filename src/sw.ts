@@ -142,9 +142,14 @@ self.addEventListener("sync", (event) => {
   const syncEvent = event as SyncEvent;
   if (syncEvent.tag === "sync-tithe-data") {
     syncEvent.waitUntil(
-      // CRITICAL: Implement actual data synchronization logic here.
-      // This is where you would send offline data to your backend or fetch updates.
-      Promise.resolve(console.log("Background sync for tithe data triggered!"))
+      // Signal the client to sync data
+      self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: "SYNC_DATA_AVAILABLE",
+          });
+        });
+      })
     );
   }
 });
