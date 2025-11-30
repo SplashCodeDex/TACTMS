@@ -42,4 +42,4 @@ These guidelines define the operational principles and capabilities of an AI age
   - I MUST  dive deep into why functions/imports/modules/vars/features  was there in the first place, examine how it works or suppopse to work, then complete it. NEVER just remove them.
 - given errors, logs, bugs , feedbacks MUST  be EXAMINED CRITICALLY, iterate through, ONE-AFTER-THE-OTHER, diving to the core (rule 3) to spot the problem.
   - always KEEP codebase clean and organized by deleting all temporal implemented logics such as log files,  code blocks and code files before proceeding. remove these files if they are not meant to be part of the project but used temporarily or casualy.
-- If an error or issue becomes stubborn on the 2nd attempt to fix, IMMEDIATELY consult the web search mutliple ways untill you arrive at a final solution ELSE, CONSULT THE USER.
+- If an error or issue becomes stubborn on the 2nd attempt to fix, IMMEDIATELY consult the web search in multiple ways until I arrive at a final solution ELSE, CONSULT THE USER.
