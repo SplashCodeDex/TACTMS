@@ -48,7 +48,27 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     }
   };
 
-  return { isGeneratingReport, validationReportContent, generateValidationReport };
+  const analyzeImage = async (imageFile: File): Promise<TitheRecordB[] | null> => {
+    if (!apiKey) {
+      addToast('AI features are not configured. Please contact support.', 'error');
+      return null;
+    }
+
+    setIsGeneratingReport(true); // Reuse loading state or add a new one
+    try {
+      const { processTitheImage } = await import('../services/imageProcessor');
+      const data = await processTitheImage(imageFile, apiKey);
+      return data;
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      addToast('Failed to analyze image. Please try again.', 'error');
+      return null;
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  return { isGeneratingReport, validationReportContent, generateValidationReport, analyzeImage };
 };
 
 export const useGeminiChat = () => {
@@ -94,15 +114,15 @@ export const useGeminiChat = () => {
           generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
-                          type: SchemaType.OBJECT,
-                          properties: {
-                            summary: { type: SchemaType.STRING, description: "A summary of the tithe data and key observations." },
-                            chartData: { type: SchemaType.ARRAY, description: "An array of objects for a chart showing the distribution of tithe amounts.", items: { type: SchemaType.OBJECT, properties: { label: { type: SchemaType.STRING }, count: { type: SchemaType.NUMBER } } } },
-                          },
-                          required: ["summary", "chartData"],
-                        },
-                      },
-                    });        const response = await result.response;
+              type: SchemaType.OBJECT,
+              properties: {
+                summary: { type: SchemaType.STRING, description: "A summary of the tithe data and key observations." },
+                chartData: { type: SchemaType.ARRAY, description: "An array of objects for a chart showing the distribution of tithe amounts.", items: { type: SchemaType.OBJECT, properties: { label: { type: SchemaType.STRING }, count: { type: SchemaType.NUMBER } } } },
+              },
+              required: ["summary", "chartData"],
+            },
+          },
+        }); const response = await result.response;
         const text = response.text();
 
         const jsonResponse = JSON.parse(text);
@@ -134,7 +154,7 @@ export const useGeminiChat = () => {
       try {
         const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
         const model = ai.getGenerativeModel({ model: "gemini-pro" });
-        
+
         const chat = model.startChat({
           history: updatedChatHistory
             .filter(msg => msg.role !== 'user' || msg.parts[0].text.trim() !== '') // Filter out empty user messages

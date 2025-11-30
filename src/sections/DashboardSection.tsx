@@ -9,6 +9,7 @@ import {
   UploadCloud,
   Building2,
   User,
+  Camera,
 } from "lucide-react";
 import {
   Select,
@@ -41,6 +42,7 @@ interface DashboardSectionProps {
   onStartNewWeek: (assemblyName: string) => void;
   userProfile: GoogleUserProfile | null;
   onUploadFile: (file: File | null, isMasterList: boolean) => void;
+  onScanImage: (file: File) => void;
 }
 
 const DashboardSection: React.FC = () => {
@@ -50,9 +52,11 @@ const DashboardSection: React.FC = () => {
     onStartNewWeek,
     onUploadFile,
     userProfile,
+    onScanImage,
   } = useOutletContext<DashboardSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -181,6 +185,18 @@ const DashboardSection: React.FC = () => {
     const file = event.target.files?.[0] || null;
     if (onUploadFile) {
       onUploadFile(file, false);
+    }
+    if (event.target) event.target.value = "";
+  };
+
+  const handleScanClick = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleImageUploadChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    if (file && onScanImage) {
+      onScanImage(file);
     }
     if (event.target) event.target.value = "";
   };
@@ -347,6 +363,42 @@ const DashboardSection: React.FC = () => {
                 className="hidden"
                 accept=".xlsx,.xls"
                 onChange={handleFileChange}
+              />
+            </div>
+
+            <div className="p-6 bg-gradient-to-br from-[var(--bg-elevated)] to-blue-50/50 dark:to-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800 text-left space-y-4 flex flex-col justify-center relative overflow-hidden group hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300">
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
+                <Camera size={100} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-[var(--text-primary)]">
+                    Scan Tithe Book (AI)
+                  </h3>
+                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 rounded-full">
+                    New
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)] mb-4">
+                  Upload an image of a tithe book page to auto-extract data.
+                </p>
+                <Button
+                  onClick={handleScanClick}
+                  fullWidth
+                  variant="primary"
+                  size="lg"
+                  leftIcon={<Camera size={18} />}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-none shadow-md hover:shadow-xl transition-all duration-300"
+                >
+                  Scan Image
+                </Button>
+              </div>
+              <input
+                type="file"
+                ref={imageInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageUploadChange}
               />
             </div>
           </div>
