@@ -31,3 +31,6 @@ dev-dist/
 
 # Environment variables
 .env
+
+# Test output
+test_output*.txt

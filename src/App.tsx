@@ -24,25 +24,6 @@ import Modal from "./components/Modal";
 import {
   createTitheList,
   exportToExcel,
-  filterMembersByAge,
-  formatDateDDMMMYYYY,
-  reconcileMembers,
-} from "./services/excelProcessor";
-import { parseExcelFile } from "./lib/excelUtils";
-import FullTithePreviewModal from "./components/FullTithePreviewModal";
-import AddNewMemberModal from "./components/AddNewMemberModal";
-import CreateTitheListModal from "./components/CreateTitheListModal";
-
-import { Save, Trash2, WifiOff } from "lucide-react";
-import { pushAnalyticsEvent } from "./services/offline-analytics";
-
-import { useGemini } from "./hooks/useGemini";
-
-import Sidebar from "./components/Sidebar";
-import { useGoogleDriveSync } from "./hooks/useGoogleDriveSync";
-import { usePWAFeatures } from "./hooks/usePWAFeatures";
-
-import {
   DEFAULT_CONCAT_CONFIG,
   AUTO_SAVE_KEY,
   AUTO_SAVE_DEBOUNCE_TIME,
@@ -598,7 +579,7 @@ const App: React.FC = () => {
           });
   setIsAssemblySelectionModalOpen(true);
 }
-      } catch (e: any) {
+} catch (e: any) {
   const errorMessage =
     e.message || "An unknown error occurred during parsing.";
   addToast(`Error parsing file: ${errorMessage}`, "error", 5000);
