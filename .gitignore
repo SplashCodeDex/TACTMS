@@ -34,3 +34,4 @@ dev-dist/
 
 # Test output
 test_output*.txt
+build_errors*.txt

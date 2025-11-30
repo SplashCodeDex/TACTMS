@@ -2,20 +2,7 @@ import { useEffect, useState } from "react";
 
 import { ToastMessage, ToastAction } from "../components/Toast";
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 export const usePWAFeatures = (
   addToast: (
@@ -81,7 +68,7 @@ export const usePWAFeatures = (
           badge: "/img/android/android-launchericon-96-96.png",
           tag: "tactms-notification",
           vibrate: [200, 100, 200],
-        });
+        } as any);
       } catch (error) {
         console.error("Failed to show notification:", error);
       }
