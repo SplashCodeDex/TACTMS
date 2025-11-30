@@ -31,3 +31,5 @@ dev-dist/
 
 # Environment variables
 .env
+build_errors*.txt
+test_output*.txt
