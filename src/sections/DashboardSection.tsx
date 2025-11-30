@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -10,6 +10,10 @@ import {
   Building2,
   User,
   Camera,
+  Sparkles,
+  ArrowRight,
+  FilePlus,
+  Upload
 } from "lucide-react";
 import {
   Select,
@@ -34,6 +38,8 @@ import { ASSEMBLIES } from "../constants";
 import { formatDateDDMMMYYYY } from "../services/excelProcessor";
 import { useOutletContext } from "react-router-dom";
 import BarChart from "../components/BarChart";
+import ChatInterface from "../components/ChatInterface";
+import { useGeminiChat } from "../hooks/useGemini";
 
 interface DashboardSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -58,6 +64,32 @@ const DashboardSection: React.FC = () => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Chat Integration
+  const {
+    chatHistory,
+    chartData,
+    isLoading: isChatLoading,
+    error: chatError,
+    initializeChat,
+    sendMessage
+  } = useGeminiChat(import.meta.env.VITE_API_KEY);
+
+  // Initialize chat with latest data when available
+  useEffect(() => {
+    if (transactionLog.length > 0 || Object.keys(memberDatabase).length > 0) {
+      // Get the most recent tithe list from logs if available, or empty
+      const latestLog = transactionLog.length > 0
+        ? transactionLog.sort((a, b) => b.timestamp - a.timestamp)[0]
+        : null;
+
+      const currentTitheData = latestLog ? latestLog.titheListData : [];
+      const currentAssembly = latestLog ? latestLog.assemblyName : "General";
+
+      initializeChat(currentTitheData, memberDatabase, currentAssembly);
+    }
+  }, [transactionLog, memberDatabase, initializeChat]);
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -295,16 +327,25 @@ const DashboardSection: React.FC = () => {
             <ListPlus size={22} className="mr-3 icon-primary" />
             Quick Actions
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="p-6 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-color)] text-left space-y-4">
-              <h3 className="font-semibold text-[var(--text-primary)]">
-                Start New Weekly List
-              </h3>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Load the latest tithe list for an assembly.
-              </p>
-              <div className="flex items-end gap-3">
-                <div className="flex-grow">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Start New Weekly List Card */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="glassmorphism-card p-6 rounded-2xl border border-[var(--border-color)] shadow-sm hover:shadow-md transition-all group cursor-pointer relative overflow-hidden"
+              onClick={handleStartWeek}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <FilePlus size={80} className="text-blue-500" />
+              </div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform duration-300">
+                  <FilePlus size={24} />
+                </div>
+                <h3 className="text-lg font-semibold mb-2 text-[var(--text-primary)]">Start New Weekly List</h3>
+                <p className="text-sm text-[var(--text-secondary)] mb-6">
+                  Create a fresh tithe list for the current week.
+                </p>
+                <div className="space-y-2">
                   <Select
                     value={selectedAssembly}
                     onValueChange={setSelectedAssembly}
@@ -331,84 +372,62 @@ const DashboardSection: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Button variant="primary" className="w-full group-hover:shadow-lg transition-all" onClick={handleStartWeek} disabled={!selectedAssembly}>
+                    Create List <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
                 </div>
-                <Button
-                  onClick={handleStartWeek}
-                  disabled={!selectedAssembly}
-                  leftIcon={<Building2 size={16} />}
-                >
-                  Start
-                </Button>
               </div>
-            </div>
-            <div className="p-6 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-color)] text-left space-y-4 flex flex-col justify-center">
-              <h3 className="font-semibold text-[var(--text-primary)]">
-                Upload a New List File
-              </h3>
-              <p className="text-sm text-[var(--text-secondary)]">
-                If you have a new file to process from an assembly.
-              </p>
-              <Button
-                onClick={handleUploadClick}
-                fullWidth
-                variant="secondary"
-                size="lg"
-                leftIcon={<UploadCloud size={18} />}
-              >
-                Upload Excel File
-              </Button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept=".xlsx,.xls"
-                onChange={handleFileChange}
-              />
-            </div>
+            </motion.div>
 
-            <div className="p-6 bg-gradient-to-br from-[var(--bg-elevated)] to-blue-50/50 dark:to-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800 text-left space-y-4 flex flex-col justify-center relative overflow-hidden group hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300">
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-                <Camera size={100} className="text-blue-600 dark:text-blue-400" />
+
+
+            {/* Scan Tithe Book (AI) Card */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="relative p-6 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-sm hover:shadow-md transition-all group cursor-pointer overflow-hidden"
+              style={{
+                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)"
+              }}
+              onClick={handleScanClick}
+            >
+              {/* New Badge */}
+              <div className="absolute top-4 right-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                NEW AI
               </div>
+
+              <div className="absolute -bottom-4 -right-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Camera size={100} className="text-indigo-500" />
+              </div>
+
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-[var(--text-primary)]">
-                    Scan Tithe Book (AI)
-                  </h3>
-                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 rounded-full">
-                    New
-                  </span>
+                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                  <Camera size={24} />
                 </div>
-                <p className="text-sm text-[var(--text-secondary)] mb-4">
-                  Upload an image of a tithe book page to auto-extract data.
+                <h3 className="text-lg font-semibold mb-2 text-[var(--text-primary)]">Scan Tithe Book (AI)</h3>
+                <p className="text-sm text-[var(--text-secondary)] mb-6">
+                  Take a photo of a physical tithe book page to digitize it instantly.
                 </p>
-                <Button
-                  onClick={handleScanClick}
-                  fullWidth
-                  variant="primary"
-                  size="lg"
-                  leftIcon={<Camera size={18} />}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-none shadow-md hover:shadow-xl transition-all duration-300"
-                >
-                  Scan Image
+                <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 shadow-md group-hover:shadow-lg transition-all">
+                  Scan Image <Sparkles size={16} className="ml-2" />
                 </Button>
+                <input
+                  type="file"
+                  ref={imageInputRef}
+                  onChange={handleImageUploadChange}
+                  className="hidden"
+                  accept="image/*"
+                />
               </div>
-              <input
-                type="file"
-                ref={imageInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleImageUploadChange}
-              />
-            </div>
+            </motion.div>
           </div>
 
-          {/* Restored Drag and Drop Zone */}
+          {/* Drag and Drop Zone */}
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`p-8 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center space-y-3 flex-grow ${isDragOver
+            onClick={handleUploadClick}
+            className={`p-8 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center space-y-3 flex-grow cursor-pointer ${isDragOver
               ? "border-[var(--primary-accent-start)] bg-[var(--primary-accent-start)]/10"
               : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-subtle-accent)]"
               }`}
@@ -422,9 +441,16 @@ const DashboardSection: React.FC = () => {
                 {isDragOver ? "Drop file here" : "Drag & drop files here"}
               </p>
               <p className="text-sm text-[var(--text-secondary)]">
-                or click "Upload Excel File" above
+                or click to browse
               </p>
             </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".xlsx, .xls"
+            />
           </div>
         </motion.section>
 
@@ -533,6 +559,17 @@ const DashboardSection: React.FC = () => {
           )}
         </motion.section>
       </div>
+
+      {/* Chat Interface */}
+      <ChatInterface
+        chatHistory={chatHistory}
+        chartData={chartData}
+        isLoading={isChatLoading}
+        error={chatError}
+        onSendMessage={sendMessage}
+        isOpen={isChatOpen}
+        onToggle={() => setIsChatOpen(!isChatOpen)}
+      />
     </motion.div>
   );
 };

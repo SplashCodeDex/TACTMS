@@ -6,7 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import {
   MemberRecordA,
   TitheRecordB,
@@ -177,7 +177,7 @@ const App: React.FC = () => {
   const autoSaveTimerRef = useRef<number | null>(null);
 
 
-  // const listOverviewRef = useRef<HTMLElement>(null); // TODO: Use to scroll to the list overview section.
+
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     window.innerWidth < 768,

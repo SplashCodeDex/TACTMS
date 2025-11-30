@@ -71,112 +71,133 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
   return { isGeneratingReport, validationReportContent, generateValidationReport, analyzeImage };
 };
 
-export const useGeminiChat = () => {
+export const useGeminiChat = (apiKey: string) => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataContext, setDataContext] = useState<any>(null);
 
-  const startChat = useCallback(
-    async (
-      titheListData: TitheRecordB[],
-      currentAssembly: string | null,
-      selectedDate: Date,
-      tithersCount: number,
-      nonTithersCount: number,
-      totalAmount: number,
-    ) => {
-      setIsLoading(true);
-      setError(null);
-      setChatHistory([]);
-      setChartData([]);
+  // Initialize the chat with data context
+  const initializeChat = useCallback((
+    titheListData: TitheRecordB[],
+    memberDatabase: MemberDatabase,
+    currentAssembly: string
+  ) => {
+    // Create a minimized context to save tokens
+    const context = {
+      assembly: currentAssembly,
+      summary: {
+        totalTithe: titheListData.reduce((sum, r) => sum + Number(r["Transaction Amount"] || 0), 0),
+        count: titheListData.length,
+        date: new Date().toDateString(),
+      },
+      // Sample of recent records for context
+      recentRecords: titheListData.slice(0, 50).map(r => ({
+        name: r["Membership Number"], // Contains the name
+        amount: r["Transaction Amount"],
+        date: r["Transaction Date ('DD-MMM-YYYY')"]
+      })),
+      // Assembly stats
+      assemblyStats: Object.entries(memberDatabase).map(([name, data]) => ({
+        name,
+        memberCount: data.data.length
+      }))
+    };
+    setDataContext(context);
 
-      try {
-        const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
-        const model = ai.getGenerativeModel({ model: "gemini-pro" });
-
-        const prompt = `
-        You are a church financial analyst AI. Analyze the following tithe data and provide a summary and insights.
-        - Assembly: ${currentAssembly}
-        - Date: ${selectedDate.toDateString()}
-        - Total Tithe: ${totalAmount}
-        - Tithers: ${tithersCount}
-        - Non-Tithers: ${nonTithersCount}
-        - Data: ${JSON.stringify(
-          titheListData.slice(0, 10),
-        )} (first 10 rows)
-
-        Provide a summary of the data and some key observations. Also, provide a data array for a chart showing the distribution of tithe amounts.
-        `;
-
-        const result = await model.generateContent({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: SchemaType.OBJECT,
-              properties: {
-                summary: { type: SchemaType.STRING, description: "A summary of the tithe data and key observations." },
-                chartData: { type: SchemaType.ARRAY, description: "An array of objects for a chart showing the distribution of tithe amounts.", items: { type: SchemaType.OBJECT, properties: { label: { type: SchemaType.STRING }, count: { type: SchemaType.NUMBER } } } },
-              },
-              required: ["summary", "chartData"],
-            },
-          },
-        }); const response = await result.response;
-        const text = response.text();
-
-        const jsonResponse = JSON.parse(text);
-
-        setChatHistory([
-          {
-            role: "model",
-            parts: [{ text: jsonResponse.summary }],
-            summary: jsonResponse.summary,
-          },
-        ]);
-        setChartData(jsonResponse.chartData);
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setIsLoading(false);
+    // Add initial system message (invisible to user but sets behavior)
+    setChatHistory([
+      {
+        role: "model",
+        parts: [{ text: "Hello! I'm your TACTMS Assistant. I can help you analyze your tithe data, find trends, or answer questions about specific members. What would you like to know?" }],
       }
-    },
-    [],
-  );
+    ]);
+  }, []);
 
   const sendMessage = useCallback(
     async (message: string) => {
+      if (!dataContext) {
+        setError("Chat not initialized with data.");
+        return;
+      }
+
+      if (!apiKey) {
+        setError("AI features are not configured. Please contact support.");
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
-      const updatedChatHistory = [...chatHistory, { role: "user" as const, parts: [{ text: message }] }];
-      setChatHistory(updatedChatHistory);
+
+      // Optimistically add user message
+      const newHistory = [...chatHistory, { role: "user" as const, parts: [{ text: message }] }];
+      setChatHistory(newHistory);
 
       try {
-        const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
-        const model = ai.getGenerativeModel({ model: "gemini-pro" });
+        const ai = new GoogleGenerativeAI(apiKey);
+        const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Construct the prompt with RAG-lite context
+        const systemPrompt = `
+        You are an intelligent data analyst for The Apostolic Church Tithe Management System (TACTMS).
+
+        Current Data Context:
+        ${JSON.stringify(dataContext, null, 2)}
+
+        Your Goal: Answer the user's question based *strictly* on the provided data.
+
+        Guidelines:
+        - Be concise and professional.
+        - If asked about "total tithe", use the summary data.
+        - If asked about specific members, look at the 'recentRecords' sample.
+        - If the answer isn't in the data, say "I don't have that information in my current view."
+        - Format numbers as currency (GHS).
+        - You can generate simple charts if asked. If the user asks for a chart, include a JSON block at the end of your response like this:
+          \`\`\`json
+          { "chartData": [{ "label": "A", "count": 10 }, ...] }
+          \`\`\`
+        `;
 
         const chat = model.startChat({
-          history: updatedChatHistory
-            .filter(msg => msg.role !== 'user' || msg.parts[0].text.trim() !== '') // Filter out empty user messages
-            .map((msg) => ({
-              role: msg.role,
-              parts: msg.parts,
-            })) as Content[],
+          history: [
+            { role: "user", parts: [{ text: systemPrompt }] },
+            { role: "model", parts: [{ text: "Understood. I am ready to analyze the TACTMS data." }] },
+            ...newHistory.map(msg => ({ role: msg.role, parts: msg.parts }))
+          ]
         });
 
         const result = await chat.sendMessage(message);
         const response = await result.response;
         const text = response.text();
 
-        setChatHistory((prev) => [...prev, { role: "model", parts: [{ text }] }]);
+        // Check for chart data in the response
+        const chartMatch = text.match(/```json\s*({[\s\S]*?})\s*```/);
+        let cleanText = text;
+
+        if (chartMatch) {
+          try {
+            const json = JSON.parse(chartMatch[1]);
+            if (json.chartData) {
+              setChartData(json.chartData);
+              cleanText = text.replace(chartMatch[0], "").trim();
+            }
+          } catch (e) {
+            console.error("Failed to parse chart data", e);
+          }
+        }
+
+        setChatHistory(prev => [...prev, { role: "model", parts: [{ text: cleanText }] }]);
       } catch (e: any) {
-        setError(e.message);
+        console.error("Chat Error:", e);
+        setError(e.message || "Failed to get a response.");
+        setChatHistory(prev => [...prev, { role: "model", parts: [{ text: "I encountered an error processing your request. Please try again." }] }]);
       } finally {
         setIsLoading(false);
       }
     },
-    [chatHistory],
+    [chatHistory, dataContext],
   );
 
-  return { chatHistory, chartData, isLoading, error, startChat, sendMessage };
+  return { chatHistory, chartData, isLoading, error, initializeChat, sendMessage };
 };
