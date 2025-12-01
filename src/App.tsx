@@ -1444,6 +1444,22 @@ const App: React.FC = () => {
     setMemberToEdit(null);
   };
 
+  const openAddMemberToListModal = () => {
+    if (!currentAssembly) {
+      addToast("An assembly must be active to add a member.", "warning");
+      return;
+    }
+    setIsAddNewMemberModalOpen(true);
+  };
+
+  const getMostRecentSunday = (date: Date): Date => {
+    const day = date.getDay(); // Sunday - 0, Monday - 1, ..., Saturday - 6
+    const diff = date.getDate() - day; // Calculate difference to get to Sunday
+    const sunday = new Date(date.setDate(diff));
+    sunday.setHours(0, 0, 0, 0); // Set to the beginning of the day to normalize
+    return sunday;
+  };
+
   const handleResolveConflict = (resolution: "use_new" | "keep_existing") => {
     if (!reconciliationReport) return;
 
