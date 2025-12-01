@@ -51,7 +51,7 @@ import Sidebar from "./components/Sidebar";
 import FullTithePreviewModal from "./components/FullTithePreviewModal";
 import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";
-import { WifiOff, Save, Trash2 } from "lucide-react";
+import { WifiOff, Save, Trash2, FilePlus, Sun, Moon } from "lucide-react";
 import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
 import {
   createTitheList,
