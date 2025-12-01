@@ -1393,449 +1393,670 @@ const App: React.FC = () => {
       const assemblyData = prev[assemblyName]?.data || [];
       const isNewMember = String(member["No."]).startsWith("new_");
       let updatedData;
-      favoritesSearchTerm,
-        setFavoritesSearchTerm,
-        loadFavorite,
-        deleteFavorite,
-        viewFavoriteDetails,
-        updateFavoriteName,
-        addToast,
-        // Analytics
-        titheListData,
-        currentAssembly,
-        selectedDate,
-        // Reports
-        // MemberDatabase
-        onUploadMasterList: (file: File, assembly: string) =>
-          handleFileAccepted(file, true, assembly),
-          onCreateTitheList: (
-            members: MemberRecordA[],
-            assembly: string,
-          ) => {
-            setPendingTitheListMembers(members);
-            setPendingTitheListAssembly(assembly);
-            setIsCreateTitheListModalOpen(true);
-          },
-            onEditMember: (member: MemberRecordA, assemblyName: string) => {
-              setMemberToEdit({ member, assemblyName });
-              setIsEditMemberModalOpen(true);
-            },
-              onDeleteAssembly: handleDeleteAssembly,
-                // ListOverviewActions
-                currentTotalTithe: totalTitheAmount,
+
+      if (isNewMember) {
+        // Update logic for new member (in memory only, or mixed source)
+        updatedData = assemblyData.map((m) =>
+          m["No."] === member["No."] ? member : m,
+        );
+      } else {
+        // Update logic for existing member
+        updatedData = assemblyData.map((m) =>
+          m["No."] === member["No."] ? member : m,
+        );
+      }
+
+      return {
+        ...prev,
+        [assemblyName]: {
+          ...(prev[assemblyName] || {
+            lastUpdated: Date.now(),
+            fileName: "Mixed Source",
+          }),
+          data: updatedData,
+          lastUpdated: Date.now(),
+        },
+      };
+    });
+
+    // Also update the tithe list if this member is in it
+    setTitheListData((prev) =>
+      prev.map((record) => {
+        if (
+          record["First Name"] === member["First Name"] &&
+          record.Surname === member.Surname
+        ) {
+          // Update relevant fields in tithe list record
+          // Note: This is a shallow update. Ideally, we regenerate the list,
+          // but for simple edits, this might suffice.
+          return {
+            ...record,
+            "First Name": member["First Name"],
+            Surname: member.Surname,
+          };
+        }
+        return record;
+      }),
+    );
+
+    addToast("Member updated successfully.", "success");
+    setIsEditMemberModalOpen(false);
+    setMemberToEdit(null);
+  };
+
+  const handleResolveConflict = (resolution: "use_new" | "keep_existing") => {
+    if (!reconciliationReport) return;
+
+    const { conflicts, newMembers, changedMembers } = reconciliationReport;
+    const assembly = currentAssembly || ""; // Should be set during upload context
+
+    if (!assembly) {
+      addToast("Error: Could not determine assembly context.", "error");
+      return;
+    }
+
+    setMemberDatabase((prev) => {
+      const prevAssemblyData = prev[assembly]?.data || [];
+      let updatedData = [...prevAssemblyData];
+
+      // 1. Apply Changes (Non-conflicting)
+      if (changedMembers.length > 0) {
+        const changesMap = new Map(
+          changedMembers.map((c) => [c.oldRecord, c]),
+        );
+        updatedData = updatedData.map((member) => {
+          const change = changesMap.get(member);
+          if (change) {
+            return {
+              ...member,
+              ...change.newRecord,
+              firstSeenDate: member.firstSeenDate,
+              firstSeenSource: member.firstSeenSource,
+              customOrder: member.customOrder,
+            };
+          }
+          return member;
+        });
+      }
+
+      // 2. Handle Conflicts
+      if (conflicts.length > 0) {
+        const conflictsMap = new Map(
+          conflicts.map((c) => [c.existingMember, c]),
+        );
+
+        updatedData = updatedData.map((member) => {
+          const conflict = conflictsMap.get(member);
+          if (conflict) {
+            if (resolution === "use_new") {
+              return {
+                ...member,
+                ...conflict.newMember,
+                firstSeenDate: member.firstSeenDate,
+                firstSeenSource: member.firstSeenSource,
+                customOrder: member.customOrder,
+              };
+            } else {
+              // Keep existing, do nothing
+              return member;
+            }
+          }
+          return member;
+        });
+      }
+
+      // 3. Append New Members
+      if (newMembers.length > 0) {
+        updatedData = [...updatedData, ...newMembers];
+      }
+
+      return {
+        ...prev,
+        [assembly]: {
+          ...(prev[assembly] || {
+            lastUpdated: Date.now(),
+          }),
+          data: updatedData,
+          lastUpdated: Date.now(),
+          fileName: reconciliationReport.previousFileDate.includes("updated")
+            ? prev[assembly].fileName
+            : "Mixed Source", // Or update based on context
+        },
+      };
+    });
+
+    setIsReconciliationModalOpen(false);
+    setReconciliationReport(null);
+    addToast(
+      `Reconciliation complete. Resolved ${conflicts.length} conflicts using "${resolution === "use_new" ? "New File" : "Existing Database"}".`,
+      "success",
+    );
+  };
+
+
+  return (
+    <div className={`app-container ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <Sidebar
+        theme={theme}
+        setTheme={setTheme}
+        accentColor={accentColor}
+        setAccentColor={setAccentColor}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+        isLoggedIn={isDriveLoggedIn}
+        userProfile={driveUserProfile}
+        syncStatus={driveSyncStatus}
+        signIn={driveSignIn}
+        signOut={driveSignOut}
+        isConfigured={isDriveConfigured}
+        openCommandPalette={() => setIsCommandPaletteOpen(true)}
+        isOnline={!isOffline}
+      />
+
+      <div className="main-content">
+        <MobileHeader
+          onMenuClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          theme={theme}
+        />
+
+        <DesktopNotifications notifications={globalNotifications} />
+
+        <main className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+          <AnimatePresence mode="wait">
+            <MotionDiv
+              key={location.pathname}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Outlet
+                context={{
+                  transactionLog,
+                  memberDatabase,
+                  favorites,
+                  onStartNewWeek: startNewWeek,
+                  userProfile: driveUserProfile,
+                  onUploadFile: handleFileAccepted,
+                  onScanImage: (file: File) => {
+                    // Placeholder for scan image handler passed to dashboard
+                    console.log("Scan image requested", file);
+                    addToast("Image scanning started...", "info");
+                  },
+                  // Processor Props
+                  uploadedFile,
+                  originalData,
+                  processedDataA,
+                  setProcessedDataA,
+                  favoritesSearchTerm,
+                  setFavoritesSearchTerm,
+                  loadFavorite,
+                  deleteFavorite,
+                  viewFavoriteDetails,
+                  updateFavoriteName,
+                  addToast,
+                  // Analytics
+                  titheListData,
+                  currentAssembly,
+                  selectedDate,
+                  // Reports
+                  // MemberDatabase
+                  onUploadMasterList: (file: File, assembly: string) =>
+                    handleFileAccepted(file, true, assembly),
+                  onCreateTitheList: (
+                    members: MemberRecordA[],
+                    assembly: string,
+                  ) => {
+                    setPendingTitheListMembers(members);
+                    setPendingTitheListAssembly(assembly);
+                    setIsCreateTitheListModalOpen(true);
+                  },
+                  onEditMember: (member: MemberRecordA, assemblyName: string) => {
+                    setMemberToEdit({ member, assemblyName });
+                    setIsEditMemberModalOpen(true);
+                  },
+                  onDeleteAssembly: handleDeleteAssembly,
+                  // ListOverviewActions
+                  currentTotalTithe: totalTitheAmount,
                   hasUnsavedChanges,
                   tithersCount,
                   nonTithersCount: processedDataA.length - tithersCount,
-                    tithersPercentage:
-      processedDataA.length > 0
-        ? (tithersCount / processedDataA.length) * 100
-        : 0,
-        setIsFullPreviewModalOpen,
-        setIsAmountEntryModalOpen,
-        fileNameToSave,
-        setFileNameToSave,
-        inputErrors,
-        setInputErrors,
-        handleDownloadExcel,
-        openSaveFavoriteModal,
-        onClearWorkspace: () => setIsClearWorkspaceModalOpen(true),
-          soulsWonCount,
-          // Configuration
-          isLoggedIn: isDriveLoggedIn,
-            syncStatus: driveSyncStatus,
-              signIn: driveSignIn,
-                signOut: driveSignOut,
+                  tithersPercentage:
+                    processedDataA.length > 0
+                      ? (tithersCount / processedDataA.length) * 100
+                      : 0,
+                  setIsFullPreviewModalOpen,
+                  setIsAmountEntryModalOpen,
+                  fileNameToSave,
+                  setFileNameToSave,
+                  inputErrors,
+                  setInputErrors,
+                  handleDownloadExcel,
+                  openSaveFavoriteModal,
+                  onClearWorkspace: () => setIsClearWorkspaceModalOpen(true),
+                  soulsWonCount,
+                  // Configuration
+                  isLoggedIn: isDriveLoggedIn,
+                  syncStatus: driveSyncStatus,
+                  signIn: driveSignIn,
+                  signOut: driveSignOut,
                   isConfigured: isDriveConfigured,
-                    ageRangeMin,
-                    setAgeRangeMin,
-                    ageRangeMax,
-                    setAgeRangeMax,
-                    isAgeFilterActive,
-                    handleApplyAgeFilter,
-                    handleRemoveAgeFilter,
-                    concatenationConfig,
-                    handleConcatenationConfigChange,
-                    descriptionText,
-                    handleDescriptionChange,
-                    amountMappingColumn,
-                    setAmountMappingColumn,
-                    theme,
-                    setTheme,
-                    accentColor,
-                    setAccentColor,
-                    isSubscribed,
-                    requestNotificationPermission,
-                    onDateChange: handleDateChange, // Add this line
-              }}
-            />
-          </MotionDiv >
-        </AnimatePresence >
-      </main >
+                  ageRangeMin,
+                  setAgeRangeMin,
+                  ageRangeMax,
+                  setAgeRangeMax,
+                  isAgeFilterActive,
+                  handleApplyAgeFilter,
+                  handleRemoveAgeFilter,
+                  concatenationConfig,
+                  handleConcatenationConfigChange,
+                  descriptionText,
+                  handleDescriptionChange,
+                  amountMappingColumn,
+                  setAmountMappingColumn,
+                  theme,
+                  setTheme,
+                  accentColor,
+                  setAccentColor,
+                  isSubscribed,
+                  requestNotificationPermission,
+                  onDateChange: handleDateChange, // Add this line
+                }}
+              />
+            </MotionDiv>
+          </AnimatePresence>
+        </main>
+      </div>
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        setIsOpen={setIsCommandPaletteOpen}
+        actions={[
+          {
+            id: "new-list",
+            label: "Start New List",
+            icon: <FilePlus size={16} />,
+            perform: () => navigate("/"),
+          },
+          {
+            id: "save-fav",
+            label: "Save Favorite",
+            icon: <Save size={16} />,
+            perform: openSaveFavoriteModal,
+          },
+          {
+            id: "toggle-theme",
+            label: "Toggle Theme",
+            icon: theme === "dark" ? <Sun size={16} /> : <Moon size={16} />,
+            perform: () => setTheme(theme === "dark" ? "light" : "dark"),
+          },
+        ]}
+      />
 
 
 
-  <Toaster richColors theme={theme} />
+      <Toaster richColors theme={theme} />
 
-{
-  isFullPreviewModalOpen && (
-    <FullTithePreviewModal
-      isOpen={isFullPreviewModalOpen}
-      onClose={() => setIsFullPreviewModalOpen(false)}
-      titheListData={titheListData}
-      onSave={handleSaveFromPreview}
-      itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
-      addToast={addToast}
-      searchTerm={fullPreviewSearchTerm}
-      setSearchTerm={setFullPreviewSearchTerm}
-      sortConfig={fullPreviewSortConfig}
-      setSortConfig={setFullPreviewSortConfig}
-      openAddMemberToListModal={openAddMemberToListModal}
-      assemblyName={currentAssembly || ""}
-    />
-  )
-}
-
-{
-  isAmountEntryModalOpen && (
-    <AmountEntryModal
-      isOpen={isAmountEntryModalOpen}
-      onClose={() => setIsAmountEntryModalOpen(false)}
-      titheListData={titheListData}
-      onSave={handleSaveFromPreview}
-    />
-  )
-}
-
-{
-  isAddNewMemberModalOpen && (
-    <AddNewMemberModal
-      isOpen={isAddNewMemberModalOpen}
-      onClose={() => setIsAddNewMemberModalOpen(false)}
-      onConfirm={handleAddNewMemberToList}
-      onAddExistingMember={handleAddExistingMemberToList}
-      currentAssembly={currentAssembly}
-      memberDatabase={
-        currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
-      }
-      titheListData={titheListData}
-    />
-  )
-}
-
-{
-  isCreateTitheListModalOpen && (
-    <CreateTitheListModal
-      isOpen={isCreateTitheListModalOpen}
-      onClose={() => setIsCreateTitheListModalOpen(false)}
-      onConfirm={() => {
-        if (pendingTitheListMembers && pendingTitheListAssembly) {
-          handleCreateTitheListFromDB(
-            pendingTitheListMembers,
-            pendingTitheListAssembly,
-          );
-        }
-      }}
-      memberCount={pendingTitheListMembers?.length || 0}
-      assemblyName={pendingTitheListAssembly || ""}
-    />
-  )
-}
-{
-  isSaveFavoriteModalOpen && (
-    <Modal
-      isOpen={isSaveFavoriteModalOpen}
-      onClose={() => setIsSaveFavoriteModalOpen(false)}
-      title="Save Configuration to Favorites"
-      closeOnOutsideClick={false}
-    >
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="favName" className="form-label">
-            Favorite Name
-          </label>
-          <input
-            id="favName"
-            type="text"
-            value={favoriteNameInput}
-            onChange={(e) => setFavoriteNameInput(e.target.value)}
-            className="form-input-light w-full"
+      {
+        isFullPreviewModalOpen && (
+          <FullTithePreviewModal
+            isOpen={isFullPreviewModalOpen}
+            onClose={() => setIsFullPreviewModalOpen(false)}
+            titheListData={titheListData}
+            onSave={handleSaveFromPreview}
+            itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
+            addToast={addToast}
+            searchTerm={fullPreviewSearchTerm}
+            setSearchTerm={setFullPreviewSearchTerm}
+            sortConfig={fullPreviewSortConfig}
+            setSortConfig={setFullPreviewSortConfig}
+            openAddMemberToListModal={openAddMemberToListModal}
+            assemblyName={currentAssembly || ""}
           />
-        </div>
-      </div>
-      <div className="mt-6 flex justify-end gap-3">
-        <Button
-          variant="outline"
-          onClick={() => setIsSaveFavoriteModalOpen(false)}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSaveFavorite}
-          leftIcon={<Save size={16} />}
-        >
-          Save Favorite
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-{
-  isDeleteFavConfirmModalOpen && (
-    <Modal
-      isOpen={isDeleteFavConfirmModalOpen}
-      onClose={() => setIsDeleteFavConfirmModalOpen(false)}
-      title="Delete Favorite?"
-      closeOnOutsideClick={false}
-    >
-      <p>
-        Are you sure you want to delete this favorite? This action cannot be
-        undone.
-      </p>
-      <div className="mt-6 flex justify-end gap-3">
-        <Button
-          variant="outline"
-          onClick={() => setIsDeleteFavConfirmModalOpen(false)}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="danger"
-          onClick={confirmDeleteFavorite}
-          leftIcon={<Trash2 size={16} />}
-        >
-          Delete
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-{
-  selectedFavoriteForDetails && (
-    <Modal
-      isOpen={isFavDetailsModalOpen}
-      onClose={() => setIsFavDetailsModalOpen(false)}
-      title={`Details for "${selectedFavoriteForDetails.name}"`}
-      size="lg"
-    >
-      <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
-        {JSON.stringify(selectedFavoriteForDetails, null, 2)}
-      </pre>
-    </Modal>
-  )
-}
-{
-  isAssemblySelectionModalOpen && pendingData && (
-    <AssemblySelectionModal
-      isOpen={isAssemblySelectionModalOpen}
-      onClose={() => setIsAssemblySelectionModalOpen(false)}
-      onConfirm={handleConfirmAssemblySelection}
-      fileName={pendingData.fileName}
-      suggestedAssembly={pendingData.suggestedAssembly}
-    />
-  )
-}
-
-{
-  isAmountEntryModalOpen && (
-    <AmountEntryModal
-      isOpen={isAmountEntryModalOpen}
-      onClose={() => setIsAmountEntryModalOpen(false)}
-      titheListData={titheListData}
-      onSave={handleSaveFromPreview}
-    />
-  )
-}
-
-{
-  isAddNewMemberModalOpen && (
-    <AddNewMemberModal
-      isOpen={isAddNewMemberModalOpen}
-      onClose={() => setIsAddNewMemberModalOpen(false)}
-      onConfirm={handleAddNewMemberToList}
-      onAddExistingMember={handleAddExistingMemberToList}
-      currentAssembly={currentAssembly}
-      memberDatabase={
-        currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
+        )
       }
-      titheListData={titheListData}
-    />
-  )
-}
 
-{
-  isCreateTitheListModalOpen && (
-    <CreateTitheListModal
-      isOpen={isCreateTitheListModalOpen}
-      onClose={() => setIsCreateTitheListModalOpen(false)}
-      onConfirm={() => {
-        if (pendingTitheListMembers && pendingTitheListAssembly) {
-          handleCreateTitheListFromDB(
-            pendingTitheListMembers,
-            pendingTitheListAssembly,
-          );
-        }
-      }}
-      memberCount={pendingTitheListMembers?.length || 0}
-      assemblyName={pendingTitheListAssembly || ""}
-    />
-  )
-}
-{
-  isSaveFavoriteModalOpen && (
-    <Modal
-      isOpen={isSaveFavoriteModalOpen}
-      onClose={() => setIsSaveFavoriteModalOpen(false)}
-      title="Save Configuration to Favorites"
-      closeOnOutsideClick={false}
-    >
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="favName" className="form-label">
-            Favorite Name
-          </label>
-          <input
-            id="favName"
-            type="text"
-            value={favoriteNameInput}
-            onChange={(e) => setFavoriteNameInput(e.target.value)}
-            className="form-input-light w-full"
+      {
+        isAmountEntryModalOpen && (
+          <AmountEntryModal
+            isOpen={isAmountEntryModalOpen}
+            onClose={() => setIsAmountEntryModalOpen(false)}
+            titheListData={titheListData}
+            onSave={handleSaveFromPreview}
           />
-        </div>
-      </div>
-      <div className="mt-6 flex justify-end gap-3">
-        <Button
-          variant="outline"
-          onClick={() => setIsSaveFavoriteModalOpen(false)}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSaveFavorite}
-          leftIcon={<Save size={16} />}
-        >
-          Save Favorite
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-{
-  isDeleteFavConfirmModalOpen && (
-    <Modal
-      isOpen={isDeleteFavConfirmModalOpen}
-      onClose={() => setIsDeleteFavConfirmModalOpen(false)}
-      title="Delete Favorite?"
-      closeOnOutsideClick={false}
-    >
-      <p>
-        Are you sure you want to delete this favorite? This action cannot be
-        undone.
-      </p>
-      <div className="mt-6 flex justify-end gap-3">
-        <Button
-          variant="outline"
-          onClick={() => setIsDeleteFavConfirmModalOpen(false)}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="danger"
-          onClick={confirmDeleteFavorite}
-          leftIcon={<Trash2 size={16} />}
-        >
-          Delete
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-{
-  selectedFavoriteForDetails && (
-    <Modal
-      isOpen={isFavDetailsModalOpen}
-      onClose={() => setIsFavDetailsModalOpen(false)}
-      title={`Details for "${selectedFavoriteForDetails.name}"`}
-      size="lg"
-    >
-      <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
-        {JSON.stringify(selectedFavoriteForDetails, null, 2)}
-      </pre>
-    </Modal>
-  )
-}
-{
-  isAssemblySelectionModalOpen && pendingData && (
-    <AssemblySelectionModal
-      isOpen={isAssemblySelectionModalOpen}
-      onClose={() => setIsAssemblySelectionModalOpen(false)}
-      onConfirm={handleConfirmAssemblySelection}
-      fileName={pendingData.fileName}
-      suggestedAssembly={pendingData.suggestedAssembly}
-    />
-  )
-}
-{
-  isReconciliationModalOpen && reconciliationReport && (
-    <MembershipReconciliationModal
-      isOpen={isReconciliationModalOpen}
-      onClose={() => setIsReconciliationModalOpen(false)}
-      report={reconciliationReport}
-      onResolveConflict={handleResolveConflict}
-    />
-  )
-}
-{
-  isClearWorkspaceModalOpen && (
-    <ClearWorkspaceModal
-      isOpen={isClearWorkspaceModalOpen}
-      onClose={() => setIsClearWorkspaceModalOpen(false)}
-      onConfirm={handleConfirmClearWorkspace}
-    />
-  )
-}
-{
-  isUpdateConfirmModalOpen && pendingUpdate && (
-    <UpdateMasterListConfirmModal
-      isOpen={isUpdateConfirmModalOpen}
-      onClose={() => setIsUpdateConfirmModalOpen(false)}
-      onConfirm={() => {
-        handleMasterListUpdate(
-          pendingUpdate.assemblyName,
-          pendingUpdate.newData,
-          pendingUpdate.newFileName,
-        );
-        setIsUpdateConfirmModalOpen(false);
-      }}
-      existingData={memberDatabase[pendingUpdate.assemblyName]}
-      pendingUpdate={pendingUpdate}
-    />
-  )
-}
-{
-  isEditMemberModalOpen && memberToEdit && (
-    <EditMemberModal
-      isOpen={isEditMemberModalOpen}
-      onClose={() => setIsEditMemberModalOpen(false)}
-      onSave={handleEditMemberInDB}
-      memberData={memberToEdit.member}
-      assemblyName={memberToEdit.assemblyName}
-    />
-  )
-}
-{
-  isValidationModalOpen && (
-    <ValidationReportModal
-      isOpen={isValidationModalOpen}
-      onClose={() => setIsValidationModalOpen(false)}
-      reportContent={validationReportContent}
-      isLoading={isGeneratingReport}
-    />
-  )
-}
+        )
+      }
 
-<ParsingIndicator isOpen={isParsing} />
+      {
+        isAddNewMemberModalOpen && (
+          <AddNewMemberModal
+            isOpen={isAddNewMemberModalOpen}
+            onClose={() => setIsAddNewMemberModalOpen(false)}
+            onConfirm={handleAddNewMemberToList}
+            onAddExistingMember={handleAddExistingMemberToList}
+            currentAssembly={currentAssembly}
+            memberDatabase={
+              currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
+            }
+            titheListData={titheListData}
+          />
+        )
+      }
+
+      {
+        isCreateTitheListModalOpen && (
+          <CreateTitheListModal
+            isOpen={isCreateTitheListModalOpen}
+            onClose={() => setIsCreateTitheListModalOpen(false)}
+            onConfirm={() => {
+              if (pendingTitheListMembers && pendingTitheListAssembly) {
+                handleCreateTitheListFromDB(
+                  pendingTitheListMembers,
+                  pendingTitheListAssembly,
+                );
+              }
+            }}
+            memberCount={pendingTitheListMembers?.length || 0}
+            assemblyName={pendingTitheListAssembly || ""}
+          />
+        )
+      }
+      {
+        isSaveFavoriteModalOpen && (
+          <Modal
+            isOpen={isSaveFavoriteModalOpen}
+            onClose={() => setIsSaveFavoriteModalOpen(false)}
+            title="Save Configuration to Favorites"
+            closeOnOutsideClick={false}
+          >
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="favName" className="form-label">
+                  Favorite Name
+                </label>
+                <input
+                  id="favName"
+                  type="text"
+                  value={favoriteNameInput}
+                  onChange={(e) => setFavoriteNameInput(e.target.value)}
+                  className="form-input-light w-full"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsSaveFavoriteModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveFavorite}
+                leftIcon={<Save size={16} />}
+              >
+                Save Favorite
+              </Button>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        isDeleteFavConfirmModalOpen && (
+          <Modal
+            isOpen={isDeleteFavConfirmModalOpen}
+            onClose={() => setIsDeleteFavConfirmModalOpen(false)}
+            title="Delete Favorite?"
+            closeOnOutsideClick={false}
+          >
+            <p>
+              Are you sure you want to delete this favorite? This action cannot be
+              undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteFavConfirmModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmDeleteFavorite}
+                leftIcon={<Trash2 size={16} />}
+              >
+                Delete
+              </Button>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        selectedFavoriteForDetails && (
+          <Modal
+            isOpen={isFavDetailsModalOpen}
+            onClose={() => setIsFavDetailsModalOpen(false)}
+            title={`Details for "${selectedFavoriteForDetails.name}"`}
+            size="lg"
+          >
+            <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
+              {JSON.stringify(selectedFavoriteForDetails, null, 2)}
+            </pre>
+          </Modal>
+        )
+      }
+      {
+        isAssemblySelectionModalOpen && pendingData && (
+          <AssemblySelectionModal
+            isOpen={isAssemblySelectionModalOpen}
+            onClose={() => setIsAssemblySelectionModalOpen(false)}
+            onConfirm={handleConfirmAssemblySelection}
+            fileName={pendingData.fileName}
+            suggestedAssembly={pendingData.suggestedAssembly}
+          />
+        )
+      }
+
+      {
+        isAmountEntryModalOpen && (
+          <AmountEntryModal
+            isOpen={isAmountEntryModalOpen}
+            onClose={() => setIsAmountEntryModalOpen(false)}
+            titheListData={titheListData}
+            onSave={handleSaveFromPreview}
+          />
+        )
+      }
+
+      {
+        isAddNewMemberModalOpen && (
+          <AddNewMemberModal
+            isOpen={isAddNewMemberModalOpen}
+            onClose={() => setIsAddNewMemberModalOpen(false)}
+            onConfirm={handleAddNewMemberToList}
+            onAddExistingMember={handleAddExistingMemberToList}
+            currentAssembly={currentAssembly}
+            memberDatabase={
+              currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
+            }
+            titheListData={titheListData}
+          />
+        )
+      }
+
+      {
+        isCreateTitheListModalOpen && (
+          <CreateTitheListModal
+            isOpen={isCreateTitheListModalOpen}
+            onClose={() => setIsCreateTitheListModalOpen(false)}
+            onConfirm={() => {
+              if (pendingTitheListMembers && pendingTitheListAssembly) {
+                handleCreateTitheListFromDB(
+                  pendingTitheListMembers,
+                  pendingTitheListAssembly,
+                );
+              }
+            }}
+            memberCount={pendingTitheListMembers?.length || 0}
+            assemblyName={pendingTitheListAssembly || ""}
+          />
+        )
+      }
+      {
+        isSaveFavoriteModalOpen && (
+          <Modal
+            isOpen={isSaveFavoriteModalOpen}
+            onClose={() => setIsSaveFavoriteModalOpen(false)}
+            title="Save Configuration to Favorites"
+            closeOnOutsideClick={false}
+          >
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="favName" className="form-label">
+                  Favorite Name
+                </label>
+                <input
+                  id="favName"
+                  type="text"
+                  value={favoriteNameInput}
+                  onChange={(e) => setFavoriteNameInput(e.target.value)}
+                  className="form-input-light w-full"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsSaveFavoriteModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveFavorite}
+                leftIcon={<Save size={16} />}
+              >
+                Save Favorite
+              </Button>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        isDeleteFavConfirmModalOpen && (
+          <Modal
+            isOpen={isDeleteFavConfirmModalOpen}
+            onClose={() => setIsDeleteFavConfirmModalOpen(false)}
+            title="Delete Favorite?"
+            closeOnOutsideClick={false}
+          >
+            <p>
+              Are you sure you want to delete this favorite? This action cannot be
+              undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteFavConfirmModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmDeleteFavorite}
+                leftIcon={<Trash2 size={16} />}
+              >
+                Delete
+              </Button>
+            </div>
+          </Modal>
+        )
+      }
+      {
+        selectedFavoriteForDetails && (
+          <Modal
+            isOpen={isFavDetailsModalOpen}
+            onClose={() => setIsFavDetailsModalOpen(false)}
+            title={`Details for "${selectedFavoriteForDetails.name}"`}
+            size="lg"
+          >
+            <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
+              {JSON.stringify(selectedFavoriteForDetails, null, 2)}
+            </pre>
+          </Modal>
+        )
+      }
+      {
+        isAssemblySelectionModalOpen && pendingData && (
+          <AssemblySelectionModal
+            isOpen={isAssemblySelectionModalOpen}
+            onClose={() => setIsAssemblySelectionModalOpen(false)}
+            onConfirm={handleConfirmAssemblySelection}
+            fileName={pendingData.fileName}
+            suggestedAssembly={pendingData.suggestedAssembly}
+          />
+        )
+      }
+      {
+        isReconciliationModalOpen && reconciliationReport && (
+          <MembershipReconciliationModal
+            isOpen={isReconciliationModalOpen}
+            onClose={() => setIsReconciliationModalOpen(false)}
+            report={reconciliationReport}
+            onResolveConflict={handleResolveConflict}
+          />
+        )
+      }
+      {
+        isClearWorkspaceModalOpen && (
+          <ClearWorkspaceModal
+            isOpen={isClearWorkspaceModalOpen}
+            onClose={() => setIsClearWorkspaceModalOpen(false)}
+            onConfirm={handleConfirmClearWorkspace}
+          />
+        )
+      }
+      {
+        isUpdateConfirmModalOpen && pendingUpdate && (
+          <UpdateMasterListConfirmModal
+            isOpen={isUpdateConfirmModalOpen}
+            onClose={() => setIsUpdateConfirmModalOpen(false)}
+            onConfirm={() => {
+              handleMasterListUpdate(
+                pendingUpdate.assemblyName,
+                pendingUpdate.newData,
+                pendingUpdate.newFileName,
+              );
+              setIsUpdateConfirmModalOpen(false);
+            }}
+            existingData={memberDatabase[pendingUpdate.assemblyName]}
+            pendingUpdate={pendingUpdate}
+          />
+        )
+      }
+      {
+        isEditMemberModalOpen && memberToEdit && (
+          <EditMemberModal
+            isOpen={isEditMemberModalOpen}
+            onClose={() => setIsEditMemberModalOpen(false)}
+            onSave={handleEditMemberInDB}
+            memberData={memberToEdit.member}
+            assemblyName={memberToEdit.assemblyName}
+          />
+        )
+      }
+      {
+        isValidationModalOpen && (
+          <ValidationReportModal
+            isOpen={isValidationModalOpen}
+            onClose={() => setIsValidationModalOpen(false)}
+            reportContent={validationReportContent}
+            isLoading={isGeneratingReport}
+          />
+        )
+      }
+
+      <ParsingIndicator isOpen={isParsing} />
     </div >
   );
 };
