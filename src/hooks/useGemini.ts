@@ -21,7 +21,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
 
     try {
       const ai = new GoogleGenerativeAI(apiKey);
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = ai.getGenerativeModel({ model: "gemini-3-pro-preview" });
       const sampleData = originalData.slice(0, 50); // Use a sample
       const prompt = `
       You are a data quality analyst reviewing a church membership list. Analyze the following JSON data sample for quality issues. Provide a concise summary in markdown format. Focus on:
@@ -136,7 +136,7 @@ export const useGeminiChat = (apiKey: string) => {
 
       try {
         const ai = new GoogleGenerativeAI(apiKey);
-        const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         // Construct the prompt with RAG-lite context
         const systemPrompt = `
