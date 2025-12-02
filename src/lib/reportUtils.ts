@@ -221,12 +221,6 @@ export const aggregateReportData = (
 export const exportToCsv = (summary: any, selectedYear: number, granularity: string) => {
   let csvContent = "data:text/csv;charset=utf-8,";
 
-  // Use shared CSV escape utility
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const escapeCsvField = (field: any) => {
-    // This body will be replaced by import below.
-    return "";
-  };
 
   csvContent += `Summary for ${selectedYear}\n`;
   csvContent += `Total Tithe,Total Souls Won\n`;

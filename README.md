@@ -1,5 +1,11 @@
 # TACTMS: Tithe & Membership, Simplified.
 
+<p>
+  <a href="https://github.com/SplashCodeDex/TACTMS/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/SplashCodeDex/TACTMS/actions/workflows/ci.yml/badge.svg" />
+  </a>
+</p>
+
 <p align="center">
   <img src="/public/img/DarkLogoExpanded.svg" alt="TACTMS Logo" width="400"/>
 </p>
