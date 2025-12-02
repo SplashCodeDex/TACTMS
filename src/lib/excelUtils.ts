@@ -2,19 +2,19 @@ import * as XLSX from "xlsx";
 import { MemberRecordA } from "../types";
 
 export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const data = event.target?.result;
         if (!data) {
-          resolve([]);
+          reject(new Error("File data is null"));
           return;
         }
         const workbook = XLSX.read(data, { type: "array", cellDates: true });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) {
-          resolve([]);
+          reject(new Error("No sheets found in the Excel file."));
           return;
         }
         const worksheet = workbook.Sheets[sheetName];
@@ -28,12 +28,11 @@ export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
 
         resolve(processedData);
       } catch (e: any) {
-        throw e;
+        reject(e);
       }
     };
-    reader.onerror = () => {
-      // Surface as an empty list to keep UX flowing; callers can detect via validation later
-      resolve([]);
+    reader.onerror = (error) => {
+      reject(error as any);
     };
     reader.readAsArrayBuffer(file);
   });

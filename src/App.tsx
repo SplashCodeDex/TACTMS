@@ -53,6 +53,8 @@ import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";
 import { WifiOff, Save, Trash2 } from "lucide-react";
 import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
 import {
   createTitheList,
   exportToExcel,
@@ -358,18 +360,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
+  useOnlineStatus((online) => setIsOffline(!online));
 
   useEffect(() => {
     const OFFLINE_TOAST_ID = "offline-indicator";
@@ -396,18 +387,7 @@ const App: React.FC = () => {
     }
   }, [isOffline]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setIsCommandPaletteOpen((p) => !p);
-      } else if (e.key === "Escape" && isCommandPaletteOpen) {
-        setIsCommandPaletteOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isCommandPaletteOpen]);
+  useCommandPaletteHotkeys(setIsCommandPaletteOpen);
 
   const {
     favorites,
