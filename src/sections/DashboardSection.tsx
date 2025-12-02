@@ -33,7 +33,7 @@ import StatDisplayCard from "../components/StatDisplayCard";
 import AnimatedNumber from "../components/AnimatedNumber";
 import Button from "../components/Button";
 import { ASSEMBLIES } from "../constants";
-import { formatDateDDMMMYYYY } from "../services/excelProcessor";
+import { formatDateDDMMMYYYY } from "../lib/dataTransforms";
 import { useOutletContext } from "react-router-dom";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";

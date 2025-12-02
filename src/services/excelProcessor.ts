@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import {
   MemberRecordA,
   TitheRecordB,
@@ -7,24 +6,7 @@ import {
   ChangedMemberDetail,
 } from "../types";
 
-export const parseAgeStringToYears = (
-  ageString: string | undefined,
-): number | null => {
-  if (!ageString || typeof ageString !== "string") return null;
-  // Match "30", "30.5", "30 years", "Age: 30", "30yrs"
-  const match = ageString.match(/(?:age:?\s*)?(\d+(?:\.\d+)?)\s*(?:years?|yrs?)?/i);
-  return match ? Math.floor(parseFloat(match[1])) : null;
-};
-
-// Helper to format date as DD-MMM-YYYY
-export const formatDateDDMMMYYYY = (date: Date): string => {
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = date
-    .toLocaleString("default", { month: "short" })
-    .toUpperCase();
-  const year = date.getFullYear();
-  return `${day}-${month}-${year}`;
-};
+import { parseAgeStringToYears, formatDateDDMMMYYYY } from "../lib/dataTransforms";
 
 export const filterMembersByAge = (
   members: MemberRecordA[],
@@ -400,52 +382,3 @@ export const reconcileMembers = (
   };
 };
 
-export const exportToExcel = (data: TitheRecordB[], fileName?: string): void => {
-  if (!data || data.length === 0) {
-    console.error("No data provided to export.");
-    return;
-  }
-
-  const actualFileName = fileName && fileName.trim() !== "" ? fileName : "exported_data"; // Use default if fileName is empty or undefined
-
-  // Sanitize data to prevent CSV/Formula injection
-  const sanitizeForExcel = (value: any): any => {
-    if (typeof value === 'string') {
-      // If string starts with =, +, -, or @, prepend a single quote to force it as text
-      if (/^[=+\-@]/.test(value)) {
-        return `'${value}`;
-      }
-    }
-    return value;
-  };
-
-  const sanitizedData = data.map(row => {
-    const newRow: any = {};
-    Object.keys(row).forEach(key => {
-      newRow[key] = sanitizeForExcel(row[key as keyof TitheRecordB]);
-    });
-    return newRow;
-  });
-
-  const worksheet = XLSX.utils.json_to_sheet(sanitizedData);
-
-  // Auto-fit columns for better readability
-  const allKeys = new Set<string>();
-  data.forEach((row) => Object.keys(row).forEach((key) => allKeys.add(key)));
-
-  const colWidths = Array.from(allKeys).map((key) => {
-    let maxLength = key.length;
-    data.forEach((row) => {
-      const value = row[key as keyof TitheRecordB];
-      if (value != null && String(value).length > maxLength) {
-        maxLength = String(value).length;
-      }
-    });
-    return { wch: maxLength + 3 }; // +3 for a little padding
-  });
-  worksheet["!cols"] = colWidths;
-
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Exported Data");
-  XLSX.writeFile(workbook, `${actualFileName}.xlsx`);
-};

@@ -1,5 +1,7 @@
 /// <reference types="vitest/globals" />
-import { formatDateDDMMMYYYY, createTitheList, filterMembersByAge, reconcileMembers, exportToExcel } from "./excelProcessor";
+import { createTitheList, filterMembersByAge, reconcileMembers } from "./excelProcessor";
+import { formatDateDDMMMYYYY } from "../lib/dataTransforms";
+import { exportToExcel } from "../lib/excelUtils";
 import { parseExcelFile } from "../lib/excelUtils";
 import { MemberRecordA, ConcatenationConfig, TitheRecordB } from "../types";
 import * as XLSX from "xlsx";

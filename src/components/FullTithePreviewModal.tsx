@@ -8,7 +8,7 @@ import React, {
 import { TitheRecordB } from "../types";
 import Button from "./Button";
 import Modal from "./Modal";
-import { formatDateDDMMMYYYY } from "../services/excelProcessor";
+import { formatDateDDMMMYYYY } from "../lib/dataTransforms";
 import {
   Save,
   Trash2,

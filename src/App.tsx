@@ -57,11 +57,11 @@ import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
 import { useModalsPhase2 as useModals } from "./hooks/useModals";
 import {
   createTitheList,
-  exportToExcel,
   reconcileMembers,
   filterMembersByAge,
-  formatDateDDMMMYYYY,
 } from "./services/excelProcessor";
+import { exportToExcel } from "./lib/excelUtils";
+import { formatDateDDMMMYYYY } from "./lib/dataTransforms";
 import { analyticsService } from "./services/AnalyticsService";
 
 interface PendingData {
