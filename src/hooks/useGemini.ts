@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { GoogleGenerativeAI, Content, SchemaType } from '@google/generative-ai';
-import { MemberRecordA, TitheRecordB, ChatMessage, ChartData } from '../types';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase } from '../types';
 
 export const useGemini = (apiKey: string, addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void) => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);

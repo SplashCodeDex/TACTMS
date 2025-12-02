@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { MessageSquare, Send, X, Sparkles, User, Bot, BarChart2 } from "lucide-react";
+import { Send, X, Sparkles, User, Bot, BarChart2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "./Button";
 import { ChatMessage, ChartData } from "../types";

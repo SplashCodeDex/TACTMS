@@ -458,28 +458,22 @@ const AnalyticsSection: React.FC = () => {
   const {
     titheListData = [],
     currentAssembly,
-    selectedDate,
     addToast,
-    tithersCount,
-    nonTithersCount,
-    totalAmount,
     reconciliationReport,
   } = useOutletContext<AnalyticsSectionProps>();
-  const { chatHistory, chartData, isLoading, error, startChat, sendMessage } =
-    useGeminiChat();
+  const { chatHistory, chartData, isLoading, error, initializeChat, sendMessage } =
+    useGeminiChat(import.meta.env.VITE_API_KEY);
 
   const handleAnalyzeClick = () => {
     if (!import.meta.env.VITE_API_KEY) {
       addToast("AI feature is not configured.", "error");
       return;
     }
-    startChat(
+    initializeChat(
       titheListData,
-      currentAssembly,
-      selectedDate,
-      tithersCount,
-      nonTithersCount,
-      totalAmount,
+      // memberDatabase not available directly here; use minimal context: pass an empty object as placeholder
+      {} as any,
+      currentAssembly || "General"
     );
   };
 
@@ -492,12 +486,6 @@ const AnalyticsSection: React.FC = () => {
   const hasChatStarted = chatHistory.length > 0;
   const aiSummary = chatHistory[0]?.summary;
 
-  const suggestedPrompts = [
-    "What are the key observations from this data?",
-    "Suggest some potential actions based on these numbers.",
-    "What if participation increased by 10%?",
-    `How does ${currentAssembly || "this assembly"} compare to typical patterns?`,
-  ];
 
   return (
     <div className="space-y-8">
@@ -574,9 +562,12 @@ const AnalyticsSection: React.FC = () => {
               <div className="content-card">
                 <ChatInterface
                   chatHistory={chatHistory}
+                  chartData={chartData}
                   isLoading={isLoading}
+                  error={error}
                   onSendMessage={handleSendMessage}
-                  suggestedPrompts={suggestedPrompts}
+                  isOpen={true}
+                  onToggle={() => {}}
                 />
               </div>
             </div>

@@ -7,13 +7,11 @@ import {
   Activity,
   ListPlus,
   UploadCloud,
-  Building2,
   User,
   Camera,
   Sparkles,
   ArrowRight,
-  FilePlus,
-  Upload
+  FilePlus
 } from "lucide-react";
 import {
   Select,

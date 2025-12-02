@@ -51,7 +51,7 @@ import Sidebar from "./components/Sidebar";
 import FullTithePreviewModal from "./components/FullTithePreviewModal";
 import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";
-import { WifiOff, Save, Trash2, FilePlus, Sun, Moon } from "lucide-react";
+import { WifiOff, Save, Trash2 } from "lucide-react";
 import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
 import {
   createTitheList,
@@ -317,7 +317,7 @@ const App: React.FC = () => {
     [],
   );
 
-  const { isGeneratingReport, validationReportContent, generateValidationReport } = useGemini(
+  const { isGeneratingReport, validationReportContent } = useGemini(
     import.meta.env.VITE_API_KEY,
     addToast,
   );
@@ -1423,16 +1423,14 @@ const App: React.FC = () => {
     setTitheListData((prev) =>
       prev.map((record) => {
         if (
-          record["First Name"] === member["First Name"] &&
-          record.Surname === member.Surname
+          record["Membership Number"] === (member["Membership Number"] || member["Old Membership Number"])
         ) {
           // Update relevant fields in tithe list record
           // Note: This is a shallow update. Ideally, we regenerate the list,
           // but for simple edits, this might suffice.
           return {
             ...record,
-            "First Name": member["First Name"],
-            Surname: member.Surname,
+            "Membership Number": member["Membership Number"] || member["Old Membership Number"] || record["Membership Number"],
           };
         }
         return record;
@@ -1507,7 +1505,7 @@ const App: React.FC = () => {
             if (resolution === "use_new") {
               return {
                 ...member,
-                ...conflict.newMember,
+                ...conflict.newRecord,
                 firstSeenDate: member.firstSeenDate,
                 firstSeenSource: member.firstSeenSource,
                 customOrder: member.customOrder,
@@ -1572,10 +1570,12 @@ const App: React.FC = () => {
       <div className="main-content">
         <MobileHeader
           onMenuClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          theme={theme}
+          title={currentAssembly ? `${currentAssembly} Assembly` : "TACTMS"}
+          globalNotifications={globalNotifications}
+          accentColor={accentColor}
         />
 
-        <DesktopNotifications notifications={globalNotifications} />
+        <DesktopNotifications globalNotifications={globalNotifications} accentColor={accentColor} />
 
         <main className="p-6 lg:p-8 max-w-[1600px] mx-auto">
           <AnimatePresence mode="wait">
@@ -1686,28 +1686,14 @@ const App: React.FC = () => {
 
       <CommandPalette
         isOpen={isCommandPaletteOpen}
-        setIsOpen={setIsCommandPaletteOpen}
-        actions={[
-          {
-            id: "new-list",
-            label: "Start New List",
-            icon: <FilePlus size={16} />,
-            perform: () => navigate("/"),
-          },
-          {
-            id: "save-fav",
-            label: "Save Favorite",
-            icon: <Save size={16} />,
-            perform: openSaveFavoriteModal,
-          },
-          {
-            id: "toggle-theme",
-            label: "Toggle Theme",
-            icon: theme === "dark" ? <Sun size={16} /> : <Moon size={16} />,
-            perform: () => setTheme(theme === "dark" ? "light" : "dark"),
-          },
-        ]}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        setActiveView={(view) => navigate(view === "dashboard" ? "/" : `/${view}`)}
+        setTheme={setTheme}
+        onStartNewWeek={startNewWeek}
+        favorites={favorites}
+        theme={theme}
       />
+
 
 
 
@@ -2019,7 +2005,7 @@ const App: React.FC = () => {
             isOpen={isReconciliationModalOpen}
             onClose={() => setIsReconciliationModalOpen(false)}
             report={reconciliationReport}
-            onResolveConflict={handleResolveConflict}
+            onResolveConflict={(_, resolution) => handleResolveConflict(resolution === "new" ? "use_new" : "keep_existing")}
           />
         )
       }
