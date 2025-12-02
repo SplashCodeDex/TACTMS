@@ -333,6 +333,7 @@ body {
 }
 .modal-content {
   width: 100%;
+  max-width: 640px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 1rem;
@@ -731,5 +732,5 @@ body {
 }
 
 .md\:grid-cols-3 {
-  grid-template-columns: repeat(2, minmax(0px, 1fr));
+  grid-template-columns: 1fr 1fr;
 }
