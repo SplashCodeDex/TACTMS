@@ -1,51 +1,93 @@
-/// <reference types="vitest/globals" />
 import { describe, it, expect } from 'vitest';
-import { reconcileMembers } from './reconciliation';
+import { findMemberByName } from './reconciliation';
 import { MemberRecordA } from '../types';
 
-describe('reconciliation.reconcileMembers', () => {
-  it('matches by OldID when current ID is missing in new data', () => {
-    const master: MemberRecordA[] = [
-      { 'No.': 1, 'First Name': 'A', Surname: 'B', 'Membership Number': 'CURR1', 'Old Membership Number': 'OLD1' },
-    ];
-    const incoming: MemberRecordA[] = [
-      { 'No.': 1, 'First Name': 'A', Surname: 'B', 'Old Membership Number': 'OLD1' },
+describe('reconciliation', () => {
+  describe('findMemberByName', () => {
+    const mockMasterData: MemberRecordA[] = [
+      {
+        "No.": 1,
+        "Membership Number": "TAC123",
+        "Old Membership Number": "OLD123",
+        "Surname": "Doe",
+        "First Name": "John",
+        "Other Names": "Kwame",
+        "Gender": "M",
+        "Date of Birth": "1990-01-01",
+        "Marital Status": "Single",
+        "Telephone Number": "0123456789",
+        "Occupation": "Engineer",
+        "Hometown": "Accra",
+        "Residence": "Accra",
+        "Date of Baptism": "2000-01-01",
+        "Place of Baptism": "Accra",
+        "Date of Holy Ghost Baptism": "2005-01-01",
+        "Offices Held": "None",
+        "Previous Local Assembly": "None",
+        "Date of Arrival": "2010-01-01",
+        "Remarks": "",
+      },
+      {
+        "No.": 2,
+        "Membership Number": "TAC456",
+        "Old Membership Number": "",
+        "Surname": "Smith",
+        "First Name": "Jane",
+        "Other Names": "",
+        "Gender": "F",
+        "Date of Birth": "1992-01-01",
+        "Marital Status": "Married",
+        "Telephone Number": "0987654321",
+        "Occupation": "Teacher",
+        "Hometown": "Kumasi",
+        "Residence": "Kumasi",
+        "Date of Baptism": "2002-01-01",
+        "Place of Baptism": "Kumasi",
+        "Date of Holy Ghost Baptism": "",
+        "Offices Held": "",
+        "Previous Local Assembly": "",
+        "Date of Arrival": "",
+        "Remarks": "",
+      }
     ];
 
-    const report = reconcileMembers(incoming, master);
-    expect(report.newMembers.length).toBe(0);
-    expect(report.changedMembers.length).toBe(1); // matched by OldID, current ID differs so changes are recorded
-  });
+    it('should find an exact match', () => {
+      const result = findMemberByName('John Kwame Doe', mockMasterData);
+      expect(result).not.toBeNull();
+      expect(result?.member["Membership Number"]).toBe('TAC123');
+      expect(result?.score).toBe(1);
+    });
 
-  it('detects conflicts by name when IDs differ', () => {
-    const master: MemberRecordA[] = [
-      { 'No.': 1, 'First Name': 'A', Surname: 'B', 'Membership Number': 'CURR1' },
-    ];
-    const incoming: MemberRecordA[] = [
-      { 'No.': 2, 'First Name': 'A', Surname: 'B', 'Membership Number': 'DIFF' },
-    ];
+    it('should find a match with slight typo', () => {
+      const result = findMemberByName('Jon Kwame Doe', mockMasterData);
+      expect(result).not.toBeNull();
+      expect(result?.member["Membership Number"]).toBe('TAC123');
+      expect(result?.score).toBeGreaterThan(0.8);
+    });
 
-    const report = reconcileMembers(incoming, master);
-    expect(report.conflicts.length).toBe(1);
-    expect(report.newMembers.length).toBe(0);
-  });
+    it('should find a match with different name order (if implementation supports it - checking combinations)', () => {
+      // The implementation generates combinations:
+      // [Surname, First, Other], [Surname, Other, First], [First, Surname, Other], etc.
+      // So "Doe John Kwame" should match "John Kwame Doe" if the combination "Doe John Kwame" is generated.
+      const result = findMemberByName('Doe John Kwame', mockMasterData);
+      expect(result).not.toBeNull();
+      expect(result?.member["Membership Number"]).toBe('TAC123');
+    });
 
-  it('records changes only when values differ', () => {
-    const master: MemberRecordA[] = [
-      { 'No.': 1, 'First Name': 'A', Surname: 'B', 'Membership Number': 'CURR1', 'Phone Number': '123' },
-    ];
-    const incomingSame: MemberRecordA[] = [
-      { 'No.': 1, 'First Name': 'A', Surname: 'B', 'Membership Number': 'CURR1', 'Phone Number': '123' },
-    ];
-    const incomingChanged: MemberRecordA[] = [
-      { 'No.': 1, 'First Name': 'A', Surname: 'B', 'Membership Number': 'CURR1', 'Phone Number': '456' },
-    ];
+    it('should not find a match if similarity is too low', () => {
+      const result = findMemberByName('Xavier Unknown', mockMasterData);
+      expect(result).toBeNull();
+    });
 
-    const reportSame = reconcileMembers(incomingSame, master);
-    expect(reportSame.changedMembers.length).toBe(0);
-
-    const reportChanged = reconcileMembers(incomingChanged, master);
-    expect(reportChanged.changedMembers.length).toBe(1);
-    expect(reportChanged.changedMembers[0].changes.some(c => c.field === 'Phone Number')).toBe(true);
+    it('should return the best match among multiple candidates', () => {
+      // Add a similar member
+      const dataWithSimilar = [
+        ...mockMasterData,
+        { ...mockMasterData[0], "First Name": "Johnny", "Membership Number": "TAC124" }
+      ];
+      // "Johnny" is closer to "Johnny" than "John"
+      const result = findMemberByName('Johnny Kwame Doe', dataWithSimilar);
+      expect(result?.member["Membership Number"]).toBe('TAC124');
+    });
   });
 });

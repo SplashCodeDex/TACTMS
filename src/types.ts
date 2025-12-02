@@ -212,3 +212,9 @@ export interface ChartData {
   label: string;
   count: number;
 }
+
+export interface FuzzyMatchResult {
+  member: MemberRecordA;
+  score: number;
+  matchedName: string;
+}

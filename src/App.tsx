@@ -48,6 +48,7 @@ import Sidebar from "./components/Sidebar";
 import FullTithePreviewModal from "./components/FullTithePreviewModal";
 import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";
+import ImageVerificationModal from "./components/ImageVerificationModal";
 import { WifiOff, Save, Trash2 } from "lucide-react";
 import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
 import { useThemePreferences } from "./hooks/useThemePreferences";
@@ -134,27 +135,27 @@ const App: React.FC = () => {
     useState<FavoriteConfig | null>(null);
   // deleteFavorite handled via useModalsPhase2()
   // const [isDeleteFavConfirmModalOpen, setIsDeleteFavConfirmModalOpen] =
-    useState(false);
+  useState(false);
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
   const { fullPreview, amountEntry, saveFavorite, deleteFavorite: deleteFavoriteModal, favoriteDetails: favoriteDetailsModal, assemblySelection: _assemblySelection, reconciliation: _reconciliation, clearWorkspace: clearWorkspaceModal, updateConfirm: _updateConfirm, editMember: _editMember, validationReport: _validationReport } = useModals();
   // Backwards-compatible adapters for existing props/usages during refactor
- const isFullPreviewModalOpen = fullPreview.isOpen;
- const setIsFullPreviewModalOpen = (open: boolean) =>
-   open ? fullPreview.open() : fullPreview.close();
- const isAmountEntryModalOpen = amountEntry.isOpen;
- const setIsAmountEntryModalOpen = (open: boolean) =>
-   open ? amountEntry.open() : amountEntry.close();
- // Favorites adapters (Phase 2 temporary)
- const isSaveFavoriteModalOpen = saveFavorite.isOpen;
- const setIsSaveFavoriteModalOpen = (open: boolean) =>
-   open ? saveFavorite.open() : saveFavorite.close();
- const isDeleteFavConfirmModalOpen = deleteFavoriteModal.isOpen;
- const setIsDeleteFavConfirmModalOpen = (open: boolean) =>
-   open ? deleteFavoriteModal.open() : deleteFavoriteModal.close();
- const isFavDetailsModalOpen = favoriteDetailsModal.isOpen;
- const setIsFavDetailsModalOpen = (open: boolean) =>
-   open ? favoriteDetailsModal.open() : favoriteDetailsModal.close();
+  const isFullPreviewModalOpen = fullPreview.isOpen;
+  const setIsFullPreviewModalOpen = (open: boolean) =>
+    open ? fullPreview.open() : fullPreview.close();
+  const isAmountEntryModalOpen = amountEntry.isOpen;
+  const setIsAmountEntryModalOpen = (open: boolean) =>
+    open ? amountEntry.open() : amountEntry.close();
+  // Favorites adapters (Phase 2 temporary)
+  const isSaveFavoriteModalOpen = saveFavorite.isOpen;
+  const setIsSaveFavoriteModalOpen = (open: boolean) =>
+    open ? saveFavorite.open() : saveFavorite.close();
+  const isDeleteFavConfirmModalOpen = deleteFavoriteModal.isOpen;
+  const setIsDeleteFavConfirmModalOpen = (open: boolean) =>
+    open ? deleteFavoriteModal.open() : deleteFavoriteModal.close();
+  const isFavDetailsModalOpen = favoriteDetailsModal.isOpen;
+  const setIsFavDetailsModalOpen = (open: boolean) =>
+    open ? favoriteDetailsModal.open() : favoriteDetailsModal.close();
 
   const [isAddNewMemberModalOpen, setIsAddNewMemberModalOpen] = useState(false);
   const [isCreateTitheListModalOpen, setIsCreateTitheListModalOpen] =
@@ -289,6 +290,11 @@ const App: React.FC = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
 
+  // Image Verification State
+  const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
+  const [extractedTitheData, setExtractedTitheData] = useState<TitheRecordB[]>([]);
+  const [imageVerificationMasterData, setImageVerificationMasterData] = useState<MemberRecordA[]>([]);
+
   const addToast = useCallback(
     (
       message: string,
@@ -323,7 +329,7 @@ const App: React.FC = () => {
     [],
   );
 
-  const { isGeneratingReport, validationReportContent } = useGemini(
+  const { isGeneratingReport, validationReportContent, analyzeImage } = useGemini(
     import.meta.env.VITE_API_KEY,
     addToast,
   );
@@ -1511,6 +1517,14 @@ const App: React.FC = () => {
     );
   };
 
+  const handleImageVerificationConfirm = (verifiedData: TitheRecordB[]) => {
+    setTitheListData((prev) => [...prev, ...verifiedData]);
+    setSoulsWonCount((prev) => (prev || 0) + verifiedData.length);
+    addToast(`Added ${verifiedData.length} records from image.`, "success");
+    setIsImageVerificationModalOpen(false);
+    setHasUnsavedChanges(true);
+  };
+
 
   return (
     <div className={`app-container ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
@@ -1558,10 +1572,24 @@ const App: React.FC = () => {
                   onStartNewWeek: startNewWeek,
                   userProfile: driveUserProfile,
                   onUploadFile: handleFileAccepted,
-                  onScanImage: (file: File) => {
-                    // Placeholder for scan image handler passed to dashboard
-                    console.log("Scan image requested", file);
-                    addToast("Image scanning started...", "info");
+                  onScanImage: async (file: File) => {
+                    if (!currentAssembly) {
+                      addToast("Please select an assembly first.", "warning");
+                      return;
+                    }
+                    const masterList = memberDatabase[currentAssembly];
+                    if (!masterList || !masterList.data) {
+                      addToast("No member data found for this assembly.", "warning");
+                      return;
+                    }
+
+                    addToast("Analyzing image with Gemini...", "info");
+                    const data = await analyzeImage(file);
+                    if (data) {
+                      setExtractedTitheData(data);
+                      setImageVerificationMasterData(masterList.data);
+                      setIsImageVerificationModalOpen(true);
+                    }
                   },
                   // Processor Props
                   uploadedFile,
@@ -2011,6 +2039,18 @@ const App: React.FC = () => {
           />
         )
       }
+      {
+        isImageVerificationModalOpen && (
+          <ImageVerificationModal
+            isOpen={isImageVerificationModalOpen}
+            onClose={() => setIsImageVerificationModalOpen(false)}
+            extractedData={extractedTitheData}
+            masterData={imageVerificationMasterData}
+            onConfirm={handleImageVerificationConfirm}
+          />
+        )
+      }
+
       {
         _validationReport.isOpen && (
           <ValidationReportModal

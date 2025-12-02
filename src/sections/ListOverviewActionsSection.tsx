@@ -15,6 +15,7 @@ import {
   CalendarCheck,
   UserPlus,
   Eraser,
+  ScanLine,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "../components/Button";
@@ -50,7 +51,9 @@ interface ListOverviewActionsSectionProps {
   onClearWorkspace: () => void;
   transactionLog: TransactionLogEntry[];
   soulsWonCount: number | null;
+  soulsWonCount: number | null;
   onDateChange: (date: Date) => void;
+  onScanImage: (file: File) => void;
 }
 
 const MotionSection = motion.section;
@@ -138,7 +141,10 @@ const ListOverviewActionsSection = React.memo(
       transactionLog = [],
       soulsWonCount,
       onDateChange,
+      onScanImage,
     } = useOutletContext<ListOverviewActionsSectionProps>();
+
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const getMinMaxTitheStats = (titheListData: TitheRecordB[]) => {
       const tithersWithAmount = titheListData
@@ -317,6 +323,26 @@ const ListOverviewActionsSection = React.memo(
                 onDateChange={onDateChange}
               />
             </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  onScanImage(e.target.files[0]);
+                  // Reset value to allow selecting same file again
+                  e.target.value = "";
+                }
+              }}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              leftIcon={<ScanLine size={16} />}
+              variant="primary"
+            >
+              Scan Image
+            </Button>
             <Button
               onClick={() => setIsAmountEntryModalOpen(true)}
               leftIcon={<Keyboard size={16} />}

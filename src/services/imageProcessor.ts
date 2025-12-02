@@ -1,9 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { TitheRecordB } from "../types";
 
-// User requested Gemini 3 Pro. Using "gemini-1.5-pro" as the current stable fallback
-// until the exact Gemini 3 API model name is confirmed/available in the SDK.
-const MODEL_NAME = "gemini-1.5-pro";
+// User requested Gemini 3 Pro.
+const MODEL_NAME = "gemini-3-pro-image-preview";
 
 export const processTitheImage = async (
     imageFile: File,

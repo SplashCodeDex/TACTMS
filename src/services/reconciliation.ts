@@ -209,3 +209,52 @@ export const reconcileMembers = (
     unidentifiableMasterMembers,
   };
 };
+
+import { getSimilarity } from "../utils/stringUtils";
+import { FuzzyMatchResult } from "../types";
+
+export const findMemberByName = (
+  rawName: string,
+  masterData: MemberRecordA[],
+  threshold: number = 0.8
+): FuzzyMatchResult | null => {
+  if (!rawName || !masterData.length) return null;
+
+  const normalizedRawName = rawName.toLowerCase().trim();
+  let bestMatch: FuzzyMatchResult | null = null;
+
+  for (const member of masterData) {
+    // Construct the full name from the master record for comparison
+    // Try different combinations: First Surname, Surname First, etc.
+    const firstName = (member["First Name"] || "").trim();
+    const surname = (member.Surname || "").trim();
+    const otherNames = (member["Other Names"] || "").trim();
+
+    const combinations = [
+      `${firstName} ${surname}`,
+      `${surname} ${firstName}`,
+      `${firstName} ${otherNames} ${surname}`,
+      `${surname} ${firstName} ${otherNames}`,
+      `${firstName} ${surname} ${otherNames}`
+    ];
+
+    for (const nameCombo of combinations) {
+      const normalizedCombo = nameCombo.toLowerCase().trim();
+      if (!normalizedCombo) continue;
+
+      const score = getSimilarity(normalizedRawName, normalizedCombo);
+
+      if (score >= threshold) {
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = {
+            member,
+            score,
+            matchedName: nameCombo
+          };
+        }
+      }
+    }
+  }
+
+  return bestMatch;
+};
