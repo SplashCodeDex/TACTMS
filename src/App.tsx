@@ -53,7 +53,8 @@ import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
 import { useThemePreferences } from "./hooks/useThemePreferences";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
-import { useModals } from "./hooks/useModals";
+// import { useModals } from "./hooks/useModals";
+import { useModalsPhase2 as useModals } from "./hooks/useModals";
 import {
   createTitheList,
   exportToExcel,
@@ -129,21 +130,31 @@ const App: React.FC = () => {
   const [fileNameToSave, setFileNameToSave] = useState("GeneratedTitheList");
 
   const [favoritesSearchTerm, setFavoritesSearchTerm] = useState("");
-  const [isFavDetailsModalOpen, setIsFavDetailsModalOpen] = useState(false);
   const [selectedFavoriteForDetails, setSelectedFavoriteForDetails] =
     useState<FavoriteConfig | null>(null);
-  const [isDeleteFavConfirmModalOpen, setIsDeleteFavConfirmModalOpen] =
+  // deleteFavorite handled via useModalsPhase2()
+  // const [isDeleteFavConfirmModalOpen, setIsDeleteFavConfirmModalOpen] =
     useState(false);
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
-  const { fullPreview, amountEntry } = useModals();
+  const { fullPreview, amountEntry, saveFavorite, deleteFavorite: deleteFavoriteModal, favoriteDetails: favoriteDetailsModal, assemblySelection: _assemblySelection, reconciliation: _reconciliation, clearWorkspace: clearWorkspaceModal, updateConfirm: _updateConfirm, editMember: _editMember, validationReport: _validationReport } = useModals();
   // Backwards-compatible adapters for existing props/usages during refactor
-  const isFullPreviewModalOpen = fullPreview.isOpen;
-  const setIsFullPreviewModalOpen = (open: boolean) =>
-    open ? fullPreview.open() : fullPreview.close();
-  const isAmountEntryModalOpen = amountEntry.isOpen;
-  const setIsAmountEntryModalOpen = (open: boolean) =>
-    open ? amountEntry.open() : amountEntry.close();
+ const isFullPreviewModalOpen = fullPreview.isOpen;
+ const setIsFullPreviewModalOpen = (open: boolean) =>
+   open ? fullPreview.open() : fullPreview.close();
+ const isAmountEntryModalOpen = amountEntry.isOpen;
+ const setIsAmountEntryModalOpen = (open: boolean) =>
+   open ? amountEntry.open() : amountEntry.close();
+ // Favorites adapters (Phase 2 temporary)
+ const isSaveFavoriteModalOpen = saveFavorite.isOpen;
+ const setIsSaveFavoriteModalOpen = (open: boolean) =>
+   open ? saveFavorite.open() : saveFavorite.close();
+ const isDeleteFavConfirmModalOpen = deleteFavoriteModal.isOpen;
+ const setIsDeleteFavConfirmModalOpen = (open: boolean) =>
+   open ? deleteFavoriteModal.open() : deleteFavoriteModal.close();
+ const isFavDetailsModalOpen = favoriteDetailsModal.isOpen;
+ const setIsFavDetailsModalOpen = (open: boolean) =>
+   open ? favoriteDetailsModal.open() : favoriteDetailsModal.close();
 
   const [isAddNewMemberModalOpen, setIsAddNewMemberModalOpen] = useState(false);
   const [isCreateTitheListModalOpen, setIsCreateTitheListModalOpen] =
@@ -165,7 +176,8 @@ const App: React.FC = () => {
 
   const { theme, setTheme, accentColor, setAccentColor } = useThemePreferences();
 
-  const [isSaveFavoriteModalOpen, setIsSaveFavoriteModalOpen] = useState(false);
+  // saveFavorite handled via useModalsPhase2()
+  // const [isSaveFavoriteModalOpen, setIsSaveFavoriteModalOpen] = useState(false);
   const [favoriteNameInput, setFavoriteNameInput] = useState("");
 
   const autoSaveTimerRef = useRef<number | null>(null);
@@ -1077,11 +1089,6 @@ const App: React.FC = () => {
     amountMappingColumn,
   ]);
 
-  const openSaveFavoriteModal = () => {
-    const name = `${currentAssembly} - ${formatDateDDMMMYYYY(selectedDate)}`;
-    setFavoriteNameInput(name);
-    setIsSaveFavoriteModalOpen(true);
-  };
 
   const handleSaveFavorite = () => {
     if (!favoriteNameInput.trim()) {
@@ -1119,7 +1126,7 @@ const App: React.FC = () => {
       ...prev.filter((f) => f.name !== newFavorite.name),
     ]);
     addToast("Saved to favorites!", "success");
-    setIsSaveFavoriteModalOpen(false);
+    saveFavorite.close();
   };
 
   const loadFavorite = useCallback(
@@ -1211,16 +1218,16 @@ const App: React.FC = () => {
     );
   };
 
-  const deleteFavorite = (favId: string) => {
+  const handleDeleteFavorite = (favId: string) => {
     setFavToDeleteId(favId);
-    setIsDeleteFavConfirmModalOpen(true);
+    deleteFavoriteModal.open()
   };
 
   const confirmDeleteFavorite = () => {
     if (!favToDeleteId) return;
     setFavorites((prev) => prev.filter((f) => f.id !== favToDeleteId));
     addToast("Favorite deleted.", "success");
-    setIsDeleteFavConfirmModalOpen(false);
+    deleteFavoriteModal.close()
     setFavToDeleteId(null);
   };
 
@@ -1234,7 +1241,7 @@ const App: React.FC = () => {
 
   const viewFavoriteDetails = (fav: FavoriteConfig) => {
     setSelectedFavoriteForDetails(fav);
-    setIsFavDetailsModalOpen(true);
+    favoriteDetailsModal.open()
   };
 
   const handleConfirmClearWorkspace = () => {
@@ -1564,7 +1571,7 @@ const App: React.FC = () => {
                   favoritesSearchTerm,
                   setFavoritesSearchTerm,
                   loadFavorite,
-                  deleteFavorite,
+                  deleteFavorite: handleDeleteFavorite,
                   viewFavoriteDetails,
                   updateFavoriteName,
                   addToast,
@@ -1582,7 +1589,7 @@ const App: React.FC = () => {
                   ) => {
                     setPendingTitheListMembers(members);
                     setPendingTitheListAssembly(assembly);
-                    setIsCreateTitheListModalOpen(true);
+                    setIsCreateTitheListModalOpen(true); // TODO: move into useModalsPhase2 later
                   },
                   onEditMember: (member: MemberRecordA, assemblyName: string) => {
                     setMemberToEdit({ member, assemblyName });
@@ -1605,8 +1612,8 @@ const App: React.FC = () => {
                   inputErrors,
                   setInputErrors,
                   handleDownloadExcel,
-                  openSaveFavoriteModal,
-                  onClearWorkspace: () => setIsClearWorkspaceModalOpen(true),
+                  openSaveFavoriteModal: () => saveFavorite.open(),
+                  onClearWorkspace: () => clearWorkspaceModal.open(),
                   soulsWonCount,
                   // Configuration
                   isLoggedIn: isDriveLoggedIn,
@@ -1721,10 +1728,10 @@ const App: React.FC = () => {
         )
       }
       {
-        isSaveFavoriteModalOpen && (
+        saveFavorite.isOpen && (
           <Modal
-            isOpen={isSaveFavoriteModalOpen}
-            onClose={() => setIsSaveFavoriteModalOpen(false)}
+            isOpen={saveFavorite.isOpen}
+            onClose={() => saveFavorite.close()}
             title="Save Configuration to Favorites"
             closeOnOutsideClick={false}
           >
@@ -1745,7 +1752,7 @@ const App: React.FC = () => {
             <div className="mt-6 flex justify-end gap-3">
               <Button
                 variant="outline"
-                onClick={() => setIsSaveFavoriteModalOpen(false)}
+                onClick={() => saveFavorite.close()}
               >
                 Cancel
               </Button>
@@ -1761,10 +1768,10 @@ const App: React.FC = () => {
         )
       }
       {
-        isDeleteFavConfirmModalOpen && (
+        deleteFavoriteModal.isOpen && (
           <Modal
-            isOpen={isDeleteFavConfirmModalOpen}
-            onClose={() => setIsDeleteFavConfirmModalOpen(false)}
+            isOpen={deleteFavoriteModal.isOpen}
+            onClose={() => deleteFavoriteModal.close()}
             title="Delete Favorite?"
             closeOnOutsideClick={false}
           >
@@ -1775,7 +1782,7 @@ const App: React.FC = () => {
             <div className="mt-6 flex justify-end gap-3">
               <Button
                 variant="outline"
-                onClick={() => setIsDeleteFavConfirmModalOpen(false)}
+                onClick={() => deleteFavoriteModal.close()}
               >
                 Cancel
               </Button>
@@ -1793,8 +1800,8 @@ const App: React.FC = () => {
       {
         selectedFavoriteForDetails && (
           <Modal
-            isOpen={isFavDetailsModalOpen}
-            onClose={() => setIsFavDetailsModalOpen(false)}
+            isOpen={favoriteDetailsModal.isOpen}
+            onClose={() => favoriteDetailsModal.close()}
             title={`Details for "${selectedFavoriteForDetails.name}"`}
             size="lg"
           >
@@ -1862,10 +1869,10 @@ const App: React.FC = () => {
         )
       }
       {
-        isSaveFavoriteModalOpen && (
+        saveFavorite.isOpen && (
           <Modal
-            isOpen={isSaveFavoriteModalOpen}
-            onClose={() => setIsSaveFavoriteModalOpen(false)}
+            isOpen={saveFavorite.isOpen}
+            onClose={() => saveFavorite.close()}
             title="Save Configuration to Favorites"
             closeOnOutsideClick={false}
           >
@@ -1886,7 +1893,7 @@ const App: React.FC = () => {
             <div className="mt-6 flex justify-end gap-3">
               <Button
                 variant="outline"
-                onClick={() => setIsSaveFavoriteModalOpen(false)}
+                onClick={() => saveFavorite.close()}
               >
                 Cancel
               </Button>
@@ -1902,10 +1909,10 @@ const App: React.FC = () => {
         )
       }
       {
-        isDeleteFavConfirmModalOpen && (
+        deleteFavoriteModal.isOpen && (
           <Modal
-            isOpen={isDeleteFavConfirmModalOpen}
-            onClose={() => setIsDeleteFavConfirmModalOpen(false)}
+            isOpen={deleteFavoriteModal.isOpen}
+            onClose={() => deleteFavoriteModal.close()}
             title="Delete Favorite?"
             closeOnOutsideClick={false}
           >
@@ -1916,7 +1923,7 @@ const App: React.FC = () => {
             <div className="mt-6 flex justify-end gap-3">
               <Button
                 variant="outline"
-                onClick={() => setIsDeleteFavConfirmModalOpen(false)}
+                onClick={() => deleteFavoriteModal.close()}
               >
                 Cancel
               </Button>
@@ -1934,8 +1941,8 @@ const App: React.FC = () => {
       {
         selectedFavoriteForDetails && (
           <Modal
-            isOpen={isFavDetailsModalOpen}
-            onClose={() => setIsFavDetailsModalOpen(false)}
+            isOpen={favoriteDetailsModal.isOpen}
+            onClose={() => favoriteDetailsModal.close()}
             title={`Details for "${selectedFavoriteForDetails.name}"`}
             size="lg"
           >
@@ -1957,60 +1964,60 @@ const App: React.FC = () => {
         )
       }
       {
-        isReconciliationModalOpen && reconciliationReport && (
+        _reconciliation.isOpen && _reconciliation.report && (
           <MembershipReconciliationModal
-            isOpen={isReconciliationModalOpen}
-            onClose={() => setIsReconciliationModalOpen(false)}
-            report={reconciliationReport}
+            isOpen={_reconciliation.isOpen}
+            onClose={() => _reconciliation.close()}
+            report={_reconciliation.report}
             onResolveConflict={(_, resolution) => handleResolveConflict(resolution === "new" ? "use_new" : "keep_existing")}
           />
         )
       }
       {
-        isClearWorkspaceModalOpen && (
+        clearWorkspaceModal.isOpen && (
           <ClearWorkspaceModal
-            isOpen={isClearWorkspaceModalOpen}
-            onClose={() => setIsClearWorkspaceModalOpen(false)}
+            isOpen={clearWorkspaceModal.isOpen}
+            onClose={() => clearWorkspaceModal.close()}
             onConfirm={handleConfirmClearWorkspace}
           />
         )
       }
       {
-        isUpdateConfirmModalOpen && pendingUpdate && (
+        _updateConfirm.isOpen && (_updateConfirm.pending) && (
           <UpdateMasterListConfirmModal
-            isOpen={isUpdateConfirmModalOpen}
-            onClose={() => setIsUpdateConfirmModalOpen(false)}
+            isOpen={_updateConfirm.isOpen}
+            onClose={() => _updateConfirm.close()}
             onConfirm={() => {
               handleMasterListUpdate(
-                pendingUpdate.assemblyName,
-                pendingUpdate.newData,
-                pendingUpdate.newFileName,
+                _updateConfirm.pending.assemblyName,
+                _updateConfirm.pending.newData,
+                _updateConfirm.pending.newFileName,
               );
               setIsUpdateConfirmModalOpen(false);
             }}
-            existingData={memberDatabase[pendingUpdate.assemblyName]}
-            pendingUpdate={pendingUpdate}
+            existingData={memberDatabase[_updateConfirm.pending.assemblyName]}
+            pendingUpdate={_updateConfirm.pending}
           />
         )
       }
       {
-        isEditMemberModalOpen && memberToEdit && (
+        _editMember.isOpen && (_editMember.target) && (
           <EditMemberModal
-            isOpen={isEditMemberModalOpen}
-            onClose={() => setIsEditMemberModalOpen(false)}
+            isOpen={_editMember.isOpen}
+            onClose={() => _editMember.close()}
             onSave={handleEditMemberInDB}
-            memberData={memberToEdit.member}
-            assemblyName={memberToEdit.assemblyName}
+            memberData={_editMember.target.member}
+            assemblyName={_editMember.target.assemblyName}
           />
         )
       }
       {
-        isValidationModalOpen && (
+        _validationReport.isOpen && (
           <ValidationReportModal
-            isOpen={isValidationModalOpen}
-            onClose={() => setIsValidationModalOpen(false)}
-            reportContent={validationReportContent}
-            isLoading={isGeneratingReport}
+            isOpen={_validationReport.isOpen}
+            onClose={() => _validationReport.close()}
+            reportContent={_validationReport.content}
+            isLoading={_validationReport.isLoading}
           />
         )
       }

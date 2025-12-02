@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
       devtoolsSettings({
         projectRoot: process.cwd(),
         normalizeForWindowsContainer: true,
+        sourcemap: true,
         cacheDir: '.vite'
       }),
       VitePWA({
