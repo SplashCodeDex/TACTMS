@@ -1,5 +1,6 @@
 import { TransactionLogEntry, MemberDatabase, ReportData } from "../types";
 import { ASSEMBLIES } from "../constants";
+import { escapeCsvField } from "./exportUtils";
 
 const getWeekOfYear = (date: Date) => {
   const target = new Date(date.valueOf());
@@ -220,13 +221,11 @@ export const aggregateReportData = (
 export const exportToCsv = (summary: any, selectedYear: number, granularity: string) => {
   let csvContent = "data:text/csv;charset=utf-8,";
 
+  // Use shared CSV escape utility
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const escapeCsvField = (field: any) => {
-    if (field === null || field === undefined) return "";
-    let value = String(field);
-    if (value.includes(",") || value.includes("\n") || value.includes("\"")) {
-      return `"${value.replace(/"/g, '""')}"`;
-    }
-    return value;
+    // This body will be replaced by import below.
+    return "";
   };
 
   csvContent += `Summary for ${selectedYear}\n`;

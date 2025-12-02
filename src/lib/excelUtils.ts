@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { MemberRecordA, TitheRecordB } from "../types";
+import { sanitizeForSpreadsheet, computeColumnWidths } from "./exportUtils";
 
 export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
   return new Promise((resolve, reject) => {
@@ -173,14 +174,8 @@ export const exportToExcel = (data: TitheRecordB[], fileName?: string): void => 
   const actualFileName = fileName && fileName.trim() !== "" ? fileName : "exported_data";
 
   // Sanitize data to prevent CSV/Formula injection
-  const sanitizeForExcel = (value: any): any => {
-    if (typeof value === 'string') {
-      if (/^[=+\-@]/.test(value)) {
-        return `'${value}`;
-      }
-    }
-    return value;
-  };
+  // Use shared helper
+  const sanitizeForExcel = sanitizeForSpreadsheet;
 
   const sanitizedData = data.map(row => {
     const newRow: any = {};
@@ -192,21 +187,8 @@ export const exportToExcel = (data: TitheRecordB[], fileName?: string): void => 
 
   const worksheet = XLSX.utils.json_to_sheet(sanitizedData);
 
-  // Auto-fit columns for better readability
-  const allKeys = new Set<string>();
-  data.forEach((row: any) => Object.keys(row).forEach((key) => allKeys.add(key)));
-
-  const colWidths = Array.from(allKeys).map((key) => {
-    let maxLength = key.length;
-    data.forEach((row: any) => {
-      const value = (row as any)[key];
-      if (value != null && String(value).length > maxLength) {
-        maxLength = String(value).length;
-      }
-    });
-    return { wch: maxLength + 3 };
-  });
-  (worksheet as any)["!cols"] = colWidths;
+  // Auto-fit columns for better readability via shared helper
+  (worksheet as any)["!cols"] = computeColumnWidths(data as any[]);
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Exported Data");
