@@ -26,11 +26,8 @@ import {
   AUTO_SAVE_KEY,
   AUTO_SAVE_DEBOUNCE_TIME,
   ITEMS_PER_FULL_PREVIEW_PAGE,
-  APP_THEME_STORAGE_KEY,
   DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
   ASSEMBLIES,
-  THEME_OPTIONS,
-  APP_ACCENT_COLOR_KEY,
   MEMBER_DATABASE_STORAGE_KEY,
 } from "./constants";
 import AmountEntryModal from "./components/AmountEntryModal";
@@ -56,6 +53,7 @@ import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
 import { useThemePreferences } from "./hooks/useThemePreferences";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
+import { useModals } from "./hooks/useModals";
 import {
   createTitheList,
   exportToExcel,
@@ -101,7 +99,6 @@ const App: React.FC = () => {
   const [titheListData, setTitheListData] = useState<TitheRecordB[]>([]);
 
   const [globalNotifications, setGlobalNotifications] = useState<Notification[]>([]);
-  const [isAmountEntryModalOpen, setIsAmountEntryModalOpen] = useState(false);
 
   const [inputErrors, setInputErrors] = useState<{ [key: string]: string }>({});
 
@@ -139,7 +136,14 @@ const App: React.FC = () => {
     useState(false);
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
-  const [isFullPreviewModalOpen, setIsFullPreviewModalOpen] = useState(false);
+  const { fullPreview, amountEntry } = useModals();
+  // Backwards-compatible adapters for existing props/usages during refactor
+  const isFullPreviewModalOpen = fullPreview.isOpen;
+  const setIsFullPreviewModalOpen = (open: boolean) =>
+    open ? fullPreview.open() : fullPreview.close();
+  const isAmountEntryModalOpen = amountEntry.isOpen;
+  const setIsAmountEntryModalOpen = (open: boolean) =>
+    open ? amountEntry.open() : amountEntry.close();
 
   const [isAddNewMemberModalOpen, setIsAddNewMemberModalOpen] = useState(false);
   const [isCreateTitheListModalOpen, setIsCreateTitheListModalOpen] =
@@ -987,7 +991,7 @@ const App: React.FC = () => {
       "Changes from list view have been saved to the workspace.",
       "success",
     );
-    setIsFullPreviewModalOpen(false);
+    fullPreview.close()
   };
 
   const { tithersCount, totalTitheAmount } = useMemo(() => {

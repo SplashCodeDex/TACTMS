@@ -7,20 +7,8 @@ import React, {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FavoriteConfig, ViewType } from "../types";
-import {
-  LayoutDashboard,
-  Cpu,
-  Database,
-  Star,
-  PieChart,
-  BotMessageSquare,
-  Sun,
-  Moon,
-  ChevronsRight,
-  Search,
-  CornerDownLeft,
-} from "lucide-react";
-import { ASSEMBLIES } from "../constants";
+import { Search, CornerDownLeft } from "lucide-react";
+import { buildCommandActions } from "../commands/index";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -55,104 +43,18 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const assembliesWithFavorites = useMemo(() => {
-    return new Set(favorites.map((f) => f.assemblyName));
-  }, [favorites]);
+  // Actions built via external command factory
 
   const allActions: CommandAction[] = useMemo(
-    () => [
-      // Navigation
-      {
-        id: "nav_dashboard",
-        title: "Go to Dashboard",
-        subtitle: "View KPIs and recent activity",
-        icon: <LayoutDashboard size={18} />,
-        onPerform: () => setActiveView("dashboard"),
-        keywords: ["home", "main"],
-      },
-      {
-        id: "nav_processor",
-        title: "Go to Tithe Processor",
-        subtitle: "Process weekly tithe lists",
-        icon: <Cpu size={18} />,
-        onPerform: () => setActiveView("processor"),
-        keywords: ["upload", "generate", "new list"],
-      },
-      {
-        id: "nav_database",
-        title: "Go to Member Database",
-        subtitle: "View and manage master lists",
-        icon: <Database size={18} />,
-        onPerform: () => setActiveView("database"),
-        keywords: ["members", "master"],
-      },
-      {
-        id: "nav_favorites",
-        title: "Go to Favorites",
-        subtitle: "Load saved configurations",
-        icon: <Star size={18} />,
-        onPerform: () => setActiveView("favorites"),
-        keywords: ["saved", "load"],
-      },
-      {
-        id: "nav_reports",
-        title: "Go to Reports",
-        subtitle: "View annual performance",
-        icon: <PieChart size={18} />,
-        onPerform: () => setActiveView("reports"),
-        keywords: ["stats", "statistics", "charts"],
-      },
-      {
-        id: "nav_analytics",
-        title: "Go to AI Analytics",
-        subtitle: "Chat with your data",
-        icon: <BotMessageSquare size={18} />,
-        onPerform: () => setActiveView("analytics"),
-        keywords: ["ai", "chat", "gemini"],
-      },
-
-      // Theme
-      ...(theme === "dark"
-        ? [
-            {
-              id: "theme_light",
-              title: "Switch to Light Theme",
-              icon: <Sun size={18} />,
-              onPerform: () => setTheme("light"),
-            },
-          ]
-        : []),
-      ...(theme === "light"
-        ? [
-            {
-              id: "theme_dark",
-              title: "Switch to Dark Theme",
-              icon: <Moon size={18} />,
-              onPerform: () => setTheme("dark"),
-            },
-          ]
-        : []),
-
-      // Dynamic Actions
-      ...ASSEMBLIES.filter((name) => assembliesWithFavorites.has(name)).map(
-        (name) => ({
-          id: `start_week_${name}`,
-          title: `Start New Week: ${name}`,
-          subtitle: "Load latest member list",
-          icon: <ChevronsRight size={18} />,
-          onPerform: () => onStartNewWeek(name),
-          keywords: ["start", name],
-        }),
-      ),
-    ],
-    [
-      setActiveView,
-      setTheme,
-      onStartNewWeek,
-      favorites,
-      theme,
-      assembliesWithFavorites,
-    ],
+    () =>
+      buildCommandActions({
+        setActiveView,
+        setTheme,
+        onStartNewWeek,
+        favorites,
+        theme,
+      }),
+    [setActiveView, setTheme, onStartNewWeek, favorites, theme],
   );
 
   const filteredActions = useMemo(() => {
