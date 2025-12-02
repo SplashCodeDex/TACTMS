@@ -1572,14 +1572,25 @@ const App: React.FC = () => {
                   onStartNewWeek: startNewWeek,
                   userProfile: driveUserProfile,
                   onUploadFile: handleFileAccepted,
-                  onScanImage: async (file: File) => {
-                    if (!currentAssembly) {
+                  onScanImage: async (file: File, assemblyName?: string) => {
+                    // Use provided assembly name or fall back to current context
+                    const targetAssembly = assemblyName || currentAssembly;
+
+                    if (!targetAssembly) {
                       addToast("Please select an assembly first.", "warning");
                       return;
                     }
-                    const masterList = memberDatabase[currentAssembly];
+
+                    // If a specific assembly was selected (and it's different), update the context
+                    if (assemblyName && assemblyName !== currentAssembly) {
+                      setCurrentAssembly(assemblyName);
+                      // Note: We don't necessarily need to "startNewWeek" here if we just want to add to existing data
+                      // But if we want to ensure the view updates, setting currentAssembly is key.
+                    }
+
+                    const masterList = memberDatabase[targetAssembly];
                     if (!masterList || !masterList.data) {
-                      addToast("No member data found for this assembly.", "warning");
+                      addToast(`No member data found for ${targetAssembly} Assembly.`, "warning");
                       return;
                     }
 
@@ -1587,6 +1598,7 @@ const App: React.FC = () => {
                     const data = await analyzeImage(file);
                     if (data) {
                       setExtractedTitheData(data);
+                      // Ensure we use the master data for the TARGET assembly
                       setImageVerificationMasterData(masterList.data);
                       setIsImageVerificationModalOpen(true);
                     }

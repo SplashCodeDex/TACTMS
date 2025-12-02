@@ -38,6 +38,7 @@ import { useOutletContext } from "react-router-dom";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
 import { useGeminiChat } from "../hooks/useGemini";
+import Modal from "../components/Modal";
 
 interface DashboardSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -46,7 +47,7 @@ interface DashboardSectionProps {
   onStartNewWeek: (assemblyName: string) => void;
   userProfile: GoogleUserProfile | null;
   onUploadFile: (file: File | null, isMasterList: boolean) => void;
-  onScanImage: (file: File) => void;
+  onScanImage: (file: File, assemblyName?: string) => void;
 }
 
 const DashboardSection: React.FC = () => {
@@ -63,6 +64,11 @@ const DashboardSection: React.FC = () => {
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Image Scan State
+  const [isAssemblyModalOpen, setIsAssemblyModalOpen] = useState(false);
+  const [pendingScanFile, setPendingScanFile] = useState<File | null>(null);
+  const [scanAssembly, setScanAssembly] = useState("");
 
   // Chat Integration
   const {
@@ -225,10 +231,22 @@ const DashboardSection: React.FC = () => {
 
   const handleImageUploadChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
-    if (file && onScanImage) {
-      onScanImage(file);
+    if (file) {
+      setPendingScanFile(file);
+      // Pre-select current assembly if available, otherwise empty
+      setScanAssembly(selectedAssembly || "");
+      setIsAssemblyModalOpen(true);
     }
     if (event.target) event.target.value = "";
+  };
+
+  const handleConfirmScanAssembly = () => {
+    if (pendingScanFile && scanAssembly && onScanImage) {
+      onScanImage(pendingScanFile, scanAssembly);
+      setIsAssemblyModalOpen(false);
+      setPendingScanFile(null);
+      setScanAssembly("");
+    }
   };
 
   const containerVariants = {
@@ -568,6 +586,67 @@ const DashboardSection: React.FC = () => {
         isOpen={isChatOpen}
         onToggle={() => setIsChatOpen(!isChatOpen)}
       />
+
+      {/* Assembly Selection Modal for Image Scan */}
+      <Modal
+        isOpen={isAssemblyModalOpen}
+        onClose={() => {
+          setIsAssemblyModalOpen(false);
+          setPendingScanFile(null);
+        }}
+        title="Select Assembly for Scan"
+        size="sm"
+        footerContent={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsAssemblyModalOpen(false);
+                setPendingScanFile(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleConfirmScanAssembly}
+              disabled={!scanAssembly}
+            >
+              Continue to Scan <ArrowRight size={16} className="ml-2" />
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-4">
+          <p className="text-[var(--text-secondary)]">
+            Please select the assembly this tithe list belongs to.
+          </p>
+          <Select
+            value={scanAssembly}
+            onValueChange={setScanAssembly}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="-- Select Assembly --" />
+            </SelectTrigger>
+            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+              {ASSEMBLIES.map((assembly) => (
+                <SelectItem
+                  key={assembly}
+                  value={assembly}
+                  disabled={!assembliesWithData.has(assembly)}
+                >
+                  {assembly} {assembliesWithData.has(assembly) ? "" : "(No member data)"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!assembliesWithData.has(scanAssembly) && scanAssembly && (
+            <p className="text-xs text-amber-500 mt-2">
+              Warning: No member data found for this assembly. Reconciliation might fail.
+            </p>
+          )}
+        </div>
+      </Modal>
     </motion.div>
   );
 };
