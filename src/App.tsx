@@ -53,6 +53,7 @@ import AddNewMemberModal from "./components/AddNewMemberModal";
 import CreateTitheListModal from "./components/CreateTitheListModal";
 import { WifiOff, Save, Trash2 } from "lucide-react";
 import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
+import { useThemePreferences } from "./hooks/useThemePreferences";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
 import {
@@ -158,20 +159,7 @@ const App: React.FC = () => {
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    const storedTheme = localStorage.getItem(APP_THEME_STORAGE_KEY) as
-      | "dark"
-      | "light"
-      | null;
-    return storedTheme || "dark";
-  });
-
-  const [accentColor, setAccentColor] = useState(() => {
-    const storedColorKey = localStorage.getItem(APP_ACCENT_COLOR_KEY);
-    return (
-      THEME_OPTIONS.find((t) => t.key === storedColorKey) || THEME_OPTIONS[0]
-    );
-  });
+  const { theme, setTheme, accentColor, setAccentColor } = useThemePreferences();
 
   const [isSaveFavoriteModalOpen, setIsSaveFavoriteModalOpen] = useState(false);
   const [favoriteNameInput, setFavoriteNameInput] = useState("");
@@ -407,11 +395,6 @@ const App: React.FC = () => {
     document.body.classList.add(
       theme === "light" ? "light-theme" : "dark-theme",
     );
-    try {
-      localStorage.setItem(APP_THEME_STORAGE_KEY, theme);
-    } catch (e) {
-      console.error("Failed to save theme preference:", e);
-    }
   }, [theme]);
 
   useEffect(() => {
@@ -426,17 +409,7 @@ const App: React.FC = () => {
     }
   }, [memberDatabase, addToast]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--primary-hue", accentColor.values.h.toString());
-    root.style.setProperty("--primary-saturation", `${accentColor.values.s}%`);
-    root.style.setProperty("--primary-lightness", `${accentColor.values.l}%`);
-    try {
-      localStorage.setItem(APP_ACCENT_COLOR_KEY, accentColor.key);
-    } catch (e) {
-      console.error("Failed to save accent color:", e);
-    }
-  }, [accentColor]);
+  // accent color persistence handled by useThemePreferences()
 
   const clearAutoSaveDraft = useCallback(() => {
     try {

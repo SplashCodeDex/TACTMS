@@ -1,0 +1,66 @@
+{
+  "name": "vite-plugin-devtools-settings",
+  "version": "1.0.0",
+  "description": "A Vite plugin that generates and serves Chrome DevTools project settings (devtools.json) with support for workspace UUID generation and Windows container compatibility",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "vite",
+    "plugin",
+    "devtools",
+    "chrome-devtools",
+    "workspace",
+    "uuid",
+    "typescript",
+    "windows",
+    "wsl",
+    "docker"
+  ],
+  "author": {
+    "name": "Your Name",
+    "email": "your.email@example.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/vite-plugin-devtools-settings.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/vite-plugin-devtools-settings/issues"
+  },
+  "homepage": "https://github.com/yourusername/vite-plugin-devtools-settings#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "peerDependencies": {
+    "vite": ">=3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/yourusername"
+  }
+}

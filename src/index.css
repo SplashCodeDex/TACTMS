@@ -729,3 +729,7 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
 }
+
+.md\:grid-cols-3 {
+  grid-template-columns: repeat(2, minmax(0px, 1fr));
+}
