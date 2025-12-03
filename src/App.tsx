@@ -1595,7 +1595,13 @@ const App: React.FC = () => {
                     }
 
                     addToast("Analyzing image with Gemini...", "info");
-                    const data = await analyzeImage(file, month, week);
+                    // Generate a date string for the transaction
+                    const currentYear = new Date().getFullYear();
+                    const dateString = month && week
+                      ? `01-${month.substring(0, 3).toUpperCase()}-${currentYear}` // Approximate date for the month
+                      : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/ /g, '-');
+
+                    const data = await analyzeImage(file, month, week, dateString);
                     if (data) {
                       setExtractedTitheData(data);
                       // Ensure we use the master data for the TARGET assembly
