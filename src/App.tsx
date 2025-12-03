@@ -62,7 +62,7 @@ import {
   filterMembersByAge,
 } from "./services/excelProcessor";
 import { exportToExcel } from "./lib/excelUtils";
-import { formatDateDDMMMYYYY } from "./lib/dataTransforms";
+import { formatDateDDMMMYYYY, calculateSundayDate } from "./lib/dataTransforms";
 import { analyticsService } from "./services/AnalyticsService";
 
 interface PendingData {
@@ -275,7 +275,7 @@ const App: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [newWorker, setNewWorker] = useState<ServiceWorker | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  
+
 
   // Image Verification State
   const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
@@ -1509,6 +1509,7 @@ const App: React.FC = () => {
     setSoulsWonCount((prev) => (prev || 0) + verifiedData.length);
     addToast(`Added ${verifiedData.length} records from image.`, "success");
     setIsImageVerificationModalOpen(false);
+    navigate("/processor");
     setHasUnsavedChanges(true);
   };
 
@@ -1584,9 +1585,19 @@ const App: React.FC = () => {
                     addToast("Analyzing image with Gemini...", "info");
                     // Generate a date string for the transaction
                     const currentYear = new Date().getFullYear();
-                    const dateString = month && week
-                      ? `01-${month.substring(0, 3).toUpperCase()}-${currentYear}` // Approximate date for the month
-                      : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/ /g, '-');
+                    let dateString = "";
+                    let targetDateObj = new Date();
+
+                    if (month && week) {
+                      targetDateObj = calculateSundayDate(month, week, currentYear);
+                      dateString = formatDateDDMMMYYYY(targetDateObj);
+
+                      // Update App State for Persistence
+                      setSelectedDate(targetDateObj);
+                      setFileNameToSave(`${targetAssembly.toUpperCase()}-${dateString}-TITHERS`);
+                    } else {
+                      dateString = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/ /g, '-');
+                    }
 
                     const data = await analyzeImage(file, month, week, dateString);
                     if (data) {
