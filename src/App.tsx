@@ -1038,8 +1038,33 @@ const App: React.FC = () => {
         let membershipNumber = record["Membership Number"];
         if (memberDetails) {
           const name = `${memberDetails.Title || ""} ${memberDetails["First Name"] || ""} ${memberDetails.Surname || ""} ${memberDetails["Other Names"] || ""}`.replace(/\s+/g, " ").trim();
-          const id = memberDetails["Membership Number"];
-          const oldId = memberDetails["Old Membership Number"];
+          let id = memberDetails["Membership Number"];
+          let oldId = memberDetails["Old Membership Number"];
+
+          // Clean ID: Strip outer parentheses if present (e.g., "(TAC...)")
+          if (id && id.trim().startsWith("(") && id.trim().endsWith(")")) {
+            id = id.trim().slice(1, -1);
+          }
+
+          // Clean ID: Extract Name and ID if combined (e.g., "Name (ID)")
+          if (id && id.includes("(") && id.endsWith(")")) {
+            const match = id.match(/^(.*)\s*\(([^)]+)\)$/);
+            if (match) {
+              const extractedName = match[1].trim();
+              const extractedId = match[2].trim();
+              id = extractedId;
+              // Only use extracted name if the main name fields were empty
+              if (!name && extractedName) {
+                name = extractedName;
+              }
+            }
+          }
+
+          // Clean Old ID: Strip outer parentheses if present
+          if (oldId && oldId.trim().startsWith("(") && oldId.trim().endsWith(")")) {
+            oldId = oldId.trim().slice(1, -1);
+          }
+
           const idPart = id && oldId ? `(${id}|${oldId})` : id ? `(${id})` : oldId ? `(${oldId})` : "";
           membershipNumber = `${name} ${idPart}`.trim();
         }
