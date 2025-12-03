@@ -1026,10 +1026,21 @@ const App: React.FC = () => {
     }
     setInputErrors((prev) => ({ ...prev, fileName: "" }));
 
-    const dataToExport = titheListData.map((record, index) => ({
-      ...record,
-      "No.": index + 1,
-    }));
+    const dataToExport = titheListData
+      .filter((record) => {
+        const amount = Number(record["Transaction Amount"]);
+        return !isNaN(amount) && amount > 0;
+      })
+      .map((record, index) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { Confidence, ...rest } = record;
+        return {
+          ...rest,
+          "No.": index + 1,
+          "Transaction Date": formatDateDDMMMYYYY(selectedDate),
+          "Membership Number": record["Membership Number"],
+        };
+      });
 
     exportToExcel(dataToExport, fileNameToSave);
     pushAnalyticsEvent({
