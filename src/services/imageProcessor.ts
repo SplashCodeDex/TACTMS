@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI, SchemaType, type Schema } from "@google/generative-ai";
 import { TitheRecordB } from "../types";
 
-// User requested Gemini 3 Pro.
-const MODEL_NAME = "gemini-3-pro-image-preview";
+// Using Gemini 2.5 Pro (multimodal).
+const MODEL_NAME = "gemini-2.5-pro";
 
 // 1. Define the schema the model MUST follow.
 const TITHE_SCHEMA: Schema = {
