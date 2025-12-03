@@ -51,7 +51,6 @@ interface ListOverviewActionsSectionProps {
   onClearWorkspace: () => void;
   transactionLog: TransactionLogEntry[];
   soulsWonCount: number | null;
-  soulsWonCount: number | null;
   onDateChange: (date: Date) => void;
   onScanImage: (file: File) => void;
 }

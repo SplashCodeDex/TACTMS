@@ -106,8 +106,7 @@ const App: React.FC = () => {
 
   const [reconciliationReport, setReconciliationReport] =
     useState<MembershipReconciliationReport | null>(null);
-  const [isReconciliationModalOpen, setIsReconciliationModalOpen] =
-    useState(false);
+  const [, setIsReconciliationModalOpen] = useState(false);
   const [soulsWonCount, setSoulsWonCount] = useState<number | null>(0);
 
   const [ageRangeMin, setAgeRangeMin] = useState<string>("");
@@ -147,15 +146,6 @@ const App: React.FC = () => {
   const setIsAmountEntryModalOpen = (open: boolean) =>
     open ? amountEntry.open() : amountEntry.close();
   // Favorites adapters (Phase 2 temporary)
-  const isSaveFavoriteModalOpen = saveFavorite.isOpen;
-  const setIsSaveFavoriteModalOpen = (open: boolean) =>
-    open ? saveFavorite.open() : saveFavorite.close();
-  const isDeleteFavConfirmModalOpen = deleteFavoriteModal.isOpen;
-  const setIsDeleteFavConfirmModalOpen = (open: boolean) =>
-    open ? deleteFavoriteModal.open() : deleteFavoriteModal.close();
-  const isFavDetailsModalOpen = favoriteDetailsModal.isOpen;
-  const setIsFavDetailsModalOpen = (open: boolean) =>
-    open ? favoriteDetailsModal.open() : favoriteDetailsModal.close();
 
   const [isAddNewMemberModalOpen, setIsAddNewMemberModalOpen] = useState(false);
   const [isCreateTitheListModalOpen, setIsCreateTitheListModalOpen] =
@@ -243,8 +233,7 @@ const App: React.FC = () => {
     soulsWonCount,
   ]);
 
-  const [isClearWorkspaceModalOpen, setIsClearWorkspaceModalOpen] =
-    useState(false);
+  const [, setIsClearWorkspaceModalOpen] = useState(false);
 
   const [memberDatabase, setMemberDatabase] = useState<MemberDatabase>(() => {
     const saved = localStorage.getItem(MEMBER_DATABASE_STORAGE_KEY);
@@ -271,13 +260,11 @@ const App: React.FC = () => {
 
   const [isParsing, setIsParsing] = useState(false);
 
-  const [pendingUpdate, setPendingUpdate] =
-    useState<PendingMasterListUpdate | null>(null);
-  const [isUpdateConfirmModalOpen, setIsUpdateConfirmModalOpen] =
-    useState(false);
+  const [, setPendingUpdate] = useState<PendingMasterListUpdate | null>(null);
+  const [, setIsUpdateConfirmModalOpen] = useState(false);
 
   // State for editing members in the database
-  const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
+  const [, setIsEditMemberModalOpen] = useState(false);
   const [memberToEdit, setMemberToEdit] = useState<{
     member: MemberRecordA;
     assemblyName: string;
@@ -288,7 +275,7 @@ const App: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [newWorker, setNewWorker] = useState<ServiceWorker | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+  
 
   // Image Verification State
   const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
@@ -329,7 +316,7 @@ const App: React.FC = () => {
     [],
   );
 
-  const { isGeneratingReport, validationReportContent, analyzeImage } = useGemini(
+  const { analyzeImage } = useGemini(
     import.meta.env.VITE_API_KEY,
     addToast,
   );

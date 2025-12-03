@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Modal from "./Modal";
-import { TitheRecordB, MemberRecordA, FuzzyMatchResult } from "../types";
+import { TitheRecordB, MemberRecordA } from "../types";
 import { findMemberByName } from "../services/reconciliation";
 import { getSimilarity } from "../utils/stringUtils";
 import Button from "./Button";

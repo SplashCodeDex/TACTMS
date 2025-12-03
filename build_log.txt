@@ -1,0 +1,5 @@
+
+> tactms-app@1.0.0 build
+> npx tsc && npx vite build
+
+src/sections/DashboardSection.tsx(672,1): error TS1005: '}' expected.

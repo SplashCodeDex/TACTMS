@@ -1,11 +1,11 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, type Schema } from "@google/generative-ai";
 import { TitheRecordB } from "../types";
 
 // User requested Gemini 3 Pro.
 const MODEL_NAME = "gemini-3-pro-image-preview";
 
 // 1. Define the schema the model MUST follow.
-const TITHE_SCHEMA = {
+const TITHE_SCHEMA: Schema = {
     type: SchemaType.ARRAY,
     items: {
         type: SchemaType.OBJECT,
@@ -73,15 +73,41 @@ export const processTitheImage = async (
     6. Return ONLY the JSON array structure required by the schema.
   `;
 
-    try {
-        const result = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: prompt }, imageParts.inlineData as any] }],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: TITHE_SCHEMA,
-            },
-        });
+    const maxRetries = 3;
+    let attempt = 0;
+    let result;
 
+    while (attempt < maxRetries) {
+        try {
+            result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }, imageParts.inlineData as any] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: TITHE_SCHEMA,
+                },
+            });
+            break; // Success, exit loop
+        } catch (error: any) {
+            attempt++;
+            console.warn(`Gemini API attempt ${attempt} failed:`, error);
+
+            if (attempt >= maxRetries) {
+                // Enhance error message for specific cases
+                if (error.message?.includes("429")) {
+                    throw new Error("Service is busy (Rate Limit Exceeded). Please try again in a minute.");
+                }
+                throw new Error(`Failed to process image after ${maxRetries} attempts. Please check your internet connection.`);
+            }
+
+            // Exponential backoff: 1s, 2s, 4s
+            const delay = Math.pow(2, attempt - 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    if (!result) throw new Error("Unexpected error: No result from AI model.");
+
+    try {
         const jsonString = result.response.text().trim();
         const rawExtractedData: RawExtraction[] = JSON.parse(jsonString);
 
@@ -103,8 +129,8 @@ export const processTitheImage = async (
         return finalData;
 
     } catch (error) {
-        console.error("Error processing image with Gemini:", error);
-        throw new Error("Failed to process image. Ensure the image is clear and focused on the table.");
+        console.error("Error parsing Gemini response:", error);
+        throw new Error("Failed to parse AI response. The image might be too blurry or contain unexpected data.");
     }
 };
 

@@ -243,13 +243,18 @@ const DashboardSection: React.FC = () => {
   };
 
   const handleConfirmScanAssembly = () => {
-    if (pendingScanFile && scanAssembly && onScanImage) {
-      onScanImage(pendingScanFile, scanAssembly, scanMonth, scanWeek);
-      setIsAssemblyModalOpen(false);
-      setPendingScanFile(null);
-      setScanAssembly("");
-      // Reset month/week to defaults if needed, or keep them sticky
+    if (!scanAssembly) {
+      window.alert("Please select an assembly.");
+      return;
     }
+    if (!scanMonth || !scanWeek) {
+      window.alert("Please select both a Target Month and Week for accurate scanning.");
+      return;
+    }
+    setIsAssemblyModalOpen(false);
+    // Pass the selected month and week to the scan handler
+    onScanImage(pendingScanFile!, scanAssembly, scanMonth, scanWeek);
+    setPendingScanFile(null);
   };
 
   const containerVariants = {
