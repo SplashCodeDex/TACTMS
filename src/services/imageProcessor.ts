@@ -13,8 +13,9 @@ const TITHE_SCHEMA = {
             "No.": { type: SchemaType.NUMBER, description: "The sequential number from the book row." },
             "Name": { type: SchemaType.STRING, description: "The full name of the tither as written." },
             "Amount": { type: SchemaType.NUMBER, description: "The specific amount recorded in the target month/week column. Use 0 if the cell is blank." },
+            "Confidence": { type: SchemaType.NUMBER, description: "A score from 0.0 to 1.0 indicating confidence in the legibility and extraction of this row." },
         },
-        required: ["No.", "Name", "Amount"]
+        required: ["No.", "Name", "Amount", "Confidence"]
     }
 };
 
@@ -22,6 +23,7 @@ interface RawExtraction {
     "No.": number;
     "Name": string;
     "Amount": number;
+    "Confidence": number;
 }
 
 export const processTitheImage = async (
@@ -94,7 +96,8 @@ export const processTitheImage = async (
             "Exchange Rate": 1,
             "Payment Method": "Cash",
             "Transaction Amount": item["Amount"] || 0,
-            "Narration/Description": `Tithe for ${targetDateString || "Unknown Date"}`
+            "Narration/Description": `Tithe for ${targetDateString || "Unknown Date"}`,
+            "Confidence": item["Confidence"] || 0.5
         }));
 
         return finalData;

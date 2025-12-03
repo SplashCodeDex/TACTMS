@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Modal from "./Modal";
 import { TitheRecordB, MemberRecordA, FuzzyMatchResult } from "../types";
 import { findMemberByName } from "../services/reconciliation";
+import { getSimilarity } from "../utils/stringUtils";
 import Button from "./Button";
 import { Check, AlertTriangle, Search } from "lucide-react";
 
@@ -17,7 +18,8 @@ interface VerificationRow {
     id: number;
     extractedRecord: TitheRecordB;
     matchedMember: MemberRecordA | null;
-    confidenceScore: number;
+    matchConfidence: number; // Score for the DB match
+    aiConfidence: number;   // Score for the AI extraction
     manualOverride: boolean;
 }
 
@@ -42,7 +44,8 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     id: index,
                     extractedRecord: record,
                     matchedMember: match ? match.member : null,
-                    confidenceScore: match ? match.score : 0,
+                    matchConfidence: match ? match.score : 0,
+                    aiConfidence: record.Confidence || 0, // Use the AI confidence from the record
                     manualOverride: false,
                 };
             });
@@ -71,7 +74,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         setRows((prev) =>
             prev.map((row) =>
                 row.id === rowId
-                    ? { ...row, matchedMember: member, manualOverride: true, confidenceScore: 1 }
+                    ? { ...row, matchedMember: member, manualOverride: true, matchConfidence: 1 }
                     : row
             )
         );
@@ -90,14 +93,22 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
 
         const filteredMembers = useMemo(() => {
             if (!search) return [];
+            const lowerSearch = search.toLowerCase();
+
             return masterData
-                .filter((m) =>
-                    `${m.Surname} ${m["First Name"]}`
-                        .toLowerCase()
-                        .includes(search.toLowerCase())
+                .map(m => {
+                    const fullName = `${m.Surname} ${m["First Name"]} ${m["Other Names"] || ""}`.trim();
+                    const score = getSimilarity(lowerSearch, fullName.toLowerCase());
+                    return { member: m, score };
+                })
+                .filter(item => item.score > 0.3 ||
+                    // Keep exact substring matches even if score is low (e.g. short queries)
+                    `${item.member.Surname} ${item.member["First Name"]}`.toLowerCase().includes(lowerSearch)
                 )
-                .slice(0, 10);
-        }, [search]);
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 10)
+                .map(item => item.member);
+        }, [search, masterData]);
 
         return (
             <div className="relative">
@@ -179,8 +190,9 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                 <tr>
                                     <th className="px-4 py-2">Extracted Name</th>
                                     <th className="px-4 py-2">Amount</th>
+                                    <th className="px-4 py-2">AI Conf.</th>
                                     <th className="px-4 py-2">Matched Member</th>
-                                    <th className="px-4 py-2">Status</th>
+                                    <th className="px-4 py-2">Match Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -191,6 +203,14 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                         </td>
                                         <td className="px-4 py-2">
                                             {row.extractedRecord["Transaction Amount"]}
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <span className={`px-2 py-1 rounded text-xs ${row.aiConfidence > 0.8 ? 'bg-green-100 text-green-800' :
+                                                    row.aiConfidence > 0.5 ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-red-100 text-red-800'
+                                                }`}>
+                                                {Math.round(row.aiConfidence * 100)}%
+                                            </span>
                                         </td>
                                         <td className="px-4 py-2">
                                             <MemberSelect
@@ -205,7 +225,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                                     <span>
                                                         {row.manualOverride
                                                             ? "Manual"
-                                                            : `${Math.round(row.confidenceScore * 100)}%`}
+                                                            : `${Math.round(row.matchConfidence * 100)}%`}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -222,7 +242,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     </div>
                 )}
             </div>
-        </Modal>
+        </Modal >
     );
 };
 

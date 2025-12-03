@@ -58,6 +58,7 @@ export interface TitheRecordB {
   "Payment Method": string;
   "Transaction Amount": number | string; // Allow string for initial empty state
   "Narration/Description": string;
+  Confidence?: number; // 0 to 1 score from AI
 }
 
 export interface ConcatenationConfig {
