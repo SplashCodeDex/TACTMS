@@ -56,6 +56,7 @@ import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
 // import { useModals } from "./hooks/useModals";
 import { useModalsPhase2 as useModals } from "./hooks/useModals";
+import { useModal } from "./hooks/useModal";
 import {
   createTitheList,
   reconcileMembers,
@@ -137,7 +138,9 @@ const App: React.FC = () => {
   useState(false);
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
-  const { fullPreview, amountEntry, saveFavorite, deleteFavorite: deleteFavoriteModal, favoriteDetails: favoriteDetailsModal, assemblySelection: _assemblySelection, reconciliation: _reconciliation, clearWorkspace: clearWorkspaceModal, updateConfirm: _updateConfirm, editMember: _editMember, validationReport: _validationReport } = useModals();
+  const { fullPreview, amountEntry, assemblySelection: _assemblySelection, reconciliation: _reconciliation, updateConfirm: _updateConfirm, editMember: _editMember, validationReport: _validationReport } = useModals();
+  const favoriteDetailsModal = useModal("favoriteDetails");
+  const clearWorkspaceModal = useModal("clearWorkspace");
   // Backwards-compatible adapters for existing props/usages during refactor
   const isFullPreviewModalOpen = fullPreview.isOpen;
   const setIsFullPreviewModalOpen = (open: boolean) =>
@@ -170,6 +173,8 @@ const App: React.FC = () => {
   // saveFavorite handled via useModalsPhase2()
   // const [isSaveFavoriteModalOpen, setIsSaveFavoriteModalOpen] = useState(false);
   const [favoriteNameInput, setFavoriteNameInput] = useState("");
+  const saveFavorite = useModal("saveFavorite");
+  const deleteFavoriteModal = useModal("deleteFavorite");
 
   const autoSaveTimerRef = useRef<number | null>(null);
 
@@ -181,9 +186,12 @@ const App: React.FC = () => {
   );
 
   const [currentAssembly, setCurrentAssembly] = useState<string | null>(null);
-  const [isAssemblySelectionModalOpen, setIsAssemblySelectionModalOpen] =
-    useState(false);
-  const [pendingData, setPendingData] = useState<PendingData | null>(null);
+  const assemblySelectionModal = useModal("assemblySelection");
+  // Backwards-compat adapters for in-flight refactor
+  const isAssemblySelectionModalOpen = assemblySelectionModal.isOpen;
+  const pendingData = (assemblySelectionModal.payload as any)?.pending as PendingData | null;
+  const setIsAssemblySelectionModalOpen = (open: boolean) =>
+    open ? assemblySelectionModal.open(assemblySelectionModal.payload as any) : assemblySelectionModal.close();
 
   const draftDataRef = useRef({
     titheListData,
@@ -233,7 +241,7 @@ const App: React.FC = () => {
     soulsWonCount,
   ]);
 
-  const [, setIsClearWorkspaceModalOpen] = useState(false);
+  // migrated to ModalProvider: clearWorkspaceModal
 
   const [memberDatabase, setMemberDatabase] = useState<MemberDatabase>(() => {
     const saved = localStorage.getItem(MEMBER_DATABASE_STORAGE_KEY);
@@ -560,14 +568,13 @@ const App: React.FC = () => {
               file.name.toLowerCase().includes(name.toLowerCase()),
             ) || "";
 
-          setPendingData({
+          assemblySelectionModal.open({ pending: {
             data: parsedData,
             fileName: file.name,
             file: file,
             suggestedAssembly: detectedAssembly,
             isMasterList: false,
-          });
-          setIsAssemblySelectionModalOpen(true);
+          }});
         }
       } catch (e: any) {
         const errorMessage =
@@ -645,19 +652,19 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const handleConfirmAssemblySelection = useCallback(
     async (assembly: string) => {
-      if (!pendingData) return;
+      const pending = assemblySelectionModal.payload?.pending as PendingData | undefined;
+      if (!pending) return;
 
       clearWorkspace();
-      setUploadedFile(pendingData.file);
+      setUploadedFile(pending.file);
       setCurrentAssembly(assembly);
 
-      processData(pendingData.data, assembly, pendingData.file.name);
+      processData(pending.data, assembly, pending.file.name);
 
       navigate("/processor");
-      setIsAssemblySelectionModalOpen(false);
-      setPendingData(null);
+      assemblySelectionModal.close();
     },
-    [pendingData, clearWorkspace, navigate],
+    [assemblySelectionModal, clearWorkspace, navigate],
   );
 
   const processData = (
@@ -1264,7 +1271,7 @@ const App: React.FC = () => {
   const handleConfirmClearWorkspace = () => {
     clearWorkspace();
     addToast("Workspace cleared.", "info");
-    setIsClearWorkspaceModalOpen(false);
+    clearWorkspaceModal.close();
     navigate("/"); // Navigate to dashboard after clearing workspace
   };
 
