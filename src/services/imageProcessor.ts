@@ -80,7 +80,7 @@ export const processTitheImage = async (
     while (attempt < maxRetries) {
         try {
             result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }, imageParts.inlineData as any] }],
+                contents: [{ role: "user", parts: [{ text: prompt }, imageParts] }],
                 generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: TITHE_SCHEMA,
