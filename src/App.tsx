@@ -18,7 +18,7 @@ import {
   TransactionLogEntry,
 } from "./types";
 import Button from "./components/Button";
-import { toast } from "sonner";
+import { showToast } from "./lib/toast";
 import { Toaster } from "@/components/ui/sonner";
 import Modal from "./components/Modal";
 import {
@@ -289,29 +289,7 @@ const App: React.FC = () => {
       duration?: number,
       actions?: { label: string; onClick: () => void }[],
     ) => {
-      const toastOptions: Parameters<typeof toast>[1] = {
-        duration,
-        action: actions && actions.length > 0 ? {
-          label: actions[0].label,
-          onClick: actions[0].onClick
-        } : undefined,
-      };
-
-      switch (type) {
-        case "success":
-          toast.success(message, toastOptions);
-          break;
-        case "error":
-          toast.error(message, toastOptions);
-          break;
-        case "warning":
-          toast.warning(message, toastOptions);
-          break;
-        case "info":
-        default:
-          toast.info(message, toastOptions);
-          break;
-      }
+      showToast({ message, type, duration, actions });
     },
     [],
   );

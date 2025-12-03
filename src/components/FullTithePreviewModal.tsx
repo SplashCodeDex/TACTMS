@@ -36,7 +36,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ToastMessage, ToastAction } from "./Toast"; // Only for type
+import type { ToastType as ToastMessage, ToastAction } from "@/lib/toast.types";
 import { COLUMN_VISIBILITY_STORAGE_KEY } from "../constants";
 
 const HighlightMatches = React.memo(
