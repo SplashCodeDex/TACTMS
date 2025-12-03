@@ -1033,12 +1033,22 @@ const App: React.FC = () => {
       })
       .map((record, index) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { Confidence, ...rest } = record;
+        const { Confidence, memberDetails, ...rest } = record;
+
+        let membershipNumber = record["Membership Number"];
+        if (memberDetails) {
+          const name = `${memberDetails.Title || ""} ${memberDetails["First Name"] || ""} ${memberDetails.Surname || ""} ${memberDetails["Other Names"] || ""}`.replace(/\s+/g, " ").trim();
+          const id = memberDetails["Membership Number"];
+          const oldId = memberDetails["Old Membership Number"];
+          const idPart = id && oldId ? `(${id}|${oldId})` : id ? `(${id})` : oldId ? `(${oldId})` : "";
+          membershipNumber = `${name} ${idPart}`.trim();
+        }
+
         return {
           ...rest,
           "No.": index + 1,
-          "Transaction Date": formatDateDDMMMYYYY(selectedDate),
-          "Membership Number": record["Membership Number"],
+          "Transaction Date ('DD-MMM-YYYY')": formatDateDDMMMYYYY(selectedDate),
+          "Membership Number": membershipNumber,
         };
       });
 

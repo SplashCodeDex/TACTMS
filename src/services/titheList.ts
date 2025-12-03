@@ -77,6 +77,7 @@ export const createTitheList = (
       "Payment Method": "Cash",
       "Transaction Amount": transactionAmount,
       "Narration/Description": description,
+      memberDetails: member,
     };
   });
 };

@@ -64,6 +64,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
             return {
                 ...row.extractedRecord,
                 "Membership Number": memberId,
+                memberDetails: finalMember || undefined,
             };
         });
         onConfirm(verifiedData);
@@ -206,8 +207,8 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                         </td>
                                         <td className="px-4 py-2">
                                             <span className={`px-2 py-1 rounded text-xs ${row.aiConfidence > 0.8 ? 'bg-green-100 text-green-800' :
-                                                    row.aiConfidence > 0.5 ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-red-100 text-red-800'
+                                                row.aiConfidence > 0.5 ? 'bg-yellow-100 text-yellow-800' :
+                                                    'bg-red-100 text-red-800'
                                                 }`}>
                                                 {Math.round(row.aiConfidence * 100)}%
                                             </span>
