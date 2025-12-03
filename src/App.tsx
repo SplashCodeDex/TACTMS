@@ -1572,7 +1572,7 @@ const App: React.FC = () => {
                   onStartNewWeek: startNewWeek,
                   userProfile: driveUserProfile,
                   onUploadFile: handleFileAccepted,
-                  onScanImage: async (file: File, assemblyName?: string) => {
+                  onScanImage: async (file: File, assemblyName?: string, month?: string, week?: string) => {
                     // Use provided assembly name or fall back to current context
                     const targetAssembly = assemblyName || currentAssembly;
 
@@ -1595,7 +1595,7 @@ const App: React.FC = () => {
                     }
 
                     addToast("Analyzing image with Gemini...", "info");
-                    const data = await analyzeImage(file);
+                    const data = await analyzeImage(file, month, week);
                     if (data) {
                       setExtractedTitheData(data);
                       // Ensure we use the master data for the TARGET assembly

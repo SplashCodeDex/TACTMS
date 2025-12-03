@@ -48,7 +48,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     }
   };
 
-  const analyzeImage = async (imageFile: File): Promise<TitheRecordB[] | null> => {
+  const analyzeImage = async (imageFile: File, month?: string, week?: string): Promise<TitheRecordB[] | null> => {
     if (!apiKey) {
       addToast('AI features are not configured. Please contact support.', 'error');
       return null;
@@ -57,7 +57,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     setIsGeneratingReport(true); // Reuse loading state or add a new one
     try {
       const { processTitheImage } = await import('../services/imageProcessor');
-      const data = await processTitheImage(imageFile, apiKey);
+      const data = await processTitheImage(imageFile, apiKey, month, week);
       return data;
     } catch (error) {
       console.error('Error analyzing image:', error);

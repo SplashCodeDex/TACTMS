@@ -47,7 +47,7 @@ interface DashboardSectionProps {
   onStartNewWeek: (assemblyName: string) => void;
   userProfile: GoogleUserProfile | null;
   onUploadFile: (file: File | null, isMasterList: boolean) => void;
-  onScanImage: (file: File, assemblyName?: string) => void;
+  onScanImage: (file: File, assemblyName?: string, month?: string, week?: string) => void;
 }
 
 const DashboardSection: React.FC = () => {
@@ -69,6 +69,8 @@ const DashboardSection: React.FC = () => {
   const [isAssemblyModalOpen, setIsAssemblyModalOpen] = useState(false);
   const [pendingScanFile, setPendingScanFile] = useState<File | null>(null);
   const [scanAssembly, setScanAssembly] = useState("");
+  const [scanMonth, setScanMonth] = useState<string>(new Date().toLocaleString('default', { month: 'long' }));
+  const [scanWeek, setScanWeek] = useState<string>("Week 1");
 
   // Chat Integration
   const {
@@ -242,10 +244,11 @@ const DashboardSection: React.FC = () => {
 
   const handleConfirmScanAssembly = () => {
     if (pendingScanFile && scanAssembly && onScanImage) {
-      onScanImage(pendingScanFile, scanAssembly);
+      onScanImage(pendingScanFile, scanAssembly, scanMonth, scanWeek);
       setIsAssemblyModalOpen(false);
       setPendingScanFile(null);
       setScanAssembly("");
+      // Reset month/week to defaults if needed, or keep them sticky
     }
   };
 
@@ -645,6 +648,35 @@ const DashboardSection: React.FC = () => {
               Warning: No member data found for this assembly. Reconciliation might fail.
             </p>
           )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs text-[var(--text-secondary)]">Target Month</label>
+              <Select value={scanMonth} onValueChange={setScanMonth}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent className="glassmorphism-bg border border-[var(--border-color)]">
+                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-[var(--text-secondary)]">Target Week</label>
+              <Select value={scanWeek} onValueChange={setScanWeek}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Week" />
+                </SelectTrigger>
+                <SelectContent className="glassmorphism-bg border border-[var(--border-color)]">
+                  {["Week 1", "Week 2", "Week 3", "Week 4", "Week 5"].map(w => (
+                    <SelectItem key={w} value={w}>{w}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </Modal>
     </motion.div>

@@ -6,7 +6,9 @@ const MODEL_NAME = "gemini-3-pro-image-preview";
 
 export const processTitheImage = async (
     imageFile: File,
-    apiKey: string
+    apiKey: string,
+    targetMonth?: string,
+    targetWeek?: string
 ): Promise<TitheRecordB[]> => {
     if (!apiKey) throw new Error("API Key is missing");
 
@@ -20,7 +22,20 @@ export const processTitheImage = async (
     Extract the rows into a JSON array.
 
     The image contains handwritten or printed records of tithe payments.
-    Columns typically include: Number, Name of Member, and Amount.
+    It is a grid with "Name" on the left and columns for Months (January, February, etc.) subdivided into Weeks (1st, 2nd, 3rd, 4th, 5th).
+
+    ${targetMonth && targetWeek ? `
+    *** CRITICAL INSTRUCTION ***
+    Focus ONLY on the column for: ${targetMonth.toUpperCase()} -> ${targetWeek.replace("Week ", "")}${targetWeek === "Week 1" ? "st" : targetWeek === "Week 2" ? "nd" : targetWeek === "Week 3" ? "rd" : "th"}.
+
+    1. Find the row for each member.
+    2. Extract the "Name of Member".
+    3. Extract the "Amount" value SPECIFICALLY from the "${targetMonth}" section, under the "${targetWeek.replace("Week ", "")}${targetWeek === "Week 1" ? "st" : targetWeek === "Week 2" ? "nd" : targetWeek === "Week 3" ? "rd" : "th"}" sub-column.
+    4. If the cell is empty or has a dash (-), IGNORE the row.
+    5. DO NOT extract amounts from other weeks or months.
+    ` : `
+    Extract the "Name of Member" and the "Amount". If there are multiple amount columns, extract the most recent filled one.
+    `}
 
     Please extract this data and format it as a JSON array of objects with the following structure:
     [
@@ -30,13 +45,12 @@ export const processTitheImage = async (
         "Payment Source Type": "Registered Member",
         "Membership Number": "Name of Member",
         "Transaction Amount": number,
-        "Narration/Description": "Tithe from Image Upload"
+        "Narration/Description": "Tithe for ${targetMonth || "Unknown"} ${targetWeek || ""}"
       }
     ]
 
-    - "Membership Number": Put the extracted Name here. We will reconcile it later.
+    - "Membership Number": Put the extracted Name here.
     - "Transaction Amount": Extract the numeric amount.
-    - If a row is unclear, do your best to transcribe it.
     - Return ONLY the JSON array. Do not include markdown formatting or explanations.
   `;
 
@@ -61,7 +75,7 @@ export const processTitheImage = async (
             "Exchange Rate": 1,
             "Payment Method": "Cash",
             "Transaction Amount": item["Transaction Amount"] || 0,
-            "Narration/Description": item["Narration/Description"] || "Tithe from Image Upload"
+            "Narration/Description": item["Narration/Description"] || `Tithe for ${targetMonth || "Unknown"} ${targetWeek || ""}`
         }));
 
     } catch (error) {
