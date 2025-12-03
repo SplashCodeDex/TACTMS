@@ -138,7 +138,8 @@ const App: React.FC = () => {
   useState(false);
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
-  const { fullPreview, assemblySelection: _assemblySelection, reconciliation: _reconciliation } = useModals();
+  const { assemblySelection: _assemblySelection, reconciliation: _reconciliation } = useModals();
+  const fullPreview = useModal("fullPreview");
   const amountEntry = useModal("amountEntry");
   const validationReport = useModal("validationReport");
   const updateConfirm = useModal("updateConfirm");
@@ -1025,7 +1026,7 @@ const App: React.FC = () => {
 
         let membershipNumber = record["Membership Number"];
         if (memberDetails) {
-          const name = `${memberDetails.Title || ""} ${memberDetails["First Name"] || ""} ${memberDetails.Surname || ""} ${memberDetails["Other Names"] || ""}`.replace(/\s+/g, " ").trim();
+          let name = `${memberDetails.Title || ""} ${memberDetails["First Name"] || ""} ${memberDetails.Surname || ""} ${memberDetails["Other Names"] || ""}`.replace(/\s+/g, " ").trim();
           let id = memberDetails["Membership Number"];
           let oldId = memberDetails["Old Membership Number"];
 
@@ -1742,10 +1743,10 @@ const App: React.FC = () => {
       <Toaster richColors theme={theme} />
 
       {
-        isFullPreviewModalOpen && (
+        fullPreview.isOpen && (
           <FullTithePreviewModal
-            isOpen={isFullPreviewModalOpen}
-            onClose={() => setIsFullPreviewModalOpen(false)}
+            isOpen={fullPreview.isOpen}
+            onClose={() => fullPreview.close()}
             titheListData={titheListData}
             onSave={handleSaveFromPreview}
             itemsPerPage={ITEMS_PER_FULL_PREVIEW_PAGE}
