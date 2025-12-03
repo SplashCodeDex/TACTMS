@@ -138,7 +138,11 @@ const App: React.FC = () => {
   useState(false);
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
-  const { fullPreview, amountEntry, assemblySelection: _assemblySelection, reconciliation: _reconciliation, updateConfirm: _updateConfirm, editMember: _editMember, validationReport: _validationReport } = useModals();
+  const { fullPreview, assemblySelection: _assemblySelection, reconciliation: _reconciliation } = useModals();
+  const amountEntry = useModal("amountEntry");
+  const validationReport = useModal("validationReport");
+  const updateConfirm = useModal("updateConfirm");
+  const editMember = useModal("editMember");
   const favoriteDetailsModal = useModal("favoriteDetails");
   const clearWorkspaceModal = useModal("clearWorkspace");
   // Backwards-compatible adapters for existing props/usages during refactor
@@ -269,10 +273,10 @@ const App: React.FC = () => {
   const [isParsing, setIsParsing] = useState(false);
 
   const [, setPendingUpdate] = useState<PendingMasterListUpdate | null>(null);
-  const [, setIsUpdateConfirmModalOpen] = useState(false);
+  // migrated to ModalProvider: updateConfirm
 
   // State for editing members in the database
-  const [, setIsEditMemberModalOpen] = useState(false);
+  // migrated to ModalProvider: editMember
   const [memberToEdit, setMemberToEdit] = useState<{
     member: MemberRecordA;
     assemblyName: string;
@@ -545,12 +549,11 @@ const App: React.FC = () => {
             // We should probably always confirm if it's an update to an existing one,
             // but for now let's stick to the existing logic of checking if data > 0
             if (existingData && existingData.data.length > 0) {
-              setPendingUpdate({
+              updateConfirm.open({ pending: {
                 assemblyName: targetAssembly,
                 newData: parsedData,
                 newFileName: file.name,
-              });
-              setIsUpdateConfirmModalOpen(true);
+              }});
             } else {
               handleMasterListUpdate(targetAssembly, parsedData, file.name);
             }
@@ -1668,7 +1671,7 @@ const App: React.FC = () => {
                   },
                   onEditMember: (member: MemberRecordA, assemblyName: string) => {
                     setMemberToEdit({ member, assemblyName });
-                    setIsEditMemberModalOpen(true);
+                    editMember.open({ target: memberToEdit! });
                   },
                   onDeleteAssembly: handleDeleteAssembly,
                   // ListOverviewActions
@@ -2058,31 +2061,32 @@ const App: React.FC = () => {
         )
       }
       {
-        _updateConfirm.isOpen && (_updateConfirm.pending) && (
+        updateConfirm.isOpen && (updateConfirm.payload as any)?.pending && (
           <UpdateMasterListConfirmModal
-            isOpen={_updateConfirm.isOpen}
-            onClose={() => _updateConfirm.close()}
+            isOpen={updateConfirm.isOpen}
+            onClose={() => updateConfirm.close()}
             onConfirm={() => {
+              const pending = (updateConfirm.payload as any).pending as PendingMasterListUpdate;
               handleMasterListUpdate(
-                _updateConfirm.pending.assemblyName,
-                _updateConfirm.pending.newData,
-                _updateConfirm.pending.newFileName,
+                pending.assemblyName,
+                pending.newData,
+                pending.newFileName,
               );
-              setIsUpdateConfirmModalOpen(false);
+              updateConfirm.close();
             }}
-            existingData={memberDatabase[_updateConfirm.pending.assemblyName]}
-            pendingUpdate={_updateConfirm.pending}
+            existingData={memberDatabase[(updateConfirm.payload as any).pending.assemblyName]}
+            pendingUpdate={(updateConfirm.payload as any).pending}
           />
         )
       }
       {
-        _editMember.isOpen && (_editMember.target) && (
+        editMember.isOpen && (editMember.payload as any)?.target && (
           <EditMemberModal
-            isOpen={_editMember.isOpen}
-            onClose={() => _editMember.close()}
+            isOpen={editMember.isOpen}
+            onClose={() => editMember.close()}
             onSave={handleEditMemberInDB}
-            memberData={_editMember.target.member}
-            assemblyName={_editMember.target.assemblyName}
+            memberData={(editMember.payload as any).target.member}
+            assemblyName={(editMember.payload as any).target.assemblyName}
           />
         )
       }
@@ -2099,12 +2103,12 @@ const App: React.FC = () => {
       }
 
       {
-        _validationReport.isOpen && (
+        validationReport.isOpen && (
           <ValidationReportModal
-            isOpen={_validationReport.isOpen}
-            onClose={() => _validationReport.close()}
-            reportContent={_validationReport.content}
-            isLoading={_validationReport.isLoading}
+            isOpen={validationReport.isOpen}
+            onClose={() => validationReport.close()}
+            reportContent={(validationReport.payload as any)?.content}
+            isLoading={(validationReport.payload as any)?.isLoading}
           />
         )
       }
