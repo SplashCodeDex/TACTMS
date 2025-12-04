@@ -18,21 +18,13 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
         assemblies,
         addAssembly,
         removeAssembly,
+        isCustomAssembly, // Use this to check if removable
         fuzzyMatchThreshold,
         setFuzzyMatchThreshold
     } = useAppConfigContext();
 
     const [newAssemblyName, setNewAssemblyName] = useState("");
     const dataAssemblies = Object.keys(memberDatabase);
-
-    // Default assemblies that cannot be removed
-    const defaultAssemblies = [
-        "Maranatha", "Antioch", "Shiloh", "Zion", "Bethany",
-        "Bethel", "Calvary", "Emmanuel", "Grace", "Goshen", "Trinity"
-    ];
-
-    const isDefaultAssembly = (name: string) =>
-        defaultAssemblies.some(d => d.toLowerCase() === name.toLowerCase());
 
     const handleAddAssembly = () => {
         const trimmed = newAssemblyName.trim();
@@ -50,7 +42,8 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
     };
 
     const handleRemoveAssembly = (name: string) => {
-        if (isDefaultAssembly(name)) {
+        // isCustomAssembly returns true only for user-added assemblies
+        if (!isCustomAssembly(name)) {
             addToast("Cannot remove default Jei-Krodua assemblies", "warning");
             return;
         }
@@ -109,13 +102,13 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
                     {assemblies.map((assembly) => (
                         <div
                             key={assembly}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${isDefaultAssembly(assembly)
-                                ? "bg-[var(--accent-color)]/10 border-[var(--accent-color)]/30 text-[var(--accent-color)]"
-                                : "bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-primary)]"
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${!isCustomAssembly(assembly)
+                                    ? "bg-[var(--accent-color)]/10 border-[var(--accent-color)]/30 text-[var(--accent-color)]"
+                                    : "bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-primary)]"
                                 }`}
                         >
                             <span className="text-sm">{assembly}</span>
-                            {!isDefaultAssembly(assembly) && (
+                            {isCustomAssembly(assembly) && (
                                 <button
                                     onClick={() => handleRemoveAssembly(assembly)}
                                     className="p-0.5 rounded-full hover:bg-[var(--danger-bg)] text-[var(--text-muted)] hover:text-[var(--danger-text)] transition-colors"
