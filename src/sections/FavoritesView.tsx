@@ -12,7 +12,7 @@ import {
 import Button from "../components/Button";
 import { FavoriteConfig } from "../types";
 import type { AppToastType } from "../lib/toast";
-import { ASSEMBLIES } from "../constants";
+import { useAppConfigContext } from "../context";
 import { useOutletContext } from "react-router-dom";
 
 interface FavoritesViewProps {
@@ -31,6 +31,7 @@ interface FavoritesViewProps {
 }
 
 const FavoritesView: React.FC = React.memo(() => {
+  const { assemblies } = useAppConfigContext();
   const {
     favorites = [],
     favoritesSearchTerm,
@@ -109,7 +110,7 @@ const FavoritesView: React.FC = React.memo(() => {
     // Dynamically create groups for all assemblies present in the filtered data
     // while also including all standard assemblies to maintain the structure.
     const allPresentAssemblies = new Set([
-      ...ASSEMBLIES,
+      ...assemblies,
       ...filtered.map((f: FavoriteConfig) => f.assemblyName),
     ]);
 

@@ -10,7 +10,7 @@ import {
 import FileUploader from "../components/FileUploader";
 import { FavoriteConfig } from "../types";
 import Button from "../components/Button";
-import { ASSEMBLIES } from "../constants";
+import { useAppConfigContext } from "../context";
 
 interface FileUploadSectionProps {
   onFileAccepted: (file: File | null, isMasterList: boolean) => void;
@@ -20,6 +20,7 @@ interface FileUploadSectionProps {
 
 const FileUploadSection: React.FC<FileUploadSectionProps> = React.memo(
   ({ onFileAccepted, onStartNewWeek, favorites }) => {
+    const { assemblies } = useAppConfigContext();
     const [selectedAssemblyForStart, setSelectedAssemblyForStart] =
       useState("");
 
@@ -65,7 +66,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = React.memo(
                     <SelectValue placeholder="-- Select Assembly --" />
                   </SelectTrigger>
                   <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
-                    {ASSEMBLIES.map((assembly) => (
+                    {assemblies.map((assembly) => (
                       <SelectItem
                         key={assembly}
                         value={assembly}
