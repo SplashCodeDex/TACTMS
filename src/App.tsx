@@ -55,6 +55,7 @@ import { useModal } from "./hooks/useModal";
 // useWorkspace hook is available for future integration
 import { useWorkspace } from "./hooks/useWorkspace";
 import { useMemberDatabase } from "./hooks/useMemberDatabase";
+import { useFavorites } from "./hooks/useFavorites";
 import {
   createTitheList,
   reconcileMembers,
@@ -261,6 +262,9 @@ const App: React.FC = () => {
 
   // Member Database hook - provides updateMember, deleteMember, resolveConflicts, etc.
   const memberDbHook = useMemberDatabase(addToast);
+
+  // Favorites hook - provides saveFavorite, deleteFavorite, updateFavoriteName, etc.
+  const favoritesHook = useFavorites(addToast);
 
   const { analyzeImage } = useGemini(
     import.meta.env.VITE_API_KEY,
@@ -1125,18 +1129,13 @@ const App: React.FC = () => {
 
   const confirmDeleteFavorite = () => {
     if (!favToDeleteId) return;
-    setFavorites((prev) => prev.filter((f) => f.id !== favToDeleteId));
-    addToast("Favorite deleted.", "success");
-    deleteFavoriteModal.close()
+    favoritesHook.deleteFavorite(favToDeleteId);
+    deleteFavoriteModal.close();
     setFavToDeleteId(null);
   };
 
   const updateFavoriteName = (favId: string, newName: string) => {
-    setFavorites((prev) =>
-      prev.map((f) =>
-        f.id === favId ? { ...f, name: newName, timestamp: Date.now() } : f
-      ),
-    );
+    favoritesHook.updateFavoriteName(favId, newName);
   };
 
   const viewFavoriteDetails = (fav: FavoriteConfig) => {
