@@ -54,6 +54,7 @@ import { useModalsPhase2 as useModals } from "./hooks/useModals";
 import { useModal } from "./hooks/useModal";
 // useWorkspace hook is available for future integration
 import { useWorkspace } from "./hooks/useWorkspace";
+import { useMemberDatabase } from "./hooks/useMemberDatabase";
 import {
   createTitheList,
   reconcileMembers,
@@ -257,6 +258,9 @@ const App: React.FC = () => {
     clearWorkspace,
     clearAutoSaveDraft,
   } = useWorkspace(addToast);
+
+  // Member Database hook - provides updateMember, deleteMember, resolveConflicts, etc.
+  const memberDbHook = useMemberDatabase(addToast);
 
   const { analyzeImage } = useGemini(
     import.meta.env.VITE_API_KEY,
@@ -1249,35 +1253,8 @@ const App: React.FC = () => {
     if (!memberToEdit) return;
     const { assemblyName } = memberToEdit;
 
-    setMemberDatabase((prev) => {
-      const assemblyData = prev[assemblyName]?.data || [];
-      const isNewMember = String(member["No."]).startsWith("new_");
-      let updatedData;
-
-      if (isNewMember) {
-        // Update logic for new member (in memory only, or mixed source)
-        updatedData = assemblyData.map((m) =>
-          m["No."] === member["No."] ? member : m,
-        );
-      } else {
-        // Update logic for existing member
-        updatedData = assemblyData.map((m) =>
-          m["No."] === member["No."] ? member : m,
-        );
-      }
-
-      return {
-        ...prev,
-        [assemblyName]: {
-          ...(prev[assemblyName] || {
-            lastUpdated: Date.now(),
-            fileName: "Mixed Source",
-          }),
-          data: updatedData,
-          lastUpdated: Date.now(),
-        },
-      };
-    });
+    // Update member in database using the hook
+    memberDbHook.updateMember(member, assemblyName);
 
     // Also update the tithe list if this member is in it
     setTitheListData((prev) =>
@@ -1285,9 +1262,6 @@ const App: React.FC = () => {
         if (
           record["Membership Number"] === (member["Membership Number"] || member["Old Membership Number"])
         ) {
-          // Update relevant fields in tithe list record
-          // Note: This is a shallow update. Ideally, we regenerate the list,
-          // but for simple edits, this might suffice.
           return {
             ...record,
             "Membership Number": member["Membership Number"] || member["Old Membership Number"] || record["Membership Number"],
@@ -1297,7 +1271,6 @@ const App: React.FC = () => {
       }),
     );
 
-    addToast("Member updated successfully.", "success");
     editMember.close();
     setMemberToEdit(null);
   };
