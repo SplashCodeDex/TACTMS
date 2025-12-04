@@ -3,7 +3,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -12,7 +11,6 @@ import {
   TitheRecordB,
   ConcatenationConfig,
   FavoriteConfig,
-  AutoSaveDraft,
   MembershipReconciliationReport,
   MemberDatabase,
   TransactionLogEntry,
@@ -22,9 +20,6 @@ import { showToast } from "./lib/toast";
 import { Toaster } from "@/components/ui/sonner";
 import Modal from "./components/Modal";
 import {
-  DEFAULT_CONCAT_CONFIG,
-  AUTO_SAVE_KEY,
-  AUTO_SAVE_DEBOUNCE_TIME,
   ITEMS_PER_FULL_PREVIEW_PAGE,
   DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
   ASSEMBLIES,
@@ -57,13 +52,15 @@ import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
 // import { useModals } from "./hooks/useModals";
 import { useModalsPhase2 as useModals } from "./hooks/useModals";
 import { useModal } from "./hooks/useModal";
+// useWorkspace hook is available for future integration
+import { useWorkspace } from "./hooks/useWorkspace";
 import {
   createTitheList,
   reconcileMembers,
   filterMembersByAge,
 } from "./services/excelProcessor";
 import { exportToExcel } from "./lib/excelUtils";
-import { formatDateDDMMMYYYY, calculateSundayDate } from "./lib/dataTransforms";
+import { formatDateDDMMMYYYY, calculateSundayDate, getMostRecentSunday } from "./lib/dataTransforms";
 import { analyticsService } from "./services/AnalyticsService";
 
 interface PendingData {
@@ -96,10 +93,7 @@ const pushAnalyticsEvent = (event: { type: string; payload: any }) => {
 
 const App: React.FC = () => {
 
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [originalData, setOriginalData] = useState<MemberRecordA[]>([]);
-  const [processedDataA, setProcessedDataA] = useState<MemberRecordA[]>([]);
-  const [titheListData, setTitheListData] = useState<TitheRecordB[]>([]);
+
 
   const [globalNotifications, setGlobalNotifications] = useState<Notification[]>([]);
 
@@ -108,27 +102,15 @@ const App: React.FC = () => {
   const [reconciliationReport, setReconciliationReport] =
     useState<MembershipReconciliationReport | null>(null);
   const [, setIsReconciliationModalOpen] = useState(false);
-  const [soulsWonCount, setSoulsWonCount] = useState<number | null>(0);
 
-  const [ageRangeMin, setAgeRangeMin] = useState<string>("");
-  const [ageRangeMax, setAgeRangeMax] = useState<string>("");
-  const [isAgeFilterActive, setIsAgeFilterActive] = useState(false);
 
-  const [concatenationConfig, setConcatenationConfig] =
-    useState<ConcatenationConfig>(() => {
-      const savedConfig = localStorage.getItem(
-        DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
-      );
-      return savedConfig ? JSON.parse(savedConfig) : DEFAULT_CONCAT_CONFIG;
-    });
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [descriptionText, setDescriptionText] = useState<string>("Tithe");
-  const [amountMappingColumn, setAmountMappingColumn] = useState<string | null>(
-    null,
-  );
 
-  const [fileNameToSave, setFileNameToSave] = useState("GeneratedTitheList");
+
+
+
+
+
 
   const [favoritesSearchTerm, setFavoritesSearchTerm] = useState("");
   const [selectedFavoriteForDetails, setSelectedFavoriteForDetails] =
@@ -147,7 +129,6 @@ const App: React.FC = () => {
   const favoriteDetailsModal = useModal("favoriteDetails");
   const clearWorkspaceModal = useModal("clearWorkspace");
   // Backwards-compatible adapters for existing props/usages during refactor
-  const isFullPreviewModalOpen = fullPreview.isOpen;
   const setIsFullPreviewModalOpen = (open: boolean) =>
     open ? fullPreview.open() : fullPreview.close();
   const isAmountEntryModalOpen = amountEntry.isOpen;
@@ -171,7 +152,7 @@ const App: React.FC = () => {
     direction: "asc" | "desc";
   } | null>(null);
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
 
   const { theme, setTheme, accentColor, setAccentColor } = useThemePreferences();
 
@@ -181,7 +162,7 @@ const App: React.FC = () => {
   const saveFavorite = useModal("saveFavorite");
   const deleteFavoriteModal = useModal("deleteFavorite");
 
-  const autoSaveTimerRef = useRef<number | null>(null);
+
 
 
 
@@ -190,7 +171,7 @@ const App: React.FC = () => {
     window.innerWidth < 768,
   );
 
-  const [currentAssembly, setCurrentAssembly] = useState<string | null>(null);
+
   const assemblySelectionModal = useModal("assemblySelection");
   // Backwards-compat adapters for in-flight refactor
   const isAssemblySelectionModalOpen = assemblySelectionModal.isOpen;
@@ -198,53 +179,7 @@ const App: React.FC = () => {
   const setIsAssemblySelectionModalOpen = (open: boolean) =>
     open ? assemblySelectionModal.open(assemblySelectionModal.payload as any) : assemblySelectionModal.close();
 
-  const draftDataRef = useRef({
-    titheListData,
-    currentAssembly,
-    selectedDate,
-    descriptionText,
-    concatenationConfig,
-    ageRangeMin,
-    ageRangeMax,
-    fileNameToSave,
-    amountMappingColumn,
-    uploadedFile,
-    originalData,
-    processedDataA,
-    soulsWonCount,
-  });
 
-  useEffect(() => {
-    draftDataRef.current = {
-      titheListData,
-      currentAssembly,
-      selectedDate,
-      descriptionText,
-      concatenationConfig,
-      ageRangeMin,
-      ageRangeMax,
-      fileNameToSave,
-      amountMappingColumn,
-      uploadedFile,
-      originalData,
-      processedDataA,
-      soulsWonCount,
-    };
-  }, [
-    titheListData,
-    currentAssembly,
-    selectedDate,
-    descriptionText,
-    concatenationConfig,
-    ageRangeMin,
-    ageRangeMax,
-    fileNameToSave,
-    amountMappingColumn,
-    uploadedFile,
-    originalData,
-    processedDataA,
-    soulsWonCount,
-  ]);
 
   // migrated to ModalProvider: clearWorkspaceModal
 
@@ -273,8 +208,7 @@ const App: React.FC = () => {
 
   const [isParsing, setIsParsing] = useState(false);
 
-  const [, setPendingUpdate] = useState<PendingMasterListUpdate | null>(null);
-  // migrated to ModalProvider: updateConfirm
+  // setPendingUpdate migrated to ModalProvider: updateConfirm
 
   // State for editing members in the database
   // migrated to ModalProvider: editMember
@@ -306,6 +240,41 @@ const App: React.FC = () => {
     },
     [],
   );
+
+  const {
+    uploadedFile,
+    setUploadedFile,
+    originalData,
+    setOriginalData,
+    processedDataA,
+    setProcessedDataA,
+    titheListData,
+    setTitheListData,
+    currentAssembly,
+    setCurrentAssembly,
+    selectedDate,
+    setSelectedDate,
+    descriptionText,
+    setDescriptionText,
+    fileNameToSave,
+    setFileNameToSave,
+    hasUnsavedChanges,
+    setHasUnsavedChanges,
+    ageRangeMin,
+    setAgeRangeMin,
+    ageRangeMax,
+    setAgeRangeMax,
+    isAgeFilterActive,
+    setIsAgeFilterActive,
+    soulsWonCount,
+    setSoulsWonCount,
+    concatenationConfig,
+    setConcatenationConfig,
+    amountMappingColumn,
+    setAmountMappingColumn,
+    clearWorkspace,
+    clearAutoSaveDraft,
+  } = useWorkspace(addToast);
 
   const { analyzeImage } = useGemini(
     import.meta.env.VITE_API_KEY,
@@ -411,98 +380,11 @@ const App: React.FC = () => {
 
   // accent color persistence handled by useThemePreferences()
 
-  const clearAutoSaveDraft = useCallback(() => {
-    try {
-      localStorage.removeItem(AUTO_SAVE_KEY);
-    } catch (e) {
-      console.error("Failed to clear auto-save draft:", e);
-    }
-  }, []);
 
-  const clearWorkspace = useCallback(() => {
-    setUploadedFile(null);
-    setOriginalData([]);
-    setProcessedDataA([]);
-    setTitheListData([]);
-    setCurrentAssembly(null);
-    setSelectedDate(new Date());
-    setDescriptionText("Tithe");
-    setFileNameToSave("GeneratedTitheList");
-    setSoulsWonCount(0);
-    setHasUnsavedChanges(false);
-    setAgeRangeMin("");
-    setAgeRangeMax("");
-    setIsAgeFilterActive(false);
-    setConcatenationConfig(() => {
-      const savedConfig = localStorage.getItem(DEFAULT_CONCAT_CONFIG_STORAGE_KEY);
-      return savedConfig ? JSON.parse(savedConfig) : DEFAULT_CONCAT_CONFIG;
-    });
-    setAmountMappingColumn(null);
-    clearAutoSaveDraft();
-  }, [clearAutoSaveDraft]);
 
   // ...
 
-  const saveDraft = useCallback(() => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      const currentDraftData = draftDataRef.current;
-      const {
-        titheListData,
-        currentAssembly,
-        selectedDate,
-        descriptionText,
-        concatenationConfig,
-        ageRangeMin,
-        ageRangeMax,
-        fileNameToSave,
-        amountMappingColumn,
-        uploadedFile,
-        originalData,
-        processedDataA,
-        soulsWonCount
-      } = currentDraftData;
 
-      if (titheListData.length === 0 || !currentAssembly) return;
-      const draft: AutoSaveDraft = {
-        timestamp: Date.now(),
-        titheListData,
-        selectedDate: selectedDate.toISOString(),
-        descriptionText,
-        concatenationConfig,
-        ageRangeMin,
-        ageRangeMax,
-        fileNameToSave,
-        amountMappingColumn,
-        uploadedFileName: uploadedFile?.name,
-        originalDataRecordCount: originalData.length,
-        processedDataARecordCount: processedDataA.length,
-        assemblyName: currentAssembly,
-        soulsWonCount,
-      };
-      try {
-        localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(draft));
-        setHasUnsavedChanges(false);
-        addToast("Draft auto-saved!", "success", 2000);
-      } catch (e) {
-        console.error("Failed to auto-save draft:", e);
-        addToast("Auto-save failed: Storage full.", "warning", 3000);
-      }
-    }, AUTO_SAVE_DEBOUNCE_TIME);
-  }, [addToast]);
-
-  useEffect(() => {
-    if (hasUnsavedChanges && titheListData.length > 0) {
-      saveDraft();
-    }
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, [hasUnsavedChanges, titheListData, saveDraft]);
 
   const handleFileAccepted = useCallback(
     async (file: File | null, isMasterList: boolean, assemblyName?: string) => {
@@ -550,11 +432,13 @@ const App: React.FC = () => {
             // We should probably always confirm if it's an update to an existing one,
             // but for now let's stick to the existing logic of checking if data > 0
             if (existingData && existingData.data.length > 0) {
-              updateConfirm.open({ pending: {
-                assemblyName: targetAssembly,
-                newData: parsedData,
-                newFileName: file.name,
-              }});
+              updateConfirm.open({
+                pending: {
+                  assemblyName: targetAssembly,
+                  newData: parsedData,
+                  newFileName: file.name,
+                }
+              });
             } else {
               handleMasterListUpdate(targetAssembly, parsedData, file.name);
             }
@@ -572,13 +456,15 @@ const App: React.FC = () => {
               file.name.toLowerCase().includes(name.toLowerCase()),
             ) || "";
 
-          assemblySelectionModal.open({ pending: {
-            data: parsedData,
-            fileName: file.name,
-            file: file,
-            suggestedAssembly: detectedAssembly,
-            isMasterList: false,
-          }});
+          assemblySelectionModal.open({
+            pending: {
+              data: parsedData,
+              fileName: file.name,
+              file: file,
+              suggestedAssembly: detectedAssembly,
+              isMasterList: false,
+            }
+          });
         }
       } catch (e: any) {
         const errorMessage =
@@ -1430,7 +1316,7 @@ const App: React.FC = () => {
     );
 
     addToast("Member updated successfully.", "success");
-    setIsEditMemberModalOpen(false);
+    editMember.close();
     setMemberToEdit(null);
   };
 
@@ -1440,14 +1326,6 @@ const App: React.FC = () => {
       return;
     }
     setIsAddNewMemberModalOpen(true);
-  };
-
-  const getMostRecentSunday = (date: Date): Date => {
-    const day = date.getDay(); // Sunday - 0, Monday - 1, ..., Saturday - 6
-    const diff = date.getDate() - day; // Calculate difference to get to Sunday
-    const sunday = new Date(date.setDate(diff));
-    sunday.setHours(0, 0, 0, 0); // Set to the beginning of the day to normalize
-    return sunday;
   };
 
   const handleResolveConflict = (resolution: "use_new" | "keep_existing") => {
@@ -1757,147 +1635,6 @@ const App: React.FC = () => {
             setSortConfig={setFullPreviewSortConfig}
             openAddMemberToListModal={openAddMemberToListModal}
             assemblyName={currentAssembly || ""}
-          />
-        )
-      }
-
-      {
-        isAmountEntryModalOpen && (
-          <AmountEntryModal
-            isOpen={isAmountEntryModalOpen}
-            onClose={() => setIsAmountEntryModalOpen(false)}
-            titheListData={titheListData}
-            onSave={handleSaveFromPreview}
-          />
-        )
-      }
-
-      {
-        isAddNewMemberModalOpen && (
-          <AddNewMemberModal
-            isOpen={isAddNewMemberModalOpen}
-            onClose={() => setIsAddNewMemberModalOpen(false)}
-            onConfirm={handleAddNewMemberToList}
-            onAddExistingMember={handleAddExistingMemberToList}
-            currentAssembly={currentAssembly}
-            memberDatabase={
-              currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
-            }
-            titheListData={titheListData}
-          />
-        )
-      }
-
-      {
-        isCreateTitheListModalOpen && (
-          <CreateTitheListModal
-            isOpen={isCreateTitheListModalOpen}
-            onClose={() => setIsCreateTitheListModalOpen(false)}
-            onConfirm={() => {
-              if (pendingTitheListMembers && pendingTitheListAssembly) {
-                handleCreateTitheListFromDB(
-                  pendingTitheListMembers,
-                  pendingTitheListAssembly,
-                );
-              }
-            }}
-            memberCount={pendingTitheListMembers?.length || 0}
-            assemblyName={pendingTitheListAssembly || ""}
-          />
-        )
-      }
-      {
-        saveFavorite.isOpen && (
-          <Modal
-            isOpen={saveFavorite.isOpen}
-            onClose={() => saveFavorite.close()}
-            title="Save Configuration to Favorites"
-            closeOnOutsideClick={false}
-          >
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="favName" className="form-label">
-                  Favorite Name
-                </label>
-                <input
-                  id="favName"
-                  type="text"
-                  value={favoriteNameInput}
-                  onChange={(e) => setFavoriteNameInput(e.target.value)}
-                  className="form-input-light w-full"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => saveFavorite.close()}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSaveFavorite}
-                leftIcon={<Save size={16} />}
-              >
-                Save Favorite
-              </Button>
-            </div>
-          </Modal>
-        )
-      }
-      {
-        deleteFavoriteModal.isOpen && (
-          <Modal
-            isOpen={deleteFavoriteModal.isOpen}
-            onClose={() => deleteFavoriteModal.close()}
-            title="Delete Favorite?"
-            closeOnOutsideClick={false}
-          >
-            <p>
-              Are you sure you want to delete this favorite? This action cannot be
-              undone.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => deleteFavoriteModal.close()}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={confirmDeleteFavorite}
-                leftIcon={<Trash2 size={16} />}
-              >
-                Delete
-              </Button>
-            </div>
-          </Modal>
-        )
-      }
-      {
-        selectedFavoriteForDetails && (
-          <Modal
-            isOpen={favoriteDetailsModal.isOpen}
-            onClose={() => favoriteDetailsModal.close()}
-            title={`Details for "${selectedFavoriteForDetails.name}"`}
-            size="lg"
-          >
-            <pre className="text-xs bg-[var(--bg-elevated)] p-4 rounded-md max-h-96 overflow-auto">
-              {JSON.stringify(selectedFavoriteForDetails, null, 2)}
-            </pre>
-          </Modal>
-        )
-      }
-      {
-        isAssemblySelectionModalOpen && pendingData && (
-          <AssemblySelectionModal
-            isOpen={isAssemblySelectionModalOpen}
-            onClose={() => setIsAssemblySelectionModalOpen(false)}
-            onConfirm={handleConfirmAssemblySelection}
-            fileName={pendingData.fileName}
-            suggestedAssembly={pendingData.suggestedAssembly}
           />
         )
       }

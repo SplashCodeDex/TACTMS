@@ -42,3 +42,17 @@ export const calculateSundayDate = (monthName: string, weekString: string, year:
 
   return targetSunday;
 };
+
+/**
+ * Get the most recent Sunday for a given date.
+ * Used to normalize tithe list dates to the previous/current Sunday.
+ * @param date - The reference date
+ * @returns The most recent Sunday at midnight
+ */
+export const getMostRecentSunday = (date: Date): Date => {
+  const day = date.getDay(); // Sunday - 0, Monday - 1, ..., Saturday - 6
+  const diff = date.getDate() - day; // Calculate difference to get to Sunday
+  const sunday = new Date(date.setDate(diff));
+  sunday.setHours(0, 0, 0, 0); // Set to the beginning of the day to normalize
+  return sunday;
+};

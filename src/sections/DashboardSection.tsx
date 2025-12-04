@@ -487,11 +487,8 @@ const DashboardSection: React.FC = () => {
             {recentlyAddedMembers.length > 0 ? (
               <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
                 <ul className="space-y-3 pr-4">
-                  {recentlyAddedMembers.map((member) => (
-                    <li
-                      key={member["No."]}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                    >
+                  {recentlyAddedMembers.map((member, index) => (
+                    <li key={`member-${member["No."]}-${member["First Name"]}-${member.Surname}-${index}`} className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors">
                       <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--accent-purple)] to-[var(--accent-blue)] rounded-lg flex items-center justify-center text-white">
                         <User size={20} />
                       </div>
@@ -524,11 +521,8 @@ const DashboardSection: React.FC = () => {
             {stats.recentActivities.length > 0 ? (
               <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
                 <ul className="space-y-3 pr-4">
-                  {stats.recentActivities.map((log) => (
-                    <li
-                      key={log.id + log.timestamp}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                    >
+                  {stats.recentActivities.map((log, index) => (
+                    <li key={`activity-${log.id}-${log.timestamp}-${index}`} className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors">
                       <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] rounded-lg flex items-center justify-center text-white">
                         <User size={20} />
                       </div>
