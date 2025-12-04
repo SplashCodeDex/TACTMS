@@ -54,14 +54,59 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
       return null;
     }
 
-    setIsGeneratingReport(true); // Reuse loading state or add a new one
+    // Validate required parameters for enhanced extraction
+    if (!month || !week || !dateString) {
+      addToast('Please select month, week, and date for extraction.', 'warning');
+      return null;
+    }
+
+    setIsGeneratingReport(true);
     try {
-      const { processTitheImage } = await import('../services/imageProcessor');
-      const data = await processTitheImage(imageFile, apiKey, month, week, dateString);
-      return data;
-    } catch (error) {
+      // Use the enhanced processor with validation
+      const { processTitheImageWithValidation, validateTitheBookImage } = await import('../services/imageProcessor');
+      const { validateTitheBookImage: preValidate } = await import('../services/imageValidator');
+
+      // Pre-validate the image
+      const preValidation = await preValidate(imageFile);
+      if (!preValidation.isValid) {
+        addToast(preValidation.errors.join('. '), 'error');
+        return null;
+      }
+      if (preValidation.warnings.length > 0) {
+        addToast(preValidation.warnings[0], 'warning');
+      }
+
+      // Process with enhanced function
+      const result = await processTitheImageWithValidation(
+        imageFile,
+        apiKey,
+        month,
+        week,
+        dateString
+      );
+
+      // Provide feedback based on validation
+      if (!result.isValidTitheBook) {
+        addToast('Warning: Image may not match expected Tithe Book format.', 'warning');
+      }
+
+      if (result.detectedYear) {
+        addToast(`Detected year: ${result.detectedYear}`, 'info');
+      }
+
+      if (result.lowConfidenceCount > 0) {
+        addToast(
+          `${result.lowConfidenceCount} entries have low confidence and may need review.`,
+          'warning'
+        );
+      }
+
+      addToast(`Extracted ${result.entries.length} tithe records.`, 'success');
+      return result.entries;
+
+    } catch (error: any) {
       console.error('Error analyzing image:', error);
-      addToast('Failed to analyze image. Please try again.', 'error');
+      addToast(error.message || 'Failed to analyze image. Please try again.', 'error');
       return null;
     } finally {
       setIsGeneratingReport(false);
