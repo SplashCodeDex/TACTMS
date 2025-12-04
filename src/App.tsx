@@ -92,13 +92,8 @@ const pushAnalyticsEvent = (event: { type: string; payload: any }) => {
 };
 
 const App: React.FC = () => {
-
-
-
   const [globalNotifications, setGlobalNotifications] = useState<Notification[]>([]);
-
   const [inputErrors, setInputErrors] = useState<{ [key: string]: string }>({});
-
   const [reconciliationReport, setReconciliationReport] =
     useState<MembershipReconciliationReport | null>(null);
   const [, setIsReconciliationModalOpen] = useState(false);
