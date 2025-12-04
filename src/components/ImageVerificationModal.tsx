@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { TitheRecordB, MemberRecordA } from "../types";
 import { findMemberByName } from "../services/reconciliation";
-import { getSimilarity } from "../utils/stringUtils";
 import Button from "./Button";
-import { Check, AlertTriangle, Search } from "lucide-react";
+import { Check, AlertTriangle } from "lucide-react";
+import MemberSelect from "./MemberSelect";
 
 interface ImageVerificationModalProps {
     isOpen: boolean;
@@ -18,8 +18,8 @@ interface VerificationRow {
     id: number;
     extractedRecord: TitheRecordB;
     matchedMember: MemberRecordA | null;
-    matchConfidence: number; // Score for the DB match
-    aiConfidence: number;   // Score for the AI extraction
+    matchConfidence: number;
+    aiConfidence: number;
     manualOverride: boolean;
 }
 
@@ -37,7 +37,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         if (isOpen && extractedData.length > 0) {
             setIsProcessing(true);
             const newRows = extractedData.map((record, index) => {
-                const rawName = record["Membership Number"]; // Currently holds the name
+                const rawName = record["Membership Number"];
                 const match = findMemberByName(rawName, masterData);
 
                 return {
@@ -45,7 +45,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     extractedRecord: record,
                     matchedMember: match ? match.member : null,
                     matchConfidence: match ? match.score : 0,
-                    aiConfidence: record.Confidence || 0, // Use the AI confidence from the record
+                    aiConfidence: record.Confidence || 0,
                     manualOverride: false,
                 };
             });
@@ -59,7 +59,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
             const finalMember = row.matchedMember;
             const memberId = finalMember
                 ? `${finalMember.Surname} ${finalMember["First Name"]} ${finalMember["Other Names"] || ""} (${finalMember["Membership Number"]}|${finalMember["Old Membership Number"] || ""})`
-                : row.extractedRecord["Membership Number"]; // Fallback to raw name if no match
+                : row.extractedRecord["Membership Number"];
 
             return {
                 ...row.extractedRecord,
@@ -81,84 +81,10 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         );
     };
 
-    // Simple Member Search Component (Inline for now)
-    const MemberSelect = ({
-        currentMember,
-        onSelect,
-    }: {
-        currentMember: MemberRecordA | null;
-        onSelect: (m: MemberRecordA | null) => void;
-    }) => {
-        const [search, setSearch] = useState("");
-        const [isOpen, setIsOpen] = useState(false);
-
-        const filteredMembers = useMemo(() => {
-            if (!search) return [];
-            const lowerSearch = search.toLowerCase();
-
-            return masterData
-                .map(m => {
-                    const fullName = `${m.Surname} ${m["First Name"]} ${m["Other Names"] || ""}`.trim();
-                    const score = getSimilarity(lowerSearch, fullName.toLowerCase());
-                    return { member: m, score };
-                })
-                .filter(item => item.score > 0.3 ||
-                    // Keep exact substring matches even if score is low (e.g. short queries)
-                    `${item.member.Surname} ${item.member["First Name"]}`.toLowerCase().includes(lowerSearch)
-                )
-                .sort((a, b) => b.score - a.score)
-                .slice(0, 10)
-                .map(item => item.member);
-        }, [search, masterData]);
-
-        return (
-            <div className="relative">
-                <div
-                    className="p-2 border rounded cursor-pointer bg-input-bg flex justify-between items-center"
-                    onClick={() => setIsOpen(!isOpen)}
-                >
-                    <span className="truncate max-w-[200px]">
-                        {currentMember
-                            ? `${currentMember.Surname} ${currentMember["First Name"]}`
-                            : "Select Member..."}
-                    </span>
-                    <Search size={14} />
-                </div>
-                {isOpen && (
-                    <div className="absolute z-50 w-full mt-1 bg-card-bg border rounded shadow-lg max-h-60 overflow-auto">
-                        <input
-                            type="text"
-                            className="w-full p-2 border-b bg-input-bg sticky top-0"
-                            placeholder="Search..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            autoFocus
-                        />
-                        <div
-                            className="p-2 hover:bg-hover-bg cursor-pointer text-red-400"
-                            onClick={() => {
-                                onSelect(null);
-                                setIsOpen(false);
-                            }}
-                        >
-                            No Match (Keep Raw Name)
-                        </div>
-                        {filteredMembers.map((m, i) => (
-                            <div
-                                key={i}
-                                className="p-2 hover:bg-hover-bg cursor-pointer"
-                                onClick={() => {
-                                    onSelect(m);
-                                    setIsOpen(false);
-                                }}
-                            >
-                                {m.Surname} {m["First Name"]} ({m["Membership Number"]})
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
+    const getConfidenceBadgeClass = (confidence: number) => {
+        if (confidence > 0.8) return "bg-green-100 text-green-800";
+        if (confidence > 0.5) return "bg-yellow-100 text-yellow-800";
+        return "bg-red-100 text-red-800";
     };
 
     return (
@@ -178,8 +104,8 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         >
             <div className="space-y-4">
                 <p className="text-sm text-text-secondary">
-                    Please review the extracted data. The system has attempted to match names
-                    to your membership list. Confirm or correct the matches below.
+                    Please review the extracted data. The system has attempted to match
+                    names to your membership list. Confirm or correct the matches below.
                 </p>
 
                 {isProcessing ? (
@@ -206,10 +132,9 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                             {row.extractedRecord["Transaction Amount"]}
                                         </td>
                                         <td className="px-4 py-2">
-                                            <span className={`px-2 py-1 rounded text-xs ${row.aiConfidence > 0.8 ? 'bg-green-100 text-green-800' :
-                                                row.aiConfidence > 0.5 ? 'bg-yellow-100 text-yellow-800' :
-                                                    'bg-red-100 text-red-800'
-                                                }`}>
+                                            <span
+                                                className={`px-2 py-1 rounded text-xs ${getConfidenceBadgeClass(row.aiConfidence)}`}
+                                            >
                                                 {Math.round(row.aiConfidence * 100)}%
                                             </span>
                                         </td>
@@ -217,6 +142,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                             <MemberSelect
                                                 currentMember={row.matchedMember}
                                                 onSelect={(m) => handleMemberSelect(row.id, m)}
+                                                masterData={masterData}
                                             />
                                         </td>
                                         <td className="px-4 py-2">
@@ -243,7 +169,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     </div>
                 )}
             </div>
-        </Modal >
+        </Modal>
     );
 };
 
