@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Button from "../components/Button";
 import { FavoriteConfig } from "../types";
-import { ToastMessage } from "../components/Toast";
+import type { ToastType as ToastMessage } from "@/lib/toast.types";
 import { ASSEMBLIES } from "../constants";
 import { useOutletContext } from "react-router-dom";
 

@@ -1,27 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  TrendingUp,
-  Users,
-  DollarSign,
-  Activity,
-  ListPlus,
-  UploadCloud,
-  User,
-  Camera,
-  Sparkles,
-  ArrowRight,
-  FilePlus
-} from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import { ScrollArea } from "../components/ui/scroll-area";
-import {
   TransactionLogEntry,
   MemberDatabase,
   FavoriteConfig,
@@ -29,16 +8,18 @@ import {
   MasterListData,
   MemberRecordA,
 } from "../types";
-import StatDisplayCard from "../components/StatDisplayCard";
-import AnimatedNumber from "../components/AnimatedNumber";
-import Button from "../components/Button";
-import { ASSEMBLIES } from "../constants";
 import { formatDateDDMMMYYYY } from "../lib/dataTransforms";
 import { useOutletContext } from "react-router-dom";
-import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
 import { useGeminiChat } from "../hooks/useGemini";
-import Modal from "../components/Modal";
+import {
+  RecentMembersList,
+  RecentActivityList,
+  WeeklyTrendChart,
+  DashboardStatsGrid,
+  QuickActionsGrid,
+  ScanAssemblyModal,
+} from "../components/dashboard";
 
 interface DashboardSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -85,7 +66,6 @@ const DashboardSection: React.FC = () => {
   // Initialize chat with latest data when available
   useEffect(() => {
     if (transactionLog.length > 0 || Object.keys(memberDatabase).length > 0) {
-      // Get the most recent tithe list from logs if available, or empty
       const latestLog = transactionLog.length > 0
         ? transactionLog.sort((a, b) => b.timestamp - a.timestamp)[0]
         : null;
@@ -235,7 +215,6 @@ const DashboardSection: React.FC = () => {
     const file = event.target.files?.[0] || null;
     if (file) {
       setPendingScanFile(file);
-      // Pre-select current assembly if available, otherwise empty
       setScanAssembly(selectedAssembly || "");
       setIsAssemblyModalOpen(true);
     }
@@ -252,7 +231,6 @@ const DashboardSection: React.FC = () => {
       return;
     }
     setIsAssemblyModalOpen(false);
-    // Pass the selected month and week to the scan handler
     onScanImage(pendingScanFile!, scanAssembly, scanMonth, scanWeek);
     setPendingScanFile(null);
   };
@@ -291,6 +269,8 @@ const DashboardSection: React.FC = () => {
     return "Good evening";
   }, []);
 
+  const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+
   return (
     <motion.div
       className="space-y-8"
@@ -308,280 +288,49 @@ const DashboardSection: React.FC = () => {
         </p>
       </motion.div>
 
-      <motion.div
-        variants={itemVariants}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        <StatDisplayCard
-          icon={<DollarSign />}
-          label={`Monthly Tithe (${new Date().toLocaleString('default', { month: 'long' })})`}
-          value={
-            <>
-              GH₵{" "}
-              <AnimatedNumber
-                n={stats.ytdTithe}
-                formatter={(n) =>
-                  n.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                }
-              />
-            </>
-          }
-        />
-        <StatDisplayCard
-          icon={<TrendingUp />}
-          label={`Monthly Souls Won`}
-          value={<AnimatedNumber n={stats.ytdSouls} />}
-        />
-        <StatDisplayCard
-          icon={<Users />}
-          label="Total Members on Record"
-          value={<AnimatedNumber n={stats.totalMembers} />}
+      <motion.div variants={itemVariants}>
+        <DashboardStatsGrid
+          ytdTithe={stats.ytdTithe}
+          ytdSouls={stats.ytdSouls}
+          totalMembers={stats.totalMembers}
+          currentMonth={currentMonth}
         />
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <motion.section
-          variants={itemVariants}
-          className="lg:col-span-2 content-card flex flex-col h-full gap-6"
-        >
-          <h2 className="section-heading mb-0 pb-3 border-b border-[var(--border-color)]">
-            <ListPlus size={22} className="mr-3 icon-primary" />
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Start New Weekly List Card */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="glassmorphism-card p-6 rounded-2xl border border-[var(--border-color)] shadow-sm hover:shadow-md transition-all group cursor-pointer relative overflow-hidden"
-              onClick={handleStartWeek}
-            >
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <FilePlus size={80} className="text-blue-500" />
-              </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform duration-300">
-                  <FilePlus size={24} />
-                </div>
-                <h3 className="text-lg font-semibold mb-2 text-[var(--text-primary)]">Start New Weekly List</h3>
-                <p className="text-sm text-[var(--text-secondary)] mb-6">
-                  Create a fresh tithe list for the current week.
-                </p>
-                <div className="space-y-2">
-                  <Select
-                    value={selectedAssembly}
-                    onValueChange={setSelectedAssembly}
-                    disabled={Object.keys(memberDatabase).length === 0}
-                  >
-                    <SelectTrigger
-                      id="assembly-start-select-dash"
-                      className="w-full"
-                    >
-                      <SelectValue placeholder="-- Select Assembly --" />
-                    </SelectTrigger>
-                    <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
-                      {ASSEMBLIES.map((assembly) => (
-                        <SelectItem
-                          key={assembly}
-                          value={assembly}
-                          disabled={!assembliesWithData.has(assembly)}
-                        >
-                          {assembly}{" "}
-                          {assembliesWithData.has(assembly)
-                            ? ""
-                            : "(No member data)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="primary" className="w-full group-hover:shadow-lg transition-all" onClick={handleStartWeek} disabled={!selectedAssembly}>
-                    Create List <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-
-
-
-            {/* Scan Tithe Book (AI) Card */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="relative p-6 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-sm hover:shadow-md transition-all group cursor-pointer overflow-hidden"
-              style={{
-                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)"
-              }}
-              onClick={handleScanClick}
-            >
-              {/* New Badge */}
-              <div className="absolute top-4 right-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                NEW AI
-              </div>
-
-              <div className="absolute -bottom-4 -right-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Camera size={100} className="text-indigo-500" />
-              </div>
-
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                  <Camera size={24} />
-                </div>
-                <h3 className="text-lg font-semibold mb-2 text-[var(--text-primary)]">Scan Tithe Book (AI)</h3>
-                <p className="text-sm text-[var(--text-secondary)] mb-6">
-                  Take a photo of a physical tithe book page to digitize it instantly.
-                </p>
-                <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 shadow-md group-hover:shadow-lg transition-all">
-                  Scan Image <Sparkles size={16} className="ml-2" />
-                </Button>
-                <input
-                  type="file"
-                  ref={imageInputRef}
-                  onChange={handleImageUploadChange}
-                  className="hidden"
-                  accept="image/*"
-                />
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Drag and Drop Zone */}
-          <div
+        <motion.div variants={itemVariants} className="lg:col-span-2">
+          <QuickActionsGrid
+            selectedAssembly={selectedAssembly}
+            setSelectedAssembly={setSelectedAssembly}
+            assembliesWithData={assembliesWithData}
+            memberDatabaseEmpty={Object.keys(memberDatabase).length === 0}
+            onStartWeek={handleStartWeek}
+            onUploadClick={handleUploadClick}
+            onScanClick={handleScanClick}
+            isDragOver={isDragOver}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={handleUploadClick}
-            className={`p-8 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center space-y-3 flex-grow cursor-pointer ${isDragOver
-              ? "border-[var(--primary-accent-start)] bg-[var(--primary-accent-start)]/10"
-              : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-subtle-accent)]"
-              }`}
-            style={{ minHeight: "150px" }}
-          >
-            <div className={`p-4 rounded-full ${isDragOver ? "bg-[var(--primary-accent-start)]/20" : "bg-[var(--bg-elevated)]"}`}>
-              <UploadCloud size={32} className={isDragOver ? "text-[var(--primary-accent-start)]" : "text-[var(--text-muted)]"} />
-            </div>
-            <div>
-              <p className="text-lg font-medium text-[var(--text-primary)]">
-                {isDragOver ? "Drop file here" : "Drag & drop files here"}
-              </p>
-              <p className="text-sm text-[var(--text-secondary)]">
-                or click to browse
-              </p>
-            </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-              accept=".xlsx, .xls"
-            />
-          </div>
-        </motion.section>
+            fileInputRef={fileInputRef}
+            imageInputRef={imageInputRef}
+            onFileChange={handleFileChange}
+            onImageChange={handleImageUploadChange}
+          />
+        </motion.div>
 
         <div className="space-y-8">
-          <motion.section variants={itemVariants} className="content-card">
-            <h2 className="section-heading">
-              <Users size={22} className="mr-3 icon-primary" />
-              Recently Added Members
-            </h2>
-            {recentlyAddedMembers.length > 0 ? (
-              <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
-                <ul className="space-y-3 pr-4">
-                  {recentlyAddedMembers.map((member) => (
-                    <li
-                      key={member["No."]}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                    >
-                      <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--accent-purple)] to-[var(--accent-blue)] rounded-lg flex items-center justify-center text-white">
-                        <User size={20} />
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
-                          {member["First Name"]} {member.Surname}
-                        </p>
-                        <p className="text-xs text-[var(--text-secondary)]">
-                          {member.firstSeenSource}
-                          <span className="text-[var(--text-muted)] mx-1"> • </span>
-                          {formatDateDDMMMYYYY(new Date(member.firstSeenDate!))}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </ScrollArea>
-            ) : (
-              <p className="text-sm text-center py-8 text-[var(--text-muted)]">
-                No new members recorded recently.
-              </p>
-            )}
-          </motion.section>
+          <motion.div variants={itemVariants}>
+            <RecentMembersList members={recentlyAddedMembers} />
+          </motion.div>
 
-          <motion.section variants={itemVariants} className="content-card">
-            <h2 className="section-heading">
-              <Activity size={22} className="mr-3 icon-primary" />
-              Recent Activity
-            </h2>
-            {stats.recentActivities.length > 0 ? (
-              <ScrollArea className="h-[200px]"> {/* Adjust height to show approx 3 items */}
-                <ul className="space-y-3 pr-4">
-                  {stats.recentActivities.map((log) => (
-                    <li
-                      key={log.id + log.timestamp}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--bg-card-subtle-accent)] transition-colors"
-                    >
-                      <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] rounded-lg flex items-center justify-center text-white">
-                        <User size={20} />
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
-                          {log.assemblyName} Assembly
-                        </p>
-                        <p className="text-xs text-[var(--text-secondary)]">
-                          {formatDateDDMMMYYYY(new Date(log.selectedDate))}
-                          <span className="text-[var(--text-muted)] mx-1"> • </span>
-                          <span className="font-medium text-[var(--success-text)]">
-                            GH₵ {log.totalTitheAmount.toLocaleString()}
-                          </span>
-                          <span className="text-[var(--text-muted)] mx-1"> • </span>
-                          <span className="font-medium text-[var(--text-primary)]">
-                            {log.titherCount} Tithers
-                          </span>
-                          <span className="text-[var(--text-muted)] mx-1"> • </span>
-                          <span className="font-medium text-[var(--accent-purple)]">
-                            {log.soulsWonCount} Souls Won
-                          </span>
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </ScrollArea>
-            ) : (
-              <p className="text-sm text-center py-8 text-[var(--text-muted)]">
-                No recent transactions logged.
-              </p>
-            )}
-          </motion.section>
+          <motion.div variants={itemVariants}>
+            <RecentActivityList activities={stats.recentActivities} />
+          </motion.div>
         </div>
-        <motion.section
-          variants={itemVariants}
-          className="lg:col-span-3 content-card relative"
-        >
-          <h2 className="section-heading">
-            <TrendingUp size={22} className="mr-3 icon-primary" />
-            Weekly Tithe Trend
-          </h2>
-          <p className="text-sm text-center py-4 text-[var(--text-muted)]">
-            Showing data for the last 6 weeks.
-          </p>
-          <BarChart data={weeklyTitheData} />
-          {weeklyTitheData.every((d) => d.count === 0) && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-muted)] bg-[var(--bg-card)]/50 backdrop-blur-sm rounded-xl">
-              <TrendingUp size={32} className="mb-2 opacity-50" />
-              <p>No tithe data recorded recently</p>
-            </div>
-          )}
-        </motion.section>
+
+        <motion.div variants={itemVariants} className="lg:col-span-3">
+          <WeeklyTrendChart data={weeklyTitheData} />
+        </motion.div>
       </div>
 
       {/* Chat Interface */}
@@ -596,94 +345,21 @@ const DashboardSection: React.FC = () => {
       />
 
       {/* Assembly Selection Modal for Image Scan */}
-      <Modal
+      <ScanAssemblyModal
         isOpen={isAssemblyModalOpen}
         onClose={() => {
           setIsAssemblyModalOpen(false);
           setPendingScanFile(null);
         }}
-        title="Select Assembly for Scan"
-        size="sm"
-        footerContent={
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setIsAssemblyModalOpen(false);
-                setPendingScanFile(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleConfirmScanAssembly}
-              disabled={!scanAssembly}
-            >
-              Continue to Scan <ArrowRight size={16} className="ml-2" />
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-4 py-4">
-          <p className="text-[var(--text-secondary)]">
-            Please select the assembly this tithe list belongs to.
-          </p>
-          <Select
-            value={scanAssembly}
-            onValueChange={setScanAssembly}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="-- Select Assembly --" />
-            </SelectTrigger>
-            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
-              {ASSEMBLIES.map((assembly) => (
-                <SelectItem
-                  key={assembly}
-                  value={assembly}
-                  disabled={!assembliesWithData.has(assembly)}
-                >
-                  {assembly} {assembliesWithData.has(assembly) ? "" : "(No member data)"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {!assembliesWithData.has(scanAssembly) && scanAssembly && (
-            <p className="text-xs text-amber-500 mt-2">
-              Warning: No member data found for this assembly. Reconciliation might fail.
-            </p>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs text-[var(--text-secondary)]">Target Month</label>
-              <Select value={scanMonth} onValueChange={setScanMonth}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent className="glassmorphism-bg border border-[var(--border-color)]">
-                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-[var(--text-secondary)]">Target Week</label>
-              <Select value={scanWeek} onValueChange={setScanWeek}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Week" />
-                </SelectTrigger>
-                <SelectContent className="glassmorphism-bg border border-[var(--border-color)]">
-                  {["Week 1", "Week 2", "Week 3", "Week 4", "Week 5"].map(w => (
-                    <SelectItem key={w} value={w}>{w}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      </Modal>
+        scanAssembly={scanAssembly}
+        setScanAssembly={setScanAssembly}
+        scanMonth={scanMonth}
+        setScanMonth={setScanMonth}
+        scanWeek={scanWeek}
+        setScanWeek={setScanWeek}
+        assembliesWithData={assembliesWithData}
+        onConfirm={handleConfirmScanAssembly}
+      />
     </motion.div>
   );
 };
