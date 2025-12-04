@@ -56,6 +56,7 @@ import { useModal } from "./hooks/useModal";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { useMemberDatabase } from "./hooks/useMemberDatabase";
 import { useFavorites } from "./hooks/useFavorites";
+import { useTitheProcessor } from "./hooks/useTitheProcessor";
 import {
   createTitheList,
   reconcileMembers,
@@ -265,6 +266,35 @@ const App: React.FC = () => {
 
   // Favorites hook - provides saveFavorite, deleteFavorite, updateFavoriteName, etc.
   const favoritesHook = useFavorites(addToast);
+
+  // Tithe Processor hook - provides age filter, date/description changes, download
+  const titheProcessor = useTitheProcessor(
+    {
+      originalData,
+      processedDataA,
+      titheListData,
+      concatenationConfig,
+      selectedDate,
+      descriptionText,
+      amountMappingColumn,
+      ageRangeMin,
+      ageRangeMax,
+      fileNameToSave,
+    },
+    {
+      setProcessedDataA,
+      setTitheListData,
+      setConcatenationConfig,
+      setSelectedDate,
+      setDescriptionText,
+      setAgeRangeMin,
+      setAgeRangeMax,
+      setIsAgeFilterActive,
+      setHasUnsavedChanges,
+      setInputErrors,
+    },
+    addToast
+  );
 
   const { analyzeImage } = useGemini(
     import.meta.env.VITE_API_KEY,

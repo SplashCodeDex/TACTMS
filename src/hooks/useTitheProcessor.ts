@@ -22,16 +22,16 @@ interface TitheProcessorState {
 }
 
 interface TitheProcessorSetters {
-    setProcessedDataA: React.Dispatch<React.SetStateAction<MemberRecordA[]>>;
-    setTitheListData: React.Dispatch<React.SetStateAction<TitheRecordB[]>>;
-    setConcatenationConfig: React.Dispatch<React.SetStateAction<ConcatenationConfig>>;
-    setSelectedDate: React.Dispatch<React.SetStateAction<Date>>;
-    setDescriptionText: React.Dispatch<React.SetStateAction<string>>;
-    setAgeRangeMin: React.Dispatch<React.SetStateAction<string>>;
-    setAgeRangeMax: React.Dispatch<React.SetStateAction<string>>;
-    setIsAgeFilterActive: React.Dispatch<React.SetStateAction<boolean>>;
-    setHasUnsavedChanges: React.Dispatch<React.SetStateAction<boolean>>;
-    setInputErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+    setProcessedDataA: React.Dispatch<React.SetStateAction<MemberRecordA[]>> | ((value: MemberRecordA[]) => void);
+    setTitheListData: React.Dispatch<React.SetStateAction<TitheRecordB[]>> | ((value: TitheRecordB[]) => void);
+    setConcatenationConfig: React.Dispatch<React.SetStateAction<ConcatenationConfig>> | ((fn: (prev: ConcatenationConfig) => ConcatenationConfig) => void);
+    setSelectedDate: React.Dispatch<React.SetStateAction<Date>> | ((value: Date) => void);
+    setDescriptionText: React.Dispatch<React.SetStateAction<string>> | ((value: string) => void);
+    setAgeRangeMin: React.Dispatch<React.SetStateAction<string>> | ((value: string) => void);
+    setAgeRangeMax: React.Dispatch<React.SetStateAction<string>> | ((value: string) => void);
+    setIsAgeFilterActive: React.Dispatch<React.SetStateAction<boolean>> | ((value: boolean) => void);
+    setHasUnsavedChanges: React.Dispatch<React.SetStateAction<boolean>> | ((value: boolean) => void);
+    setInputErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>> | ((value: { [key: string]: string }) => void);
 }
 
 interface UseTitheProcessorReturn {
@@ -178,10 +178,10 @@ export function useTitheProcessor(
 
     const downloadExcel = useCallback(() => {
         if (!fileNameToSave.trim()) {
-            setInputErrors((prev) => ({ ...prev, fileName: "File name is required." }));
+            setInputErrors({ fileName: "File name is required." });
             return;
         }
-        setInputErrors((prev) => ({ ...prev, fileName: "" }));
+        setInputErrors({ fileName: "" });
 
         const dataToExport = titheListData
             .filter((record) => {
