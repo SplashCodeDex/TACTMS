@@ -12,17 +12,14 @@ import {
   ConcatenationConfig,
   FavoriteConfig,
   MembershipReconciliationReport,
-  MemberDatabase,
   TransactionLogEntry,
 } from "./types";
 import Button from "./components/Button";
-import { showToast } from "./lib/toast";
 import { Toaster } from "@/components/ui/sonner";
 import Modal from "./components/Modal";
 import {
   ITEMS_PER_FULL_PREVIEW_PAGE,
   DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
-  ASSEMBLIES,
   MEMBER_DATABASE_STORAGE_KEY,
 } from "./constants";
 import AmountEntryModal from "./components/AmountEntryModal";
@@ -49,14 +46,12 @@ import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
 import { useThemePreferences } from "./hooks/useThemePreferences";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
-// import { useModals } from "./hooks/useModals";
 import { useModalsPhase2 as useModals } from "./hooks/useModals";
 import { useModal } from "./hooks/useModal";
-// useWorkspace hook is available for future integration
-import { useWorkspace } from "./hooks/useWorkspace";
-import { useMemberDatabase } from "./hooks/useMemberDatabase";
+// Context hooks - shared state across app
+import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext } from "./context";
 import { useFavorites } from "./hooks/useFavorites";
-import { useTitheProcessor } from "./hooks/useTitheProcessor";
+// import { useTitheProcessor } from "./hooks/useTitheProcessor"; // Commented pending component migration
 import {
   createTitheList,
   reconcileMembers,
@@ -168,64 +163,11 @@ const App: React.FC = () => {
 
   // migrated to ModalProvider: clearWorkspaceModal
 
-  const [memberDatabase, setMemberDatabase] = useState<MemberDatabase>(() => {
-    const saved = localStorage.getItem(MEMBER_DATABASE_STORAGE_KEY);
-    if (!saved) return {};
-    try {
-      const parsed = JSON.parse(saved);
-      // Migration logic for old structure to new structure with metadata
-      Object.keys(parsed).forEach((key) => {
-        if (Array.isArray(parsed[key])) {
-          // This detects the old format: MemberRecordA[]
-          parsed[key] = {
-            data: parsed[key],
-            lastUpdated: new Date(0).getTime(), // Use epoch for clearly migrated data
-            fileName: "Unknown (migrated data)",
-          };
-        }
-      });
-      return parsed;
-    } catch (e) {
-      console.error("Failed to parse member database from storage:", e);
-      return {};
-    }
-  });
+  // --- Context Hooks (shared state) ---
+  const addToast = useToast();
+  const { assemblies } = useAppConfigContext();
 
-  const [isParsing, setIsParsing] = useState(false);
-
-  // setPendingUpdate migrated to ModalProvider: updateConfirm
-
-  // State for editing members in the database
-  // migrated to ModalProvider: editMember
-  const [memberToEdit, setMemberToEdit] = useState<{
-    member: MemberRecordA;
-    assemblyName: string;
-  } | null>(null);
-
-
-
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [newWorker, setNewWorker] = useState<ServiceWorker | null>(null);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-
-
-  // Image Verification State
-  const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
-  const [extractedTitheData, setExtractedTitheData] = useState<TitheRecordB[]>([]);
-  const [imageVerificationMasterData, setImageVerificationMasterData] = useState<MemberRecordA[]>([]);
-
-  const addToast = useCallback(
-    (
-      message: string,
-      type: "info" | "success" | "error" | "warning",
-      duration?: number,
-      actions?: { label: string; onClick: () => void }[],
-    ) => {
-      showToast({ message, type, duration, actions });
-    },
-    [],
-  );
-
+  // Workspace context - tithe processing state
   const {
     uploadedFile,
     setUploadedFile,
@@ -259,15 +201,40 @@ const App: React.FC = () => {
     setAmountMappingColumn,
     clearWorkspace,
     clearAutoSaveDraft,
-  } = useWorkspace(addToast);
+  } = useWorkspaceContext();
 
-  // Member Database hook - provides updateMember, deleteMember, resolveConflicts, etc.
-  const memberDbHook = useMemberDatabase(addToast);
+  // Database context - member database operations
+  const {
+    memberDatabase,
+    setMemberDatabase,
+    updateMember,
+    // deleteMember, deleteAssembly, resetAllData, resolveConflicts,
+    // getAssemblyMembers, assembliesWithData - available when needed
+  } = useDatabaseContext();
+
+  const [isParsing, setIsParsing] = useState(false);
+
+  // State for editing members in the database
+  const [memberToEdit, setMemberToEdit] = useState<{
+    member: MemberRecordA;
+    assemblyName: string;
+  } | null>(null);
+
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [newWorker, setNewWorker] = useState<ServiceWorker | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Image Verification State
+  const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
+  const [extractedTitheData, setExtractedTitheData] = useState<TitheRecordB[]>([]);
+  const [imageVerificationMasterData, setImageVerificationMasterData] = useState<MemberRecordA[]>([]);
 
   // Favorites hook - provides saveFavorite, deleteFavorite, updateFavoriteName, etc.
   const favoritesHook = useFavorites(addToast);
 
-  // Tithe Processor hook - provides age filter, date/description changes, download
+  // Tithe Processor hook - commented out pending component migration
+  // Will be re-enabled when ListOverviewActions uses context directly
+  /*
   const titheProcessor = useTitheProcessor(
     {
       originalData,
@@ -295,6 +262,7 @@ const App: React.FC = () => {
     },
     addToast
   );
+  */
 
   const { analyzeImage } = useGemini(
     import.meta.env.VITE_API_KEY,
@@ -442,7 +410,7 @@ const App: React.FC = () => {
           // It's a Master List
           const targetAssembly =
             assemblyName ||
-            ASSEMBLIES.find((name) =>
+            assemblies.find((name: string) =>
               file.name.toLowerCase().includes(name.toLowerCase()),
             );
 
@@ -472,7 +440,7 @@ const App: React.FC = () => {
         } else {
           // It's a Tithe List (or Unknown treated as Tithe List)
           const detectedAssembly =
-            ASSEMBLIES.find((name) =>
+            assemblies.find((name: string) =>
               file.name.toLowerCase().includes(name.toLowerCase()),
             ) || "";
 
@@ -1282,8 +1250,8 @@ const App: React.FC = () => {
     if (!memberToEdit) return;
     const { assemblyName } = memberToEdit;
 
-    // Update member in database using the hook
-    memberDbHook.updateMember(member, assemblyName);
+    // Update member in database using context
+    updateMember(member, assemblyName);
 
     // Also update the tithe list if this member is in it
     setTitheListData((prev) =>
