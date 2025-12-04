@@ -52,7 +52,7 @@ To enable the Google Drive Cloud Sync feature during development, you need to pr
 2.  **Add the following environment variables** to the file:
 
     ```
-    VITE_API_KEY="YOUR_GOOGLE_API_KEY"
+    VITE_GEMINI_API_KEY="YOUR_GOOGLE_API_KEY"
     VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
     ```
 

@@ -61,7 +61,7 @@ const DashboardSection: React.FC = () => {
     error: chatError,
     initializeChat,
     sendMessage
-  } = useGeminiChat(import.meta.env.VITE_API_KEY);
+  } = useGeminiChat(import.meta.env.VITE_GEMINI_API_KEY);
 
   // Initialize chat with latest data when available
   useEffect(() => {

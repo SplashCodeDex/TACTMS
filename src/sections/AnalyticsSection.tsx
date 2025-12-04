@@ -142,7 +142,7 @@ const AIOutreachAssistant: React.FC<{
 
     }
 
-    if (!import.meta.env.VITE_API_KEY) {
+    if (!import.meta.env.VITE_GEMINI_API_KEY) {
 
       addToast(
 
@@ -168,7 +168,7 @@ const AIOutreachAssistant: React.FC<{
 
     try {
 
-      const ai = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY);
+      const ai = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
       const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -326,7 +326,7 @@ Here are the new members to welcome: ${memberNames.join(", ")}`;
 
             value="new-members"
 
-            onValueChange={() => {}}
+            onValueChange={() => { }}
 
             disabled={true}
 
@@ -462,10 +462,10 @@ const AnalyticsSection: React.FC = () => {
     reconciliationReport,
   } = useOutletContext<AnalyticsSectionProps>();
   const { chatHistory, chartData, isLoading, error, initializeChat, sendMessage } =
-    useGeminiChat(import.meta.env.VITE_API_KEY);
+    useGeminiChat(import.meta.env.VITE_GEMINI_API_KEY);
 
   const handleAnalyzeClick = () => {
-    if (!import.meta.env.VITE_API_KEY) {
+    if (!import.meta.env.VITE_GEMINI_API_KEY) {
       addToast("AI feature is not configured.", "error");
       return;
     }
@@ -567,7 +567,7 @@ const AnalyticsSection: React.FC = () => {
                   error={error}
                   onSendMessage={handleSendMessage}
                   isOpen={true}
-                  onToggle={() => {}}
+                  onToggle={() => { }}
                 />
               </div>
             </div>

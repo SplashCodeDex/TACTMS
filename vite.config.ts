@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     // Use root path in development, /TACTMS/ in production (for GitHub Pages)
     base: mode === "development" ? "/" : "/TACTMS/",
     define: {
-      "process.env.VITE_API_KEY": JSON.stringify(env.VITE_API_KEY),
+      "process.env.VITE_GEMINI_API_KEY": JSON.stringify(env.VITE_GEMINI_API_KEY),
       "process.env.VITE_CLIENT_ID": JSON.stringify(env.VITE_CLIENT_ID),
       "process.env.VITE_VAPID_PUBLIC_KEY": JSON.stringify(env.VITE_VAPID_PUBLIC_KEY),
     },

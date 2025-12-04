@@ -22,7 +22,7 @@ jobs:
 
       - name: Create .env file
         run: |
-          echo "VITE_API_KEY=${{ secrets.VITE_API_KEY }}" >> .env.production
+          echo "VITE_GEMINI_API_KEY=${{ secrets.VITE_GEMINI_API_KEY }}" >> .env.production
           echo "VITE_CLIENT_ID=${{ secrets.VITE_CLIENT_ID }}" >> .env.production
           echo "VITE_VAPID_PUBLIC_KEY=${{ secrets.VITE_VAPID_PUBLIC_KEY }}" >> .env.production
 

@@ -43,7 +43,7 @@ This application requires API keys for AI features and Google Drive sync. These 
 Create a file named `.env` in the project root. Add your keys there, prefixed with `VITE_`:
 
 ```
-VITE_API_KEY=your_gemini_api_key_here
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
 VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
 ```
 
@@ -54,7 +54,7 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
 1. Go to your GitHub repository and click on **Settings**.
 2. In the left sidebar, navigate to **Secrets and variables** > **Actions**.
 3. Click **New repository secret** for each variable:
-   - `VITE_API_KEY`
+   - `VITE_GEMINI_API_KEY`
    - `VITE_GOOGLE_CLIENT_ID`
 4. Paste your keys into the respective secret values. Vite will automatically use these during the GitHub Actions build process.
 

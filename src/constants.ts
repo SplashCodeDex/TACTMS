@@ -36,7 +36,7 @@ export const ACCEPTED_FILE_TYPES = ".xlsx,.xls";
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 // Google Drive Sync Constants
-export const GOOGLE_API_KEY = import.meta.env.VITE_API_KEY;
+export const GOOGLE_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
 export const DRIVE_SCOPES = [
   "https://www.googleapis.com/auth/drive.file",

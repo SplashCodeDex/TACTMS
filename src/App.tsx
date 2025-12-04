@@ -265,7 +265,7 @@ const App: React.FC = () => {
   */
 
   const { analyzeImage } = useGemini(
-    import.meta.env.VITE_API_KEY,
+    import.meta.env.VITE_GEMINI_API_KEY,
     addToast,
   );
 
