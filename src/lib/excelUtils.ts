@@ -92,6 +92,68 @@ export const detectExcelFileType = (
   });
 };
 
+/**
+ * Analyzes member data to guess the assembly name based on common location patterns
+ * Examines Place of Birth, Hometown, Residential Address, and Place of Work fields
+ */
+export const guessAssemblyFromMembers = (members: MemberRecordA[]): string | null => {
+  if (!members || members.length === 0) return null;
+
+  const locationCounts = new Map<string, number>();
+
+  // Known assembly keywords to look for
+  const assemblyKeywords = [
+    "jei krodua", "jei-krodua", "jk", "central", "maranatha", "ayiresu",
+    "silom", "k2", "ofaankor", "kasoa", "tema", "accra"
+  ];
+
+  members.forEach(member => {
+    // Collect all location-related fields
+    const locations = [
+      member["Place of Birth"],
+      member.Hometown,
+      member["Residential Address"],
+      member["Place of Work"]
+    ]
+      .filter(Boolean)
+      .map(loc => (loc as string).toLowerCase().trim());
+
+    locations.forEach(loc => {
+      // Check for known assembly keywords
+      for (const keyword of assemblyKeywords) {
+        if (loc.includes(keyword)) {
+          const normalized = keyword.replace(/-/g, " ").trim();
+          locationCounts.set(normalized, (locationCounts.get(normalized) || 0) + 1);
+        }
+      }
+
+      // Also count the raw location
+      if (loc.length > 2) {
+        locationCounts.set(loc, (locationCounts.get(loc) || 0) + 1);
+      }
+    });
+  });
+
+  if (locationCounts.size === 0) return null;
+
+  // Sort by count descending and return the most common
+  const sorted = [...locationCounts.entries()].sort((a, b) => b[1] - a[1]);
+
+  // Return if the top result has at least 20% of total members
+  const topResult = sorted[0];
+  if (topResult && topResult[1] >= members.length * 0.2) {
+    // Capitalize properly
+    return topResult[0]
+      .split(" ")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
+
+  return null;
+};
+
+
+
 export const smartParseMembers = (members: MemberRecordA[]): MemberRecordA[] => {
   return members.map((record) => {
     // Check if Name fields are empty but Membership Number looks like "Name (ID)"
