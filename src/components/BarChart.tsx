@@ -18,7 +18,7 @@ const BarChart: React.FC<BarChartProps> = ({ data }) => {
           <div className="relative w-full flex justify-center items-end h-[120px]">
             <motion.div
               initial={{ height: 0 }}
-              animate={{ height: `${(item.count / maxCount) * 100}%` }}
+              animate={{ height: maxCount > 0 ? `${(item.count / maxCount) * 100}%` : "0%" }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="w-full max-w-[20px] bg-blue-500 rounded-t-sm opacity-80 group-hover:opacity-100 transition-opacity"
             >

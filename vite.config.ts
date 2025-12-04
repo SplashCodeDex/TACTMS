@@ -10,9 +10,8 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), "");
   return {
-    // For GitHub Pages deployment, you may need to set this to your repository name
-    // e.g., base: '/YourRepoName/',
-    base: "/TACTMS/",
+    // Use root path in development, /TACTMS/ in production (for GitHub Pages)
+    base: mode === "development" ? "/" : "/TACTMS/",
     define: {
       "process.env.VITE_API_KEY": JSON.stringify(env.VITE_API_KEY),
       "process.env.VITE_CLIENT_ID": JSON.stringify(env.VITE_CLIENT_ID),
