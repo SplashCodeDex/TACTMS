@@ -353,8 +353,8 @@ const MemberDatabaseSection: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-color)]">
-                {currentMembers.map((member) => (
-                  <tr key={member["No."]}>
+                {currentMembers.map((member, index) => (
+                  <tr key={member["Membership Number"] || `${member["No."]}-${index}`}>
                     <td className="p-4">
                       <Checkbox
                         checked={selectedMembers.some(
