@@ -97,22 +97,9 @@ const App: React.FC = () => {
   const [reconciliationReport, setReconciliationReport] =
     useState<MembershipReconciliationReport | null>(null);
   const [, setIsReconciliationModalOpen] = useState(false);
-
-
-
-
-
-
-
-
-
-
   const [favoritesSearchTerm, setFavoritesSearchTerm] = useState("");
   const [selectedFavoriteForDetails, setSelectedFavoriteForDetails] =
     useState<FavoriteConfig | null>(null);
-  // deleteFavorite handled via useModalsPhase2()
-  // const [isDeleteFavConfirmModalOpen, setIsDeleteFavConfirmModalOpen] =
-  useState(false);
   const [favToDeleteId, setFavToDeleteId] = useState<string | null>(null);
 
   const { assemblySelection: _assemblySelection, reconciliation: _reconciliation } = useModals();
