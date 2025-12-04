@@ -51,17 +51,16 @@ Robust HTR (Handwriting Recognition): The AI will need to interpret various hand
 Grid Alignment Logic: The visual layout matches the TitheBook.html specification precisely, confirming that the layout detection logic will have a consistent framework to follow.
 Fuzzy Matching Validation: The names visible in the image (e.g., "JONATHAN MENSAH ADDO", "GLADYS AMOAH	") will need to be matched against the stored master membership list (Database) compiled from A.xlsx to link the transaction amounts to the correct membership IDs.
 
-Database Structure: You would create a database table for Members and a table for Assembly_Rosters. The Assembly Rosters table links a Member ID to a specific Assembly ID and critically stores a Sort_Order index (e.g., JONATHAN MENSAH ADDO is position 1, GLADYS AMOAH is 2, etc.).
-Persistent State: The application no longer relies solely on the input file's ephemeral order; it uses the stored Sort_Order as the canonical truth.
+Intelligent Order Persistent: The application intelligently orders a Member ID to a specific Assembly ID and critically stores a Sort_Order index (e.g., JONATHAN MENSAH ADDO is position 1, GLADYS AMOAH is 2, etc.) that matches the physical book's Name order. Persistent State: The application no longer relies solely on the input file's ephemeral order; it uses the stored Sort_Order as the canonical truth.
 
 #Unlocked Possibilities and Easy Goal Achievement
 This strategy enables several key features you outlined in your initial project description:
 1. The "Intelligent Ability to be Aware of the Order"
 Automated Alignment: When you upload an image of a new month's page (e.g., the February page for Central Assembly), the AI/ICR extracts the names and amounts. TACTMS then cross-references these names against the persisted Assembly_Rosters list for Central Assembly. It instantly re-orders the extracted data to match the expected sequence, ensuring that the exported B.xlsx file respects the consistent layout of the physical book.
-Identifying Missing Tithers: If someone from position 75 is missing that week, the database knows to leave that row blank for that Sunday's transaction, providing a structured way to track attendance/contributions over time.
+Identifying Missing Tithers: If someone from position 75 is missing that week, the intelligent system knows to leave that row blank for that Sunday's transaction, providing a structured way to track attendance/contributions over time.
 
 2. Guessing the Assembly
-Contextual Clues: When a file or image is uploaded, TACTMS can perform a quick check of the top few names. If those names match the Assembly Rosters for "Central Assembly" with high confidence, the application can automatically default to that assembly, streamlining the user experience.
+Contextual Clues: When a file or image is uploaded, TACTMS can perform a quick check of the top few names. If those names match the Assembly Rosters for "Central Assembly" with high confidence, the intelligent system can automatically default to that assembly, streamlining the user experience.
 
 3. Historical Tracking and Reporting
 Yearly Totals: This is a major goal achievement. You can easily generate reports showing who has contributed how much year-to-date across all assemblies you manage. The official TACMS might do this after import, but TACTMS can provide real-time dashboards for the District Admin before import.
