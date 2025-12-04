@@ -4,7 +4,7 @@ import {
   GoogleUserProfile,
   TransactionLogEntry,
 } from "../types";
-import { ToastMessage } from "../components/Toast";
+import { AppToastType } from "../lib/toast";
 import {
   FAVORITES_STORAGE_KEY,
   GOOGLE_API_KEY,
@@ -59,7 +59,7 @@ const useSyncedState = <T>(storageKey: string, addToast: Function) => {
 export const useGoogleDriveSync = (
   addToast: (
     message: string,
-    type: ToastMessage["type"],
+    type: AppToastType,
     duration?: number,
   ) => void,
 ) => {

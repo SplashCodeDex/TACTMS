@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 
-import { ToastMessage, ToastAction } from "../components/Toast";
+import { AppToastType, AppToastAction } from "../lib/toast";
 
 
 
 export const usePWAFeatures = (
   addToast: (
     message: string,
-    type: ToastMessage["type"],
+    type: AppToastType,
     duration?: number,
-    actions?: ToastAction[],
+    actions?: AppToastAction[],
   ) => void,
   onNewWorker: (worker: ServiceWorker) => void,
 ) => {
