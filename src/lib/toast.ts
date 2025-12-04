@@ -46,7 +46,6 @@ export function showToast({ id, message, type = "info", duration, actions, descr
 export function dismissToast(id?: string | number) {
   // If id is omitted, Sonner will dismiss the most recent toast
   // but we keep the signature flexible for convenience.
-  // @ts-expect-error sonner typings allow undefined in runtime
   return sonnerToast.dismiss(id);
 }
 
