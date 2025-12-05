@@ -20,7 +20,7 @@ import {
 interface BatchImageProcessorProps {
     isOpen: boolean;
     onClose: () => void;
-    onProcess: (files: File[], assembly: string, month: string, week: string) => Promise<TitheRecordB[]>;
+    onProcess: (files: File[], assembly: string, month: string, week: string, onProgress?: (completed: number, total: number) => void) => Promise<TitheRecordB[]>;
     assemblies: string[];
     isProcessing: boolean;
 }
@@ -121,7 +121,20 @@ const BatchImageProcessor: React.FC<BatchImageProcessorProps> = ({
             // Update status to processing
             setUploadedImages(prev => prev.map(img => ({ ...img, status: 'processing' as const })));
 
-            const result = await onProcess(files, selectedAssembly, selectedMonth, selectedWeek);
+            const result = await onProcess(
+                files,
+                selectedAssembly,
+                selectedMonth,
+                selectedWeek,
+                (completed, total) => {
+                    const pct = Math.max(0, Math.min(100, Math.round((completed / Math.max(total, 1)) * 100)));
+                    setProcessingProgress(pct);
+                    setUploadedImages(prev => prev.map((img, idx) => ({
+                        ...img,
+                        status: idx < completed ? 'done' : idx === completed ? 'processing' : img.status === 'error' ? 'error' : 'pending'
+                    })));
+                }
+            );
             setResults(result);
 
             // Update status to done

@@ -251,13 +251,21 @@ const DashboardSection: React.FC = () => {
   };
 
   // Batch Image Processing Handler
-  const handleBatchProcess = async (files: File[], _assembly: string, month: string, week: string): Promise<TitheRecordB[]> => {
+  const handleBatchProcess = async (
+    files: File[],
+    _assembly: string,
+    month: string,
+    week: string,
+    onProgress?: (completed: number, total: number) => void
+  ): Promise<TitheRecordB[]> => {
     setIsBatchProcessing(true);
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
       const dateStr = new Date().toDateString();
       const results: TitheRecordB[] = [];
 
+      let completed = 0;
+      const total = files.length;
       for (const file of files) {
         try {
           // Pre-validate the image file before expensive OCR
@@ -289,6 +297,8 @@ const DashboardSection: React.FC = () => {
           }
 
           results.push(...extraction.entries);
+          completed += 1;
+          onProgress?.(completed, total);
         } catch (err) {
           console.warn("Failed to process one image in batch:", err);
         }
