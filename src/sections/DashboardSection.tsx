@@ -8,12 +8,12 @@ import {
   MasterListData,
   MemberRecordA,
   TitheRecordB,
-} from "../types";
-import { formatDateDDMMMYYYY } from "../lib/dataTransforms";
+} from "@/types";
+import { formatDateDDMMMYYYY } from "@/lib/dataTransforms";
 import { useOutletContext } from "react-router-dom";
-import ChatInterface from "../components/ChatInterface";
-import { useGeminiChat } from "../hooks/useGemini";
-import { useModal } from "../hooks/useModal";
+import ChatInterface from "@/components/ChatInterface";
+import { useGeminiChat } from "@/hooks/useGemini";
+import { useModal } from "@/hooks/useModal";
 import {
   RecentMembersList,
   RecentActivityList,
@@ -21,10 +21,12 @@ import {
   DashboardStatsGrid,
   QuickActionsGrid,
   ScanAssemblyModal,
-} from "../components/dashboard";
-import BatchImageProcessor from "../components/BatchImageProcessor";
+} from "@/components/dashboard";
+import BatchImageProcessor from "@/components/BatchImageProcessor";
 import { processTitheImageWithValidation } from "@/services/imageProcessor";
 import { validateTitheBookImage, validateExtractedTitheData } from "@/services/imageValidator";
+import PredictiveInsightsCard from "@/components/dashboard/PredictiveInsightsCard";
+import ReportGeneratorModal from "@/components/ReportGeneratorModal";
 
 interface DashboardSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -55,6 +57,7 @@ const DashboardSection: React.FC = () => {
   // Modals
   const batchProcessor = useModal("batchProcessor");
   const scanAssemblyModal = useModal("scanAssembly");
+  const reportModal = useModal("reportGenerator");
 
   // Image Scan State
   const [pendingScanFile, setPendingScanFile] = useState<File | null>(null);
@@ -395,6 +398,15 @@ const DashboardSection: React.FC = () => {
         </motion.div>
 
         <div className="space-y-8">
+          {/* AI Predictions Card */}
+          <motion.div variants={itemVariants}>
+            <PredictiveInsightsCard
+              transactionLogs={transactionLog}
+              memberDatabase={memberDatabase}
+              apiKey={import.meta.env.VITE_GEMINI_API_KEY}
+            />
+          </motion.div>
+
           <motion.div variants={itemVariants}>
             <RecentMembersList members={recentlyAddedMembers} />
           </motion.div>
@@ -444,6 +456,14 @@ const DashboardSection: React.FC = () => {
         onProcess={handleBatchProcess}
         assemblies={Array.from(assembliesWithData)}
         isProcessing={isBatchProcessing}
+      />
+
+      {/* Report Generator Modal */}
+      <ReportGeneratorModal
+        isOpen={reportModal.isOpen}
+        onClose={reportModal.close}
+        transactionLogs={transactionLog}
+        memberDatabase={memberDatabase}
       />
 
     </motion.div>
