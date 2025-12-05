@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
-import { TitheRecordB, MemberRecordA } from "../types";
-import { findMemberByName, findMemberByNameSync } from "../services/reconciliation";
-import { storeCorrection } from "../services/handwritingLearning";
+import { TitheRecordB, MemberRecordA } from "@/types";
+import { findMemberByName, findMemberByNameSync } from "@/services/reconciliation";
+import { storeCorrection } from "@/services/handwritingLearning";
+import { validateAmount, AmountValidation } from "@/services/amountValidator";
 import Button from "./Button";
-import { Check, AlertTriangle, Sparkles } from "lucide-react";
+import { Check, AlertTriangle, Sparkles, AlertCircle } from "lucide-react";
 import MemberSelect from "./MemberSelect";
 
 interface ImageVerificationModalProps {
@@ -25,6 +26,7 @@ interface VerificationRow {
     manualOverride: boolean;
     wasLearned?: boolean;  // True if matched via learned correction
     confidenceTier?: 'high' | 'medium' | 'low';
+    amountWarning?: AmountValidation | null; // Amount validation result
 }
 
 const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
@@ -55,6 +57,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     manualOverride: false,
                     wasLearned: match?.wasLearned || false,
                     confidenceTier: match?.confidenceTier || 'low',
+                    amountWarning: validateAmount(record["Transaction Amount"]),
                 };
             });
             setRows(newRows);
@@ -155,7 +158,20 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                             {row.extractedRecord["Membership Number"]}
                                         </td>
                                         <td className="px-4 py-2">
-                                            {row.extractedRecord["Transaction Amount"]}
+                                            <div className="flex items-center gap-2">
+                                                <span>{row.extractedRecord["Transaction Amount"]}</span>
+                                                {row.amountWarning && (
+                                                    <div className="group relative">
+                                                        <AlertCircle size={14} className="text-yellow-500 cursor-help" />
+                                                        <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-10 p-2 bg-yellow-50 dark:bg-yellow-900/90 border border-yellow-200 dark:border-yellow-700 rounded-lg text-xs w-48">
+                                                            <p className="text-yellow-800 dark:text-yellow-200">{row.amountWarning.message}</p>
+                                                            {row.amountWarning.suggestedAmount && (
+                                                                <p className="mt-1 font-medium">Suggested: GHS {row.amountWarning.suggestedAmount}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-2">
                                             <span
