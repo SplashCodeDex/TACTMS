@@ -5,15 +5,14 @@
 
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TransactionLogEntry, MemberDatabase } from '../../types';
+import { TransactionLogEntry, MemberDatabase } from '@/types';
 import {
-    calculateMemberPatterns,
     calculateAssemblyAnalytics,
     getMonthlyTitheSummary,
     getTopAssemblies,
     MemberTithingPattern,
     AssemblyAnalytics
-} from '../../services/analyticsCalculator';
+} from '@/services/analyticsCalculator';
 
 interface TrendDashboardProps {
     transactionLog: TransactionLogEntry[];
@@ -299,8 +298,8 @@ const TitherRow: React.FC<TitherRowProps> = ({ rank, tither, showConsistency }) 
                 </div>
                 {!showConsistency && (
                     <div className={`text-xs ${tither.trend === 'increasing' ? 'text-green-500' :
-                            tither.trend === 'declining' ? 'text-red-500' :
-                                'text-gray-500'
+                        tither.trend === 'declining' ? 'text-red-500' :
+                            'text-gray-500'
                         }`}>
                         {tither.trend === 'increasing' && '↑ '}
                         {tither.trend === 'declining' && '↓ '}

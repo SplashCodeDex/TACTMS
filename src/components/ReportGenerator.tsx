@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TransactionLogEntry, MemberDatabase } from '../types';
+import { TransactionLogEntry, MemberDatabase } from '@/types';
 import {
     generateWeeklySummaryPDF,
     generateMonthlySummaryPDF,
@@ -12,7 +12,7 @@ import {
     generateAnnualReportPDF,
     downloadPDF,
     previewPDF
-} from '../lib/pdfGenerator';
+} from '@/lib/pdfGenerator';
 import Modal from './Modal';
 import Button from './Button';
 import { FileText, Download, Eye, AlertCircle, Calendar, User, BarChart } from 'lucide-react';

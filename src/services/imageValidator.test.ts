@@ -7,6 +7,12 @@ import {
     TITLE_ALIASES
 } from "./imageValidator";
 
+describe("api presence", () => {
+    it("should export validateTitheBookImage", () => {
+        expect(validateTitheBookImage).toBeDefined();
+    });
+});
+
 describe("normalizeTitle", () => {
     it("should normalize DCNS to DEACONESS", () => {
         expect(normalizeTitle("DCNS")).toBe("DEACONESS");

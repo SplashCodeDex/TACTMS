@@ -3,7 +3,7 @@
  * Computes tithe trends, member patterns, and assembly performance metrics
  */
 
-import { TitheRecordB, TransactionLogEntry, MemberDatabase, MemberRecordA } from '../types';
+import { TransactionLogEntry, MemberDatabase } from '../types';
 
 /**
  * Individual member tithing pattern

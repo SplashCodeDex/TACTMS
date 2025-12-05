@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { findMemberByName } from './reconciliation';
-import { MemberRecordA } from '../types';
+import { MemberRecordA } from '@/types';
 
 describe('reconciliation', () => {
   describe('findMemberByName', () => {

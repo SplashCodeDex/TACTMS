@@ -3,8 +3,8 @@
  * Modal for creating a new assembly and optionally uploading a master list
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, Plus } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, AlertCircle, FileSpreadsheet, Plus } from 'lucide-react';
 import Modal from './Modal';
 import Button from './Button';
 

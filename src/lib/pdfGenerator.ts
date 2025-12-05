@@ -5,8 +5,8 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { TitheRecordB, TransactionLogEntry, MemberDatabase } from '../types';
-import { calculateAssemblyAnalytics, getMonthlyTitheSummary, MemberTithingPattern } from '../services/analyticsCalculator';
+import { TitheRecordB, TransactionLogEntry, MemberDatabase } from '@/types';
+import { calculateAssemblyAnalytics, getMonthlyTitheSummary, MemberTithingPattern } from '@/services/analyticsCalculator';
 
 // Extend jsPDF with autoTable
 declare module 'jspdf' {
@@ -18,7 +18,7 @@ declare module 'jspdf' {
 }
 
 const TAC_GREEN: [number, number, number] = [0, 100, 0];  // TAC brand green
-const HEADER_GRAY: [number, number, number] = [240, 240, 240];
+// const HEADER_GRAY: [number, number, number] = [240, 240, 240];
 
 /**
  * Common PDF header with TAC branding
@@ -231,7 +231,7 @@ export const generateAnnualReportPDF = (
     assemblyName?: string
 ): jsPDF => {
     const doc = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
+    // const pageWidth = doc.internal.pageSize.getWidth();
 
     const title = assemblyName
         ? `${assemblyName} Assembly - Annual Tithe Report`

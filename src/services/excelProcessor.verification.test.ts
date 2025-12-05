@@ -1,8 +1,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { createTitheList, filterMembersByAge } from './excelProcessor';
-import { smartParseMembers } from '../lib/excelUtils';
-import { MemberRecordA, ConcatenationConfig } from '../types';
+import { smartParseMembers } from '@/lib/excelUtils';
+import { MemberRecordA, ConcatenationConfig } from '@/types';
 
 describe('TACTMS Business Logic Verification', () => {
 

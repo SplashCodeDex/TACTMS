@@ -5,10 +5,10 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TitheRecordB } from '../types';
+import { TitheRecordB } from '@/types';
 import Modal from './Modal';
 import Button from './Button';
-import { Upload, X, FileImage, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -125,10 +125,10 @@ const BatchImageProcessor: React.FC<BatchImageProcessorProps> = ({
             setResults(result);
 
             // Update status to done
-            setUploadedImages(prev => prev.map((img, i) => ({
+            setUploadedImages(prev => prev.map((img) => ({
                 ...img,
                 status: 'done' as const,
-                entriesCount: Math.ceil(result.length / prev.length)
+                entriesCount: Math.ceil(result.length / Math.max(prev.length, 1))
             })));
 
             setProcessingProgress(100);

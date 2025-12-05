@@ -23,6 +23,8 @@ import {
   ScanAssemblyModal,
 } from "../components/dashboard";
 import BatchImageProcessor from "../components/BatchImageProcessor";
+import { processTitheImageWithValidation } from "@/services/imageProcessor";
+import { validateTitheBookImage, validateExtractedTitheData } from "@/services/imageValidator";
 
 interface DashboardSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -48,6 +50,7 @@ const DashboardSection: React.FC = () => {
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   // Modals
   const batchProcessor = useModal("batchProcessor");
@@ -248,16 +251,49 @@ const DashboardSection: React.FC = () => {
   };
 
   // Batch Image Processing Handler
-  const handleBatchProcess = async (files: File[], assembly: string, month: string, week: string): Promise<TitheRecordB[]> => {
+  const handleBatchProcess = async (files: File[], _assembly: string, month: string, week: string): Promise<TitheRecordB[]> => {
     setIsBatchProcessing(true);
     try {
-      // Process each image sequentially
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
+      const dateStr = new Date().toDateString();
       const results: TitheRecordB[] = [];
+
       for (const file of files) {
-        // Use existing onScanImage but collect results
-        // For now, return placeholder - actual implementation would call analyzeImage
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing
+        try {
+          // Pre-validate the image file before expensive OCR
+          const imgValidation = await validateTitheBookImage(file);
+          if (!imgValidation.isValid) {
+            console.warn("Skipping invalid image:", imgValidation.errors.join("; "));
+            continue;
+          }
+
+          const extraction = await processTitheImageWithValidation(
+            file,
+            apiKey,
+            month,
+            week,
+            dateStr
+          );
+
+          // Validate extracted rows structurally
+          const structuralValidation = validateExtractedTitheData(
+            extraction.entries.map(e => ({
+              Name: e["Membership Number"],
+              Amount: e["Transaction Amount"],
+              Confidence: e["Confidence"],
+            }))
+          );
+
+          if (!structuralValidation.isValidFormat) {
+            console.warn("Extracted data failed structural validation");
+          }
+
+          results.push(...extraction.entries);
+        } catch (err) {
+          console.warn("Failed to process one image in batch:", err);
+        }
       }
+
       return results;
     } finally {
       setIsBatchProcessing(false);
@@ -397,7 +433,7 @@ const DashboardSection: React.FC = () => {
         onClose={batchProcessor.close}
         onProcess={handleBatchProcess}
         assemblies={Array.from(assembliesWithData)}
-        isProcessing={false} // Managed internally by component now or via context if needed
+        isProcessing={isBatchProcessing}
       />
 
     </motion.div>

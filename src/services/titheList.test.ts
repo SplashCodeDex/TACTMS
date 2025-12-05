@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 import { describe, it, expect } from 'vitest';
 import { createTitheList, parseMemberId } from './titheList';
-import { ConcatenationConfig, MemberRecordA } from '../types';
+import { ConcatenationConfig, MemberRecordA } from '@/types';
 
 const fullConfig: ConcatenationConfig = {
   Title: true,

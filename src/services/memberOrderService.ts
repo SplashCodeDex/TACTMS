@@ -5,7 +5,7 @@
  */
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { MemberRecordA } from '../types';
+import { MemberRecordA } from '@/types';
 
 // Database Schema
 interface MemberOrderDB extends DBSchema {
