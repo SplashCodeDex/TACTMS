@@ -212,6 +212,104 @@ export const reconcileMembers = (
 
 import { getOCRAwareSimilarity, getTokenSimilarity, OCR_CONFIDENCE_TIERS } from "../utils/stringUtils";
 import { FuzzyMatchResult } from "../types";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { semanticCache } from "./semanticCache";
+
+/**
+ * AI-powered semantic matching for difficult names
+ */
+const findMemberByAI = async (
+  rawName: string,
+  candidates: MemberRecordA[],
+  apiKey: string
+): Promise<FuzzyMatchResult | null> => {
+  // Check cache first
+  const cached = semanticCache.get(rawName);
+  if (cached) {
+    if (!cached.matchedMemberId) return null;
+
+    // Find the member object from candidates
+    const member = candidates.find(m =>
+      String(m["Membership Number"]).includes(cached.matchedMemberId!)
+    );
+
+    if (member) {
+      return {
+        member,
+        score: cached.confidence,
+        matchedName: cached.rawName, // Use raw name as matched name for AI
+        confidenceTier: cached.confidence > 0.8 ? 'high' : 'medium',
+        matchSource: 'ai_semantic'
+      };
+    }
+  }
+
+  try {
+    const ai = new GoogleGenerativeAI(apiKey);
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-pro" });
+
+    // Prepare candidates list for prompt (limit to top 20 to save tokens if list is huge)
+    // In practice, we might want to filter candidates first, but for now we send a subset
+    const candidateList = candidates.slice(0, 50).map(m => ({
+      id: String(m["Membership Number"]),
+      name: `${m["First Name"]} ${m.Surname} ${m["Other Names"] || ""}`.trim()
+    }));
+
+    const prompt = `
+    You are an expert Ghanaian Name Reconciliation Agent.
+    Task: Match the handwritten name "${rawName}" to one of the following database members.
+
+    Consider:
+    - OCR errors (e.g., '5' vs 'S', '1' vs 'I')
+    - Ghanaian nicknames (e.g., Kojo = Cudjoe, Nana = Emmanuel/Samuel)
+    - Abbreviations (e.g., 'Bro. J. Addo' = 'Jonathan Addo')
+    - Cultural variations
+
+    Candidates:
+    ${JSON.stringify(candidateList, null, 2)}
+
+    Output JSON ONLY:
+    {
+      "matchFound": boolean,
+      "memberId": string | null,
+      "confidence": number (0-1),
+      "reason": string
+    }
+    `;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) return null;
+
+    const response = JSON.parse(jsonMatch[0]);
+
+    if (response.matchFound && response.memberId && response.confidence > 0.6) {
+      // Cache the positive result
+      semanticCache.set(rawName, response.memberId, response.confidence, "gemini-2.5-pro");
+
+      const member = candidates.find(m => String(m["Membership Number"]) === response.memberId);
+      if (member) {
+        return {
+          member,
+          score: response.confidence,
+          matchedName: rawName,
+          confidenceTier: response.confidence > 0.8 ? 'high' : 'medium',
+          matchSource: 'ai_semantic'
+        };
+      }
+    } else {
+      // Cache the negative result to avoid re-querying
+      semanticCache.set(rawName, null, 0, "gemini-2.5-pro");
+    }
+
+  } catch (e) {
+    console.warn("AI Semantic Match failed:", e);
+  }
+
+  return null;
+};
 
 /**
  * Enhanced member matching with two strategies:
@@ -223,7 +321,8 @@ import { FuzzyMatchResult } from "../types";
 export const findMemberByName = async (
   rawName: string,
   masterData: MemberRecordA[],
-  threshold: number = OCR_CONFIDENCE_TIERS.MEDIUM
+  threshold: number = OCR_CONFIDENCE_TIERS.MEDIUM,
+  apiKey?: string // Optional API key for AI fallback
 ): Promise<FuzzyMatchResult | null> => {
   if (!rawName || !masterData.length) return null;
 
@@ -266,8 +365,24 @@ export const findMemberByName = async (
             score,
             matchedName: nameCombo,
             confidenceTier,
+            matchSource: 'fuzzy'
           };
         }
+      }
+    }
+  }
+
+  // Strategy 3: AI Semantic Matching (The Neural Link)
+  // If no match or low confidence match, and we have an API key, try AI
+  if ((!bestMatch || bestMatch.confidenceTier === 'low') && apiKey) {
+    // Only try AI if we haven't found a high confidence match
+    // And if the raw name is long enough to be meaningful (> 3 chars)
+    if (rawName.length > 3) {
+      const aiMatch = await findMemberByAI(rawName, masterData, apiKey);
+      if (aiMatch) {
+        // If AI finds a match, it usually trumps a low-confidence fuzzy match
+        // But we can compare scores if needed. For now, we assume AI is smarter.
+        return aiMatch;
       }
     }
   }

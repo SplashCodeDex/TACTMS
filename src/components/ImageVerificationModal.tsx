@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { TitheRecordB, MemberRecordA } from "@/types";
-import { findMemberByNameSync } from "@/services/reconciliation";
+import { findMemberByName } from "@/services/reconciliation";
 import { validateAmount, AmountValidation } from "@/services/amountValidator";
 import Button from "./Button";
 import { Check, AlertTriangle, AlertCircle } from "lucide-react";
@@ -24,6 +24,7 @@ interface VerificationRow {
     manualOverride: boolean;
     confidenceTier?: 'high' | 'medium' | 'low';
     amountWarning?: AmountValidation | null;
+    matchSource?: 'fuzzy' | 'ai_semantic';
 }
 
 const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
@@ -37,27 +38,34 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
-        if (isOpen && extractedData.length > 0) {
-            setIsProcessing(true);
-            const newRows = extractedData.map((record, index) => {
-                const rawName = record["Membership Number"];
-                // Use sync version for immediate matching
-                const match = findMemberByNameSync(rawName, masterData);
+        const processMatches = async () => {
+            if (isOpen && extractedData.length > 0) {
+                setIsProcessing(true);
+                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-                return {
-                    id: index,
-                    extractedRecord: record,
-                    matchedMember: match ? match.member : null,
-                    matchConfidence: match ? match.score : 0,
-                    aiConfidence: record.Confidence || 0,
-                    manualOverride: false,
-                    confidenceTier: match?.confidenceTier || 'low',
-                    amountWarning: validateAmount(record["Transaction Amount"]),
-                };
-            });
-            setRows(newRows);
-            setIsProcessing(false);
-        }
+                const newRows = await Promise.all(extractedData.map(async (record, index) => {
+                    const rawName = record["Membership Number"];
+                    // Use async version with AI fallback
+                    const match = await findMemberByName(rawName, masterData, undefined, apiKey);
+
+                    return {
+                        id: index,
+                        extractedRecord: record,
+                        matchedMember: match ? match.member : null,
+                        matchConfidence: match ? match.score : 0,
+                        aiConfidence: record.Confidence || 0,
+                        manualOverride: false,
+                        confidenceTier: match?.confidenceTier || 'low',
+                        amountWarning: validateAmount(record["Transaction Amount"]),
+                        matchSource: match?.matchSource
+                    };
+                }));
+                setRows(newRows);
+                setIsProcessing(false);
+            }
+        };
+
+        processMatches();
     }, [isOpen, extractedData, masterData]);
 
     const handleConfirm = () => {
@@ -173,6 +181,11 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                                                             ? "Manual"
                                                             : `${Math.round(row.matchConfidence * 100)}%`}
                                                     </span>
+                                                    {row.matchSource === 'ai_semantic' && (
+                                                        <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-800 text-[10px] rounded border border-purple-200">
+                                                            AI Match
+                                                        </span>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-1 text-yellow-500">

@@ -209,7 +209,6 @@ export interface ChatMessage {
   summary?: string;
   isLoading?: boolean;
 }
-
 export interface ChartData {
   label: string;
   count: number;
@@ -219,5 +218,6 @@ export interface FuzzyMatchResult {
   member: MemberRecordA;
   score: number;
   matchedName: string;
-  confidenceTier: 'high' | 'medium' | 'low';  // For UI display
+  confidenceTier: 'high' | 'medium' | 'low';
+  matchSource?: 'fuzzy' | 'ai_semantic';
 }
