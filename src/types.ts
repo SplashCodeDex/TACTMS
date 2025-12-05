@@ -219,4 +219,6 @@ export interface FuzzyMatchResult {
   member: MemberRecordA;
   score: number;
   matchedName: string;
+  confidenceTier: 'high' | 'medium' | 'low';  // For UI display
+  wasLearned?: boolean;  // True if matched via handwriting learning
 }

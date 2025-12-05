@@ -33,8 +33,7 @@ Data Structuring: This is where the logic leverages the predictable HTML structu
 
 3. Data Mapping and Validation (The "Intelligence" Layer)
 This is the central logic hub where TACTMS connects the newly extracted data with the existing membership data.
-Member Lookup: For each "NAME" extracted  from the image, the application attempts to match it against the internal database compiled from the A.xlsx file.
-Fuzzy Matching: Since handwriting recognition isn't perfect, the application uses advanced "fuzzy matching" algorithms to suggest the most likely correct member  even if the extracted name has minor spelling errors (e.g., matching "Jonthan Addo" to "Jonathan Addo Mensah").
+Member Lookup: For each "NAME" extracted  from the image, the application Uses AI-Powered algorithm to match it against the internal database of that assembly.Exampe, if the AI returns "JOEATHAN ADDO MEN5ALL", the AI can map it to what the database has; JONATHAN ADDO MENSAH.
 
 Transaction Preparation: Once a match is confirmed, TACTMS takes the associated extracted weekly amount and formats it according to the required B.xlsx structure:
 Transaction Amount: The extracted value.
@@ -73,19 +72,42 @@ Data Integrity: The database acts as a single source of truth. The system will a
 this feature should be for any assembly that are too many to fit in one page therefore they continue from the next page(example, central has more than 150 tithers and one page of the tithe book only accomodates 31 members so definetely the other tithers will continue from the next page) . This feature must consider this, such that, i can upload  1-4 images (of different pages of the same assemly tithe book) , select the assembly and week and the intelligent system will know by the page number, the "NO." column and the order of the Names and can deduce that i am trying to process different pages tithe records of an assembly(the one i selected). The system should also be intelligent that if it sees 2-3 images of the same page, it is an advantage for the intelligence to be most accurate and precise.
 
 
-### Logic of the project database
-
-for now, this project is using 3 assemblies out of the 9 assemblies of my district for development testing but i will add the 6 assemblies including the already added 3 again because, new members has been registered on TACMS, so I have to download the A.xlsx version and update our project. Remember that even if i upload an assembly database(A.xlsx) which contains existing members and new members, our project system will be much intelligent that it won't store duplicates of existing but only recognise the new members(these members will be deemed as won souls for a month) while maintaining the order of the members in the physical tithe book. Also notice that, since the members in the database can be sorted and iltered, it won't affect the persistent order that matches the physical tithe book therefore one approach you can consisder is to make it possible to upload A.xlsx version uising the "Update Members List" button when  there is already an assembly database. Add a "+" icon as the red arrow is pointing at that i can use to add the other 6 assemblies
-
-
 
 ## FAGs
 Handling Partial Image Captures
 If a user captures only the data columns (e.g., the 1st-5th weeks of October) without the corresponding names, the image context alone is insufficient for the AI to identify the tithers. The AI sees numbers and grid lines, but no names.
 
-
-Solution: The system will prompt the user to either:
-1. Capture the full page (including the names column) for that month, or
-2. Manually select the assembly and provide the starting position (e.g., "This is the 1st-5th weeks of October for Central Assembly, starting at position 100").
+Solution: The system will prompt the user to  Manually select the assembly and provide the starting position (e.g., "This is the 1st-5th weeks of October for Central Assembly, starting at position 100").
 
 This ensures the AI can correctly map the data to the persisted Assembly_Rosters.
+
+
+---
+
+### Handling Multiple Pages of the Same Assembly
+
+If a user uploads multiple images of the same assembly (e.g., Central Assembly, October 1st-5th weeks), the system will:
+1. Detect the assembly and week from the metadata (if available) or user input.
+2. Use the page numbers and the "NO." column to stitch the data together.
+3. If multiple images are provided for the same page, the AI will cross-validate the data to ensure accuracy.
+
+---
+
+### Handling New Members vs. Existing Members
+
+When uploading an updated `A.xlsx` file:
+1. The system will compare the new list with the persisted `Assembly_Rosters`.
+2. New members (not in the existing database) will be added as "won souls" for the current month.
+3. Existing members will retain their historical data, and their positions in the physical tithe book will be preserved.
+
+---
+
+### Adding New Assemblies
+
+To add new assemblies:
+1. Click the "+" icon next to the "Update Members List" button.
+2. Upload the `A.xlsx` file for the new assembly.
+3. The system will automatically integrate the new assembly into the database while maintaining the order of members as per the physical tithe book
+
+
+---

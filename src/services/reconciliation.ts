@@ -210,22 +210,109 @@ export const reconcileMembers = (
   };
 };
 
-import { getSimilarity } from "../utils/stringUtils";
+import { getSimilarity, getOCRAwareSimilarity, getTokenSimilarity, OCR_CONFIDENCE_TIERS } from "../utils/stringUtils";
 import { FuzzyMatchResult } from "../types";
+import { findBestMatch as findLearnedCorrection } from "./handwritingLearning";
 
-export const findMemberByName = (
+/**
+ * Enhanced member matching with three strategies:
+ * 1. Check learned corrections from handwriting learning DB
+ * 2. OCR-normalized Levenshtein comparison
+ * 3. Token-based matching for different word orders
+ *
+ * Returns the best match above the threshold with confidence tier
+ */
+export const findMemberByName = async (
   rawName: string,
   masterData: MemberRecordA[],
-  threshold: number = 0.8
-): FuzzyMatchResult | null => {
+  assemblyName?: string,
+  threshold: number = OCR_CONFIDENCE_TIERS.MEDIUM
+): Promise<FuzzyMatchResult | null> => {
   if (!rawName || !masterData.length) return null;
 
-  const normalizedRawName = rawName.toLowerCase().trim();
+  // Strategy 1: Check learned corrections first
+  try {
+    const learnedMatch = await findLearnedCorrection(rawName, assemblyName);
+    if (learnedMatch && learnedMatch.confidence >= 0.6) {
+      // Use the corrected text to find the member
+      const correctedName = learnedMatch.displayCorrected;
+      const memberMatch = findMemberDirectMatch(correctedName, masterData);
+      if (memberMatch) {
+        return {
+          ...memberMatch,
+          wasLearned: true,
+          confidenceTier: 'high'
+        };
+      }
+    }
+  } catch (e) {
+    // IndexedDB might not be available, continue with other strategies
+    console.debug("Handwriting learning lookup failed, continuing with fuzzy match", e);
+  }
+
+  // Strategy 2 & 3: Combined OCR-aware and token matching
   let bestMatch: FuzzyMatchResult | null = null;
 
   for (const member of masterData) {
-    // Construct the full name from the master record for comparison
-    // Try different combinations: First Surname, Surname First, etc.
+    const firstName = (member["First Name"] || "").trim();
+    const surname = (member.Surname || "").trim();
+    const otherNames = (member["Other Names"] || "").trim();
+
+    // Generate name combinations to compare against
+    const combinations = [
+      `${firstName} ${surname}`,
+      `${surname} ${firstName}`,
+      `${firstName} ${otherNames} ${surname}`,
+      `${surname} ${firstName} ${otherNames}`,
+      `${firstName} ${surname} ${otherNames}`,
+      // Also try with title if present
+      member.Title ? `${member.Title} ${firstName} ${surname}` : null,
+    ].filter(Boolean) as string[];
+
+    for (const nameCombo of combinations) {
+      // Strategy 2: OCR-normalized Levenshtein
+      const ocrResult = getOCRAwareSimilarity(rawName, nameCombo);
+
+      // Strategy 3: Token-based matching
+      const tokenScore = getTokenSimilarity(rawName, nameCombo);
+
+      // Take the best of both strategies
+      const score = Math.max(ocrResult.score, tokenScore);
+
+      if (score >= threshold) {
+        if (!bestMatch || score > bestMatch.score) {
+          const confidenceTier = score >= OCR_CONFIDENCE_TIERS.HIGH ? 'high'
+            : score >= OCR_CONFIDENCE_TIERS.MEDIUM ? 'medium' : 'low';
+
+          bestMatch = {
+            member,
+            score,
+            matchedName: nameCombo,
+            confidenceTier,
+            wasLearned: false
+          };
+        }
+      }
+    }
+  }
+
+  return bestMatch;
+};
+
+/**
+ * Synchronous version for backwards compatibility.
+ * Does NOT check learned corrections (which require async IndexedDB access).
+ */
+export const findMemberByNameSync = (
+  rawName: string,
+  masterData: MemberRecordA[],
+  threshold: number = OCR_CONFIDENCE_TIERS.MEDIUM
+): FuzzyMatchResult | null => {
+  if (!rawName || !masterData.length) return null;
+
+  let bestMatch: FuzzyMatchResult | null = null;
+
+  for (const member of masterData) {
     const firstName = (member["First Name"] || "").trim();
     const surname = (member.Surname || "").trim();
     const otherNames = (member["Other Names"] || "").trim();
@@ -235,21 +322,25 @@ export const findMemberByName = (
       `${surname} ${firstName}`,
       `${firstName} ${otherNames} ${surname}`,
       `${surname} ${firstName} ${otherNames}`,
-      `${firstName} ${surname} ${otherNames}`
+      `${firstName} ${surname} ${otherNames}`,
     ];
 
     for (const nameCombo of combinations) {
-      const normalizedCombo = nameCombo.toLowerCase().trim();
-      if (!normalizedCombo) continue;
-
-      const score = getSimilarity(normalizedRawName, normalizedCombo);
+      const ocrResult = getOCRAwareSimilarity(rawName, nameCombo);
+      const tokenScore = getTokenSimilarity(rawName, nameCombo);
+      const score = Math.max(ocrResult.score, tokenScore);
 
       if (score >= threshold) {
         if (!bestMatch || score > bestMatch.score) {
+          const confidenceTier = score >= OCR_CONFIDENCE_TIERS.HIGH ? 'high'
+            : score >= OCR_CONFIDENCE_TIERS.MEDIUM ? 'medium' : 'low';
+
           bestMatch = {
             member,
             score,
-            matchedName: nameCombo
+            matchedName: nameCombo,
+            confidenceTier,
+            wasLearned: false
           };
         }
       }
@@ -257,4 +348,34 @@ export const findMemberByName = (
   }
 
   return bestMatch;
+};
+
+/**
+ * Direct match helper for learned correction lookups
+ */
+const findMemberDirectMatch = (
+  name: string,
+  masterData: MemberRecordA[]
+): FuzzyMatchResult | null => {
+  const normalizedName = name.toLowerCase().trim();
+
+  for (const member of masterData) {
+    const firstName = (member["First Name"] || "").toLowerCase();
+    const surname = (member.Surname || "").toLowerCase();
+    const fullName = `${firstName} ${surname}`.trim();
+    const fullNameReverse = `${surname} ${firstName}`.trim();
+
+    if (normalizedName === fullName || normalizedName === fullNameReverse) {
+      return {
+        member,
+        score: 1,
+        matchedName: `${member["First Name"]} ${member.Surname}`,
+        confidenceTier: 'high',
+        wasLearned: true
+      };
+    }
+  }
+
+  // Fallback to fuzzy if no exact match
+  return findMemberByNameSync(name, masterData, 0.8);
 };
