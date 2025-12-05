@@ -6,6 +6,8 @@ import {
     UploadCloud,
     FilePlus,
     ArrowRight,
+    Layers,
+    FileText,
 } from "lucide-react";
 import {
     Select,
@@ -25,6 +27,8 @@ interface QuickActionsGridProps {
     onStartWeek: () => void;
     onUploadClick: () => void;
     onScanClick: () => void;
+    onBatchScanClick?: () => void;
+    onGenerateReportClick?: () => void;
     isDragOver: boolean;
     onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
     onDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -43,6 +47,8 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     onStartWeek,
     onUploadClick,
     onScanClick,
+    onBatchScanClick,
+    onGenerateReportClick,
     isDragOver,
     onDragOver,
     onDragLeave,
@@ -163,6 +169,41 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
                         />
                     </div>
                 </motion.div>
+            </div>
+
+            {/* Additional Quick Actions - Batch & Reports */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* Batch Scan Button */}
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onBatchScanClick}
+                    className="flex items-center gap-3 p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-elevated)] transition-all group"
+                >
+                    <div className="w-10 h-10 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+                        <Layers size={20} />
+                    </div>
+                    <div className="text-left">
+                        <div className="font-medium text-[var(--text-primary)]">Batch Scan</div>
+                        <div className="text-xs text-[var(--text-tertiary)]">Multi-page upload</div>
+                    </div>
+                </motion.button>
+
+                {/* Generate PDF Report Button */}
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onGenerateReportClick}
+                    className="flex items-center gap-3 p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-elevated)] transition-all group"
+                >
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                        <FileText size={20} />
+                    </div>
+                    <div className="text-left">
+                        <div className="font-medium text-[var(--text-primary)]">PDF Reports</div>
+                        <div className="text-xs text-[var(--text-tertiary)]">Export tithe data</div>
+                    </div>
+                </motion.button>
             </div>
 
             {/* Drag and Drop Zone */}

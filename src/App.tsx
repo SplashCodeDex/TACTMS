@@ -1505,6 +1505,21 @@ const App: React.FC = () => {
                     editMember.open({ target: memberToEdit! });
                   },
                   onDeleteAssembly: handleDeleteAssembly,
+                  onAddAssembly: (assemblyName: string) => {
+                    if (memberDatabase[assemblyName]) {
+                      addToast(`Assembly "${assemblyName}" already exists.`, "warning");
+                      return;
+                    }
+                    setMemberDatabase((prev) => ({
+                      ...prev,
+                      [assemblyName]: {
+                        data: [],
+                        lastUpdated: Date.now(),
+                        fileName: "",
+                      },
+                    }));
+                    addToast(`Assembly "${assemblyName}" created. Upload a master list to populate it.`, "success");
+                  },
                   // ListOverviewActions
                   currentTotalTithe: totalTitheAmount,
                   hasUnsavedChanges,

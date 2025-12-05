@@ -2,9 +2,11 @@ import React, { useState, useMemo } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "../components/Button";
 import Checkbox from "../components/Checkbox";
+import AddAssemblyModal from "../components/AddAssemblyModal";
 import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { filterMembersByAge } from "../services/excelProcessor";
+import { useModal } from "../hooks/useModal";
 
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
@@ -22,7 +24,7 @@ interface MemberDatabaseSectionProps {
     message: string,
     type: "success" | "error" | "info" | "warning",
   ) => void;
-
+  onAddAssembly?: (assemblyName: string) => void;
 }
 
 const MemberDatabaseSection: React.FC = () => {
@@ -32,7 +34,7 @@ const MemberDatabaseSection: React.FC = () => {
     onCreateTitheList,
     onEditMember,
     addToast,
-
+    onAddAssembly,
   } = useOutletContext<MemberDatabaseSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(
     Object.keys(memberDatabase)[0] || null,
@@ -53,6 +55,9 @@ const MemberDatabaseSection: React.FC = () => {
   // Age Filter state
   const [ageRangeMin, setAgeRangeMin] = useState<string>("");
   const [ageRangeMax, setAgeRangeMax] = useState<string>("");
+
+  // Add Assembly Modal state
+  const addAssemblyModal = useModal("addAssembly");
 
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -208,6 +213,15 @@ const MemberDatabaseSection: React.FC = () => {
             </button>
           ))}
 
+        {/* Add New Assembly Button */}
+        <button
+          onClick={() => addAssemblyModal.open()}
+          className="px-3 py-2 text-lg text-[var(--text-tertiary)] hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors rounded-md"
+          title="Add New Assembly"
+        >
+          +
+        </button>
+
         {/* ALL MEMBERS Tab - Pushed to the far right */}
         <button
           onClick={() => setSelectedAssembly("ALL MEMBERS")}
@@ -278,7 +292,7 @@ const MemberDatabaseSection: React.FC = () => {
                   disabled={selectedAssembly === "ALL MEMBERS"}
                   className="pointer-events-none" // Add this to ensure clicks pass through to label if needed, or just let it bubble
                 >
-                  Upload Master List
+                  Update Members List
                 </Button>
               </label>
             </div>
@@ -465,6 +479,21 @@ const MemberDatabaseSection: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* Add Assembly Modal */}
+      <AddAssemblyModal
+        isOpen={addAssemblyModal.isOpen}
+        onClose={addAssemblyModal.close}
+        onConfirm={(name, file) => {
+          onAddAssembly?.(name);
+          if (file) {
+            // Upload the file for this new assembly
+            onUploadMasterList(file, true, name);
+          }
+          addAssemblyModal.close();
+        }}
+        existingAssemblies={Object.keys(memberDatabase)}
+      />
     </div >
   );
 };

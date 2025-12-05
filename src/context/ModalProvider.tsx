@@ -12,7 +12,11 @@ export type ModalKey =
   | "clearWorkspace"
   | "updateConfirm"
   | "editMember"
-  | "validationReport";
+  | "validationReport"
+  | "batchProcessor"
+  | "reportGenerator"
+  | "scanAssembly"
+  | "addAssembly";
 
 export type ModalPayloads = {
   fullPreview?: undefined;
@@ -26,6 +30,10 @@ export type ModalPayloads = {
   updateConfirm?: { pending: any } | undefined;
   editMember?: { target: any } | undefined;
   validationReport?: { content?: string; isLoading?: boolean } | undefined;
+  batchProcessor?: undefined;
+  reportGenerator?: undefined;
+  scanAssembly?: { file: File; assembly?: string } | undefined;
+  addAssembly?: undefined;
 };
 
 export type ModalState = {
@@ -55,6 +63,10 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateConfirm: { isOpen: false },
     editMember: { isOpen: false },
     validationReport: { isOpen: false },
+    batchProcessor: { isOpen: false },
+    reportGenerator: { isOpen: false },
+    scanAssembly: { isOpen: false },
+    addAssembly: { isOpen: false },
   });
 
   const openModal = useCallback<ModalContextValue["openModal"]>((key, payload) => {

@@ -63,7 +63,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     setIsGeneratingReport(true);
     try {
       // Use the enhanced processor with validation
-      const { processTitheImageWithValidation, validateTitheBookImage } = await import('../services/imageProcessor');
+      const { processTitheImageWithValidation } = await import('../services/imageProcessor');
       const { validateTitheBookImage: preValidate } = await import('../services/imageValidator');
 
       // Pre-validate the image
