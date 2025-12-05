@@ -69,6 +69,23 @@ Identifying Trends: You can analyze weekly data—which weeks tend to have highe
 4. Robust Validation and Consistency
 Data Integrity: The database acts as a single source of truth. The system will alert you if an AI process identifies a name that isn't in your current master  databse list(of all the assemblies), prompting you to register that new member on TACMS first, thus enforcing the correct church procedures.
 
+5. Batch Processing
+this feature should be for any assembly that are too many to fit in one page therefore they continue from the next page(example, central has more than 150 tithers and one page of the tithe book only accomodates 31 members so definetely the other tithers will continue from the next page) . This feature must consider this, such that, i can upload  1-4 images (of different pages of the same assemly tithe book) , select the assembly and week and the intelligent system will know by the page number, the "NO." column and the order of the Names and can deduce that i am trying to process different pages tithe records of an assembly(the one i selected). The system should also be intelligent that if it sees 2-3 images of the same page, it is an advantage for the intelligence to be most accurate and precise.
+
+
+### Logic of the project database
+
+for now, this project is using 3 assemblies out of the 9 assemblies of my district for development testing but i will add the 6 assemblies including the already added 3 again because, new members has been registered on TACMS, so I have to download the A.xlsx version and update our project. Remember that even if i upload an assembly database(A.xlsx) which contains existing members and new members, our project system will be much intelligent that it won't store duplicates of existing but only recognise the new members(these members will be deemed as won souls for a month) while maintaining the order of the members in the physical tithe book. Also notice that, since the members in the database can be sorted and iltered, it won't affect the persistent order that matches the physical tithe book therefore one approach you can consisder is to make it possible to upload A.xlsx version uising the "Update Members List" button when  there is already an assembly database. Add a "+" icon as the red arrow is pointing at that i can use to add the other 6 assemblies
+
+
+
 ## FAGs
 Handling Partial Image Captures
 If a user captures only the data columns (e.g., the 1st-5th weeks of October) without the corresponding names, the image context alone is insufficient for the AI to identify the tithers. The AI sees numbers and grid lines, but no names.
+
+
+Solution: The system will prompt the user to either:
+1. Capture the full page (including the names column) for that month, or
+2. Manually select the assembly and provide the starting position (e.g., "This is the 1st-5th weeks of October for Central Assembly, starting at position 100").
+
+This ensures the AI can correctly map the data to the persisted Assembly_Rosters.
