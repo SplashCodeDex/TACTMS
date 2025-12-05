@@ -23,6 +23,7 @@ import SkeletonLoader from "../components/SkeletonLoader";
 import { useGeminiChat } from "../hooks/useGemini";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
+import QuerySuggestions from "@/components/QuerySuggestions";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useOutletContext } from "react-router-dom";
 import DOMPurify from "dompurify";
@@ -541,11 +542,20 @@ const AnalyticsSection: React.FC = () => {
             <h3 className="text-xl font-semibold text-[var(--text-primary)]">
               Ready for Insights?
             </h3>
-            <p className="text-[var(--text-secondary)] mt-2 max-w-md">
+            <p className="text-[var(--text-secondary)] mt-2 max-w-md mb-6">
               {hasData
                 ? `You have a list for ${currentAssembly} Assembly ready. Click "Analyze with AI" to start a conversation about your data.`
                 : "Generate or load a tithe list in the Processor view, then come back here to get an AI-powered analysis."}
             </p>
+            {hasData && (
+              <div className="w-full max-w-lg mt-4">
+                <p className="text-sm text-[var(--text-muted)] mb-3">Or try a quick question:</p>
+                <QuerySuggestions
+                  onSelectQuery={handleSendMessage}
+                  compact
+                />
+              </div>
+            )}
           </div>
         )}
 

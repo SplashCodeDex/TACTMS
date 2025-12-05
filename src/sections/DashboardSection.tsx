@@ -386,6 +386,7 @@ const DashboardSection: React.FC = () => {
             onUploadClick={handleUploadClick}
             onScanClick={handleScanClick}
             onBatchScanClick={handleBatchScanClick}
+            onReportClick={reportModal.open}
             isDragOver={isDragOver}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}

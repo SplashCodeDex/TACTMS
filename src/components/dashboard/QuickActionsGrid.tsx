@@ -7,6 +7,7 @@ import {
     FilePlus,
     ArrowRight,
     Layers,
+    FileText,
 } from "lucide-react";
 import {
     Select,
@@ -27,6 +28,7 @@ interface QuickActionsGridProps {
     onUploadClick: () => void;
     onScanClick: () => void;
     onBatchScanClick?: () => void;
+    onReportClick?: () => void;
     isDragOver: boolean;
     onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
     onDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -46,6 +48,7 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     onUploadClick,
     onScanClick,
     onBatchScanClick,
+    onReportClick,
     isDragOver,
     onDragOver,
     onDragLeave,
@@ -183,6 +186,22 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
                     <div className="text-left">
                         <div className="font-medium text-[var(--text-primary)]">Batch Scan</div>
                         <div className="text-xs text-[var(--text-tertiary)]">Multi-page upload</div>
+                    </div>
+                </motion.button>
+
+                {/* Generate Report Button */}
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onReportClick}
+                    className="flex items-center gap-3 p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-elevated)] transition-all group"
+                >
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                        <FileText size={20} />
+                    </div>
+                    <div className="text-left">
+                        <div className="font-medium text-[var(--text-primary)]">Reports</div>
+                        <div className="text-xs text-[var(--text-tertiary)]">Generate AI reports</div>
                     </div>
                 </motion.button>
 

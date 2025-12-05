@@ -8,6 +8,7 @@ import {
 } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
+import { Queue } from 'workbox-background-sync';
 
 // Serve offline.html for navigation requests when offline
 const offlineHandler = createHandlerBoundToURL("offline.html");
@@ -198,39 +199,31 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// const analyticsSyncQueue = new Queue("analytics-queue", {
-//   maxRetentionTime: 24 * 60, // Retry for max of 24 Hours
-// });
+const analyticsSyncQueue = new Queue('analytics-queue', {
+  maxRetentionTime: 24 * 60, // retry up to 24 hours
+});
 
-self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "QUEUE_ANALYTICS_EVENT") {
-    const { payload } = event.data;
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+  if (event.data.type === 'QUEUE_ANALYTICS_EVENT') {
+    const { payload } = event.data as { payload: any };
+    const req = new Request('/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-    const promiseChain = async () => {
+    const promiseChain = (async () => {
       try {
-        // Backend not yet implemented for analytics
-        // await fetch("api/analytics", {
-        //   method: "POST",
-        //   headers: {
-        //     "Content-Type": "application/json",
-        //   },
-        //   body: JSON.stringify(payload),
-        // });
-        console.log("Analytics event queued (backend not configured):", payload);
+        const res = await fetch(req.clone());
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (error) {
-        // await analyticsSyncQueue.pushRequest({
-        //   request: new Request("api/analytics", {
-        //     method: "POST",
-        //     headers: {
-        //       "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify(payload),
-        //   }),
-        // });
-        console.warn("Failed to queue analytics event:", error);
+        await analyticsSyncQueue.pushRequest({ request: req });
+        // A sync will be registered by workbox; it will retry when back online
+        console.log('[SW] Analytics request queued for background sync');
       }
-    };
+    })();
 
-    event.waitUntil(promiseChain());
+    event.waitUntil(promiseChain);
   }
 });
