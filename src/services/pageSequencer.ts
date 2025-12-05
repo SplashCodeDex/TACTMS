@@ -86,7 +86,7 @@ export const sequencePages = (
     for (const page of pages) {
         for (const entry of page.info.entries) {
             const name = String(entry["Membership Number"]).toLowerCase().trim();
-            const no = typeof entry["No."] === 'number' ? entry["No."] : parseInt(String(entry["No."])) || 0;
+            // const no = typeof entry["No."] === 'number' ? entry["No."] : parseInt(String(entry["No."])) || 0;
 
             // Check for duplicate
             const existing = seenNames.get(name);

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { TitheRecordB, MemberRecordA } from "@/types";
-import { findMemberByName, findMemberByNameSync } from "@/services/reconciliation";
-import { storeCorrection } from "@/services/handwritingLearning";
+import { findMemberByNameSync } from "@/services/reconciliation";
 import { validateAmount, AmountValidation } from "@/services/amountValidator";
 import Button from "./Button";
-import { Check, AlertTriangle, Sparkles, AlertCircle } from "lucide-react";
+import { Check, AlertTriangle, AlertCircle } from "lucide-react";
 import MemberSelect from "./MemberSelect";
 
 interface ImageVerificationModalProps {
@@ -14,7 +13,6 @@ interface ImageVerificationModalProps {
     extractedData: TitheRecordB[];
     masterData: MemberRecordA[];
     onConfirm: (verifiedData: TitheRecordB[]) => void;
-    assemblyName?: string; // For storing learned corrections
 }
 
 interface VerificationRow {
@@ -24,9 +22,8 @@ interface VerificationRow {
     matchConfidence: number;
     aiConfidence: number;
     manualOverride: boolean;
-    wasLearned?: boolean;  // True if matched via learned correction
     confidenceTier?: 'high' | 'medium' | 'low';
-    amountWarning?: AmountValidation | null; // Amount validation result
+    amountWarning?: AmountValidation | null;
 }
 
 const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
@@ -35,7 +32,6 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     extractedData,
     masterData,
     onConfirm,
-    assemblyName = 'global',
 }) => {
     const [rows, setRows] = useState<VerificationRow[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -45,7 +41,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
             setIsProcessing(true);
             const newRows = extractedData.map((record, index) => {
                 const rawName = record["Membership Number"];
-                // Use sync version for immediate matching, async learning lookup happens in background
+                // Use sync version for immediate matching
                 const match = findMemberByNameSync(rawName, masterData);
 
                 return {
@@ -55,7 +51,6 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     matchConfidence: match ? match.score : 0,
                     aiConfidence: record.Confidence || 0,
                     manualOverride: false,
-                    wasLearned: match?.wasLearned || false,
                     confidenceTier: match?.confidenceTier || 'low',
                     amountWarning: validateAmount(record["Transaction Amount"]),
                 };
@@ -83,24 +78,6 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     };
 
     const handleMemberSelect = async (rowId: number, member: MemberRecordA | null) => {
-        const row = rows.find((r) => r.id === rowId);
-
-        // Store the correction for future learning if user manually selects
-        if (row && member && !row.wasLearned) {
-            const originalText = row.extractedRecord["Membership Number"];
-            const correctedName = `${member["First Name"]} ${member.Surname}`.trim();
-
-            // Only store if the names are different (user made a correction)
-            if (originalText.toLowerCase() !== correctedName.toLowerCase()) {
-                try {
-                    await storeCorrection(originalText, correctedName, assemblyName);
-                    console.log('Stored OCR correction for learning:', originalText, '->', correctedName);
-                } catch (e) {
-                    console.warn('Failed to store correction:', e);
-                }
-            }
-        }
-
         setRows((prev) =>
             prev.map((r) =>
                 r.id === rowId

@@ -64,7 +64,7 @@ export const generatePredictions = async (
     const metrics = calculateMetrics(sortedLogs, memberDatabase);
 
     // Statistical predictions
-    predictions.push(...generateStatisticalPredictions(sortedLogs, metrics));
+    predictions.push(...generateStatisticalPredictions(metrics));
 
     // AI-enhanced predictions (if API key available)
     if (apiKey && sortedLogs.length >= 4) {
@@ -157,7 +157,6 @@ const calculateMetrics = (
  * Generate statistical predictions
  */
 const generateStatisticalPredictions = (
-    logs: TransactionLogEntry[],
     metrics: AnalyticsSummary['keyMetrics']
 ): Prediction[] => {
     const predictions: Prediction[] = [];

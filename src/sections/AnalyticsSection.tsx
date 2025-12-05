@@ -17,6 +17,7 @@ import {
   TitheRecordB,
   MembershipReconciliationReport,
   OutreachMessage,
+  MasterListData,
 } from "../types";
 import Button from "../components/Button";
 import SkeletonLoader from "../components/SkeletonLoader";
@@ -24,6 +25,10 @@ import { useGeminiChat } from "../hooks/useGemini";
 import BarChart from "../components/BarChart";
 import ChatInterface from "../components/ChatInterface";
 import QuerySuggestions from "@/components/QuerySuggestions";
+import { useModal } from "@/hooks/useModal";
+import ReportGeneratorModal from "@/components/ReportGeneratorModal";
+import { FileText } from "lucide-react";
+
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useOutletContext } from "react-router-dom";
 import DOMPurify from "dompurify";
@@ -40,6 +45,8 @@ interface AnalyticsSectionProps {
   nonTithersCount: number;
   totalAmount: number;
   reconciliationReport: MembershipReconciliationReport | null;
+
+  memberDatabase: Record<string, MasterListData>;
 }
 
 const AISummaryCard: React.FC<{ summary: string }> = ({ summary }) => {
@@ -461,7 +468,9 @@ const AnalyticsSection: React.FC = () => {
     currentAssembly,
     addToast,
     reconciliationReport,
+    memberDatabase,
   } = useOutletContext<AnalyticsSectionProps>();
+  const reportModal = useModal("reportGenerator");
   const { chatHistory, chartData, isLoading, error, initializeChat, sendMessage } =
     useGeminiChat(import.meta.env.VITE_GEMINI_API_KEY);
 
@@ -513,6 +522,14 @@ const AnalyticsSection: React.FC = () => {
             {hasChatStarted
               ? `Restart Analysis for ${currentAssembly}`
               : "Analyze with AI"}
+          </Button>
+          <Button
+            onClick={() => reportModal.open()}
+            variant="secondary"
+            className="flex items-center gap-2"
+          >
+            <FileText size={18} />
+            Generate Report
           </Button>
         </div>
       </section>
@@ -594,7 +611,28 @@ const AnalyticsSection: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+
+
+      <ReportGeneratorModal
+        isOpen={reportModal.isOpen}
+        onClose={reportModal.close}
+        transactionLogs={[{
+          id: 'current-session',
+          assemblyName: currentAssembly || 'General',
+          timestamp: Date.now(),
+          selectedDate: new Date().toISOString(),
+          totalTitheAmount: titheListData.reduce((sum, t) => sum + (typeof t["Transaction Amount"] === 'number' ? t["Transaction Amount"] : parseFloat(String(t["Transaction Amount"])) || 0), 0),
+          soulsWonCount: 0,
+          titherCount: new Set(titheListData.map(t => t["Membership Number"])).size,
+          recordCount: titheListData.length,
+          titheListData: titheListData,
+          concatenationConfig: {} as any,
+          descriptionText: 'Current Session',
+          amountMappingColumn: null
+        }]}
+        memberDatabase={memberDatabase}
+      />
+    </div >
   );
 };
 

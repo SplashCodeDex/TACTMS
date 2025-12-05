@@ -3,7 +3,7 @@
  * AI-powered report generation for various formats
  */
 
-import { TransactionLogEntry, MemberDatabase, TitheRecordB } from "../types";
+import { TransactionLogEntry } from "../types";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export type ReportType = 'weekly_summary' | 'monthly_pdf' | 'year_end' | 'custom';
@@ -36,7 +36,6 @@ export interface GeneratedReport {
 export const generateReport = async (
     config: ReportConfig,
     transactionLogs: TransactionLogEntry[],
-    memberDatabase: MemberDatabase,
     apiKey?: string
 ): Promise<GeneratedReport> => {
     const { type, startDate, endDate, assembly, format } = config;
@@ -56,11 +55,11 @@ export const generateReport = async (
     // Generate based on type
     switch (type) {
         case 'weekly_summary':
-            return generateWeeklySummary(filteredLogs, assembly || 'All Assemblies', format, apiKey);
+            return generateWeeklySummary(filteredLogs, assembly || 'All Assemblies', format);
         case 'monthly_pdf':
-            return generateMonthlyReport(filteredLogs, assembly || 'All Assemblies', format, apiKey);
+            return generateMonthlyReport(filteredLogs, assembly || 'All Assemblies', format);
         case 'year_end':
-            return generateYearEndReport(filteredLogs, memberDatabase, assembly || 'All Assemblies', format, apiKey);
+            return generateYearEndReport(filteredLogs, assembly || 'All Assemblies', format);
         default:
             return generateCustomReport(filteredLogs, config, apiKey);
     }
@@ -72,8 +71,7 @@ export const generateReport = async (
 const generateWeeklySummary = async (
     logs: TransactionLogEntry[],
     assembly: string,
-    format: 'markdown' | 'html' | 'text',
-    apiKey?: string
+    format: 'markdown' | 'html' | 'text'
 ): Promise<GeneratedReport> => {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -139,8 +137,7 @@ ${getTopTithers(weekLogs).map((t, i) => `${i + 1}. **${t.name}**: GHS ${t.amount
 const generateMonthlyReport = async (
     logs: TransactionLogEntry[],
     assembly: string,
-    format: 'markdown' | 'html' | 'text',
-    apiKey?: string
+    format: 'markdown' | 'html' | 'text'
 ): Promise<GeneratedReport> => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -226,10 +223,8 @@ ${getTopTithers(monthLogs, 10).map((t, i) => `${i + 1}. **${t.name}**: GHS ${t.a
  */
 const generateYearEndReport = async (
     logs: TransactionLogEntry[],
-    memberDatabase: MemberDatabase,
     assembly: string,
-    format: 'markdown' | 'html' | 'text',
-    apiKey?: string
+    format: 'markdown' | 'html' | 'text'
 ): Promise<GeneratedReport> => {
     const now = new Date();
     const yearStart = new Date(now.getFullYear(), 0, 1);
@@ -360,7 +355,7 @@ Include: Overview, key highlights, and a spiritual encouragement. Keep it under 
     }
 
     // Fallback to basic report
-    return generateWeeklySummary(logs, config.assembly || 'All Assemblies', config.format, apiKey);
+    return generateWeeklySummary(logs, config.assembly || 'All Assemblies', config.format);
 };
 
 // Helper functions

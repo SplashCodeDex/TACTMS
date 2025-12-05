@@ -210,47 +210,24 @@ export const reconcileMembers = (
   };
 };
 
-import { getSimilarity, getOCRAwareSimilarity, getTokenSimilarity, OCR_CONFIDENCE_TIERS } from "../utils/stringUtils";
+import { getOCRAwareSimilarity, getTokenSimilarity, OCR_CONFIDENCE_TIERS } from "../utils/stringUtils";
 import { FuzzyMatchResult } from "../types";
-import { findBestMatch as findLearnedCorrection } from "./handwritingLearning";
 
 /**
- * Enhanced member matching with three strategies:
- * 1. Check learned corrections from handwriting learning DB
- * 2. OCR-normalized Levenshtein comparison
- * 3. Token-based matching for different word orders
+ * Enhanced member matching with two strategies:
+ * 1. OCR-normalized Levenshtein comparison
+ * 2. Token-based matching for different word orders
  *
  * Returns the best match above the threshold with confidence tier
  */
 export const findMemberByName = async (
   rawName: string,
   masterData: MemberRecordA[],
-  assemblyName?: string,
   threshold: number = OCR_CONFIDENCE_TIERS.MEDIUM
 ): Promise<FuzzyMatchResult | null> => {
   if (!rawName || !masterData.length) return null;
 
-  // Strategy 1: Check learned corrections first
-  try {
-    const learnedMatch = await findLearnedCorrection(rawName, assemblyName);
-    if (learnedMatch && learnedMatch.confidence >= 0.6) {
-      // Use the corrected text to find the member
-      const correctedName = learnedMatch.displayCorrected;
-      const memberMatch = findMemberDirectMatch(correctedName, masterData);
-      if (memberMatch) {
-        return {
-          ...memberMatch,
-          wasLearned: true,
-          confidenceTier: 'high'
-        };
-      }
-    }
-  } catch (e) {
-    // IndexedDB might not be available, continue with other strategies
-    console.debug("Handwriting learning lookup failed, continuing with fuzzy match", e);
-  }
-
-  // Strategy 2 & 3: Combined OCR-aware and token matching
+  // Strategy 1 & 2: Combined OCR-aware and token matching
   let bestMatch: FuzzyMatchResult | null = null;
 
   for (const member of masterData) {
@@ -270,10 +247,10 @@ export const findMemberByName = async (
     ].filter(Boolean) as string[];
 
     for (const nameCombo of combinations) {
-      // Strategy 2: OCR-normalized Levenshtein
+      // Strategy 1: OCR-normalized Levenshtein
       const ocrResult = getOCRAwareSimilarity(rawName, nameCombo);
 
-      // Strategy 3: Token-based matching
+      // Strategy 2: Token-based matching
       const tokenScore = getTokenSimilarity(rawName, nameCombo);
 
       // Take the best of both strategies
@@ -289,7 +266,6 @@ export const findMemberByName = async (
             score,
             matchedName: nameCombo,
             confidenceTier,
-            wasLearned: false
           };
         }
       }
@@ -301,7 +277,6 @@ export const findMemberByName = async (
 
 /**
  * Synchronous version for backwards compatibility.
- * Does NOT check learned corrections (which require async IndexedDB access).
  */
 export const findMemberByNameSync = (
   rawName: string,
@@ -340,7 +315,6 @@ export const findMemberByNameSync = (
             score,
             matchedName: nameCombo,
             confidenceTier,
-            wasLearned: false
           };
         }
       }
@@ -348,34 +322,4 @@ export const findMemberByNameSync = (
   }
 
   return bestMatch;
-};
-
-/**
- * Direct match helper for learned correction lookups
- */
-const findMemberDirectMatch = (
-  name: string,
-  masterData: MemberRecordA[]
-): FuzzyMatchResult | null => {
-  const normalizedName = name.toLowerCase().trim();
-
-  for (const member of masterData) {
-    const firstName = (member["First Name"] || "").toLowerCase();
-    const surname = (member.Surname || "").toLowerCase();
-    const fullName = `${firstName} ${surname}`.trim();
-    const fullNameReverse = `${surname} ${firstName}`.trim();
-
-    if (normalizedName === fullName || normalizedName === fullNameReverse) {
-      return {
-        member,
-        score: 1,
-        matchedName: `${member["First Name"]} ${member.Surname}`,
-        confidenceTier: 'high',
-        wasLearned: true
-      };
-    }
-  }
-
-  // Fallback to fuzzy if no exact match
-  return findMemberByNameSync(name, masterData, 0.8);
 };

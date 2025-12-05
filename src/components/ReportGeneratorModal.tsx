@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { FileText, Download, Copy, Check, Loader2, Calendar } from "lucide-react";
+import { FileText, Download, Copy, Check, Loader2 } from "lucide-react";
 import Modal from "@/components/Modal";
 import Button from "@/components/Button";
 import { generateReport, ReportType, GeneratedReport } from "@/services/reportGenerator";
@@ -23,7 +23,6 @@ const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
     isOpen,
     onClose,
     transactionLogs,
-    memberDatabase,
     currentAssembly
 }) => {
     const [reportType, setReportType] = useState<ReportType>('weekly_summary');
@@ -50,7 +49,6 @@ const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                     format: 'markdown'
                 },
                 transactionLogs,
-                memberDatabase,
                 import.meta.env.VITE_GEMINI_API_KEY
             );
             setGeneratedReport(report);

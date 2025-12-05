@@ -76,7 +76,7 @@ export const validateAmount = (
     // If we have member history, check against their typical range
     if (memberHistory && memberHistory.occurrences >= 3) {
         const { averageAmount, minAmount, maxAmount } = memberHistory;
-        const tolerance = Math.max(averageAmount * 0.5, 50); // 50% or GHS 50 minimum
+        // const tolerance = Math.max(averageAmount * 0.5, 50); // Unused
 
         // Check for unusually high amount
         if (numAmount > maxAmount * 3) {
