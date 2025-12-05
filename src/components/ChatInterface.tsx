@@ -50,10 +50,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   const suggestions = [
-    "What is the total tithe?",
-    "Show me the top 5 tithers",
-    "Compare with last week",
-    "Any unusual amounts?",
+    "Who is the top tither in 2024?",
+    "Get tithe stats for January 2024",
+    "Show me a chart of top 5 tithers",
+    "Search for member 'John'",
   ];
 
   return (
@@ -61,8 +61,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       {/* Floating Toggle Button */}
       <motion.button
         className={`fixed bottom-6 right-6 z-40 p-4 rounded-full shadow-2xl transition-all duration-300 ${isOpen
-            ? "bg-red-500 text-white rotate-90"
-            : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-110"
+          ? "bg-red-500 text-white rotate-90"
+          : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-110"
           }`}
         onClick={onToggle}
         whileHover={{ scale: 1.1 }}
@@ -125,16 +125,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-indigo-600 text-white"
+                      ? "bg-blue-600 text-white"
+                      : "bg-indigo-600 text-white"
                       }`}
                   >
                     {msg.role === "user" ? <User size={14} /> : <Bot size={14} />}
                   </div>
                   <div
                     className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === "user"
-                        ? "bg-blue-600 text-white rounded-tr-none"
-                        : "bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-tl-none"
+                      ? "bg-blue-600 text-white rounded-tr-none"
+                      : "bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-tl-none"
                       }`}
                   >
                     <p className="whitespace-pre-wrap leading-relaxed">{msg.parts[0].text}</p>
@@ -160,10 +160,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center flex-shrink-0">
                     <Bot size={14} />
                   </div>
-                  <div className="bg-[var(--bg-elevated)] border border-[var(--border-color)] p-3 rounded-2xl rounded-tl-none flex gap-1 items-center">
-                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <div className="bg-[var(--bg-elevated)] border border-[var(--border-color)] p-3 rounded-2xl rounded-tl-none flex gap-2 items-center">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                    <span className="text-xs text-[var(--text-secondary)] animate-pulse">Thinking...</span>
                   </div>
                 </div>
               )}

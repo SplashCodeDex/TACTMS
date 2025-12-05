@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase } from '@/types';
 
 export const useGemini = (apiKey: string, addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void) => {
@@ -129,33 +129,19 @@ export const useGeminiChat = (apiKey: string) => {
     memberDatabase: MemberDatabase,
     currentAssembly: string
   ) => {
-    // Create a minimized context to save tokens
-    const context = {
-      assembly: currentAssembly,
-      summary: {
-        totalTithe: titheListData.reduce((sum, r) => sum + Number(r["Transaction Amount"] || 0), 0),
-        count: titheListData.length,
-        date: new Date().toDateString(),
-      },
-      // Sample of recent records for context
-      recentRecords: titheListData.slice(0, 50).map(r => ({
-        name: r["Membership Number"], // Contains the name
-        amount: r["Transaction Amount"],
-        date: r["Transaction Date ('DD-MMM-YYYY')"]
-      })),
-      // Assembly stats
-      assemblyStats: Object.entries(memberDatabase).map(([name, data]) => ({
-        name,
-        memberCount: data.data.length
-      }))
-    };
-    setDataContext(context);
+    // We store the full data in a ref or state to access it during tool execution
+    // For simplicity, we'll keep it in state here, but in a real app with huge data,
+    // we might want to use a ref or external store.
+    setDataContext({
+      titheListData,
+      memberDatabase,
+      currentAssembly
+    });
 
-    // Add initial system message (invisible to user but sets behavior)
     setChatHistory([
       {
         role: "model",
-        parts: [{ text: "Hello! I'm your TACTMS Assistant. I can help you analyze your tithe data, find trends, or answer questions about specific members. What would you like to know?" }],
+        parts: [{ text: "Hello! I'm your TACTMS Assistant. I have access to your full database. You can ask me about specific members, tithe statistics, or trends. What would you like to know?" }],
       }
     ]);
   }, []);
@@ -181,39 +167,160 @@ export const useGeminiChat = (apiKey: string) => {
 
       try {
         const ai = new GoogleGenerativeAI(apiKey);
-        const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+        // Use Gemini 2.5 Pro for better tool use capabilities
+        const model = ai.getGenerativeModel({
+          model: "gemini-2.5-pro",
+          systemInstruction: `
+            You are an intelligent data analyst for The Apostolic Church Tithe Management System (TACTMS).
+            Your Goal: Answer the user's question based *strictly* on the provided data via tools.
 
-        // Construct the prompt with RAG-lite context
-        const systemPrompt = `
-        You are an intelligent data analyst for The Apostolic Church Tithe Management System (TACTMS).
-
-        Current Data Context:
-        ${JSON.stringify(dataContext, null, 2)}
-
-        Your Goal: Answer the user's question based *strictly* on the provided data.
-
-        Guidelines:
-        - Be concise and professional.
-        - If asked about "total tithe", use the summary data.
-        - If asked about specific members, look at the 'recentRecords' sample.
-        - If the answer isn't in the data, say "I don't have that information in my current view."
-        - Format numbers as currency (GHS).
-        - You can generate simple charts if asked. If the user asks for a chart, include a JSON block at the end of your response like this:
-          \`\`\`json
-          { "chartData": [{ "label": "A", "count": 10 }, ...] }
-          \`\`\`
-        `;
-
-        const chat = model.startChat({
-          history: [
-            { role: "user", parts: [{ text: systemPrompt }] },
-            { role: "model", parts: [{ text: "Understood. I am ready to analyze the TACTMS data." }] },
-            ...newHistory.map(msg => ({ role: msg.role, parts: msg.parts }))
+            Guidelines:
+            - Be concise and professional.
+            - Format numbers as currency (GHS).
+            - You can generate simple charts if asked. If the user asks for a chart, include a JSON block at the end of your response like this:
+              \`\`\`json
+              { "chartData": [{ "label": "A", "count": 10 }, ...] }
+              \`\`\`
+            `,
+          tools: [
+            {
+              functionDeclarations: [
+                {
+                  name: "get_member_details",
+                  description: "Search for a member by name or ID to get their full details and recent tithe history.",
+                  parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                      search_term: { type: SchemaType.STRING, description: "Name or Membership ID of the member" }
+                    },
+                    required: ["search_term"]
+                  }
+                },
+                {
+                  name: "get_tithe_stats",
+                  description: "Get total tithe statistics for a specific period (month/year) or overall.",
+                  parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                      month: { type: SchemaType.STRING, description: "Month name (e.g., January)" },
+                      year: { type: SchemaType.STRING, description: "Year (e.g., 2024)" }
+                    }
+                  }
+                },
+                {
+                  name: "find_top_tithers",
+                  description: "Find the top contributors for a given period.",
+                  parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                      limit: { type: SchemaType.NUMBER, description: "Number of members to return (default 5)" },
+                      year: { type: SchemaType.STRING, description: "Year to filter by" }
+                    }
+                  }
+                }
+              ]
+            }
           ]
         });
 
-        const result = await chat.sendMessage(message);
-        const response = await result.response;
+        const chat = model.startChat({
+          history: newHistory.map(msg => ({ role: msg.role, parts: msg.parts }))
+        });
+
+        let result = await chat.sendMessage(message);
+        let response = await result.response;
+        let functionCalls = response.functionCalls();
+
+        // Loop to handle multiple function calls if needed
+        while (functionCalls && functionCalls.length > 0) {
+          const call = functionCalls[0]; // Handle first call
+          const { name, args } = call;
+
+          let toolResult = {};
+
+          // Execute tools locally
+          if (name === "get_member_details") {
+            const searchTerm = (args as any).search_term.toLowerCase();
+            // Search in member database
+            let foundMember = null;
+            let memberId = "";
+
+            // Search logic
+            for (const [, list] of Object.entries(dataContext.memberDatabase as MemberDatabase)) {
+              const match = list.data.find((m: MemberRecordA) =>
+                String(m["Membership Number"]).toLowerCase().includes(searchTerm) ||
+                `${m["First Name"]} ${m.Surname}`.toLowerCase().includes(searchTerm)
+              );
+              if (match) {
+                foundMember = match;
+                memberId = String(match["Membership Number"]);
+                break;
+              }
+            }
+
+            if (foundMember) {
+              // Get recent tithes
+              const tithes = (dataContext.titheListData as TitheRecordB[])
+                .filter(t => String(t["Membership Number"]).includes(memberId))
+                .slice(0, 5);
+
+              toolResult = { member: foundMember, recent_tithes: tithes };
+            } else {
+              toolResult = { error: "Member not found" };
+            }
+          } else if (name === "get_tithe_stats") {
+            const month = (args as any).month;
+            const year = (args as any).year;
+
+            let filtered = dataContext.titheListData as TitheRecordB[];
+            if (year) {
+              filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
+            }
+            if (month) {
+              filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).toLowerCase().includes(month.toLowerCase()));
+            }
+
+            const total = filtered.reduce((sum, t) => sum + Number(t["Transaction Amount"] || 0), 0);
+            const count = filtered.length;
+            toolResult = { total_amount: total, transaction_count: count, period: `${month || 'All'} ${year || 'All'}` };
+
+          } else if (name === "find_top_tithers") {
+            const limit = (args as any).limit || 5;
+            const year = (args as any).year;
+
+            let filtered = dataContext.titheListData as TitheRecordB[];
+            if (year) {
+              filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
+            }
+
+            // Group by member
+            const totals: Record<string, number> = {};
+            filtered.forEach(t => {
+              const id = String(t["Membership Number"]);
+              totals[id] = (totals[id] || 0) + Number(t["Transaction Amount"] || 0);
+            });
+
+            const sorted = Object.entries(totals)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, limit)
+              .map(([id, amount]) => ({ id, amount }));
+
+            toolResult = { top_tithers: sorted };
+          }
+
+          // Send tool result back to model
+          result = await chat.sendMessage([
+            {
+              functionResponse: {
+                name: name,
+                response: toolResult
+              }
+            }
+          ]);
+          response = await result.response;
+          functionCalls = response.functionCalls();
+        }
+
         const text = response.text();
 
         // Check for chart data in the response
@@ -233,6 +340,7 @@ export const useGeminiChat = (apiKey: string) => {
         }
 
         setChatHistory(prev => [...prev, { role: "model", parts: [{ text: cleanText }] }]);
+
       } catch (e: any) {
         console.error("Chat Error:", e);
         setError(e.message || "Failed to get a response.");
