@@ -23,7 +23,6 @@ import {
   ScanAssemblyModal,
 } from "../components/dashboard";
 import BatchImageProcessor from "../components/BatchImageProcessor";
-import ReportGenerator from "../components/ReportGenerator";
 
 interface DashboardSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -52,7 +51,6 @@ const DashboardSection: React.FC = () => {
 
   // Modals
   const batchProcessor = useModal("batchProcessor");
-  const reportGenerator = useModal("reportGenerator");
   const scanAssemblyModal = useModal("scanAssembly");
 
   // Image Scan State
@@ -66,9 +64,6 @@ const DashboardSection: React.FC = () => {
     batchProcessor.open();
   };
 
-  const handleGenerateReportClick = () => {
-    reportGenerator.open();
-  };
 
   // Chat Integration
   const {
@@ -342,7 +337,6 @@ const DashboardSection: React.FC = () => {
             onUploadClick={handleUploadClick}
             onScanClick={handleScanClick}
             onBatchScanClick={handleBatchScanClick}
-            onGenerateReportClick={handleGenerateReportClick}
             isDragOver={isDragOver}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -406,14 +400,6 @@ const DashboardSection: React.FC = () => {
         isProcessing={false} // Managed internally by component now or via context if needed
       />
 
-      {/* Report Generator Modal */}
-      <ReportGenerator
-        isOpen={reportGenerator.isOpen}
-        onClose={reportGenerator.close}
-        transactionLog={transactionLog}
-        memberDatabase={memberDatabase}
-        currentAssembly={selectedAssembly || undefined}
-      />
     </motion.div>
   );
 };

@@ -16,6 +16,13 @@ import {
 import Modal from './Modal';
 import Button from './Button';
 import { FileText, Download, Eye, AlertCircle, Calendar, User, BarChart } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface ReportGeneratorProps {
     isOpen: boolean;
@@ -231,20 +238,24 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Assembly {reportType !== 'annual' && '*'}
                         </label>
-                        <select
+                        <Select
                             value={selectedAssembly}
-                            onChange={e => {
-                                setSelectedAssembly(e.target.value);
+                            onValueChange={(value) => {
+                                setSelectedAssembly(value);
                                 setSelectedWeek('');
                                 setSelectedMember('');
                             }}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
                         >
-                            <option value="">{reportType === 'annual' ? 'All Assemblies' : 'Select Assembly'}</option>
-                            {assemblies.map(a => (
-                                <option key={a} value={a}>{a}</option>
-                            ))}
-                        </select>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder={reportType === 'annual' ? 'All Assemblies' : 'Select Assembly'} />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {reportType === 'annual' && <SelectItem value="all">All Assemblies</SelectItem>}
+                                {assemblies.map(a => (
+                                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Year Selection */}
@@ -252,15 +263,19 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Year
                         </label>
-                        <select
-                            value={selectedYear}
-                            onChange={e => setSelectedYear(Number(e.target.value))}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
+                        <Select
+                            value={selectedYear.toString()}
+                            onValueChange={(value) => setSelectedYear(Number(value))}
                         >
-                            {years.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Year" />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {years.map(y => (
+                                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
@@ -270,18 +285,22 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Month
                         </label>
-                        <select
+                        <Select
                             value={selectedMonth}
-                            onChange={e => {
-                                setSelectedMonth(e.target.value);
+                            onValueChange={(value) => {
+                                setSelectedMonth(value);
                                 setSelectedWeek('');
                             }}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
                         >
-                            {MONTHS.map(m => (
-                                <option key={m} value={m}>{m}</option>
-                            ))}
-                        </select>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Month" />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {MONTHS.map(m => (
+                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 )}
 
@@ -291,16 +310,16 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Week *
                         </label>
-                        <select
-                            value={selectedWeek}
-                            onChange={e => setSelectedWeek(e.target.value)}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
-                        >
-                            <option value="">Select Week</option>
-                            {availableWeeks.map(w => (
-                                <option key={w.date} value={w.date}>{w.date}</option>
-                            ))}
-                        </select>
+                        <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Week" />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {availableWeeks.map(w => (
+                                    <SelectItem key={w.date} value={w.date}>{w.date}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         {selectedAssembly && availableWeeks.length === 0 && (
                             <p className="text-xs text-amber-500 mt-1 flex items-center gap-1">
                                 <AlertCircle size={12} />
@@ -316,16 +335,16 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Member *
                         </label>
-                        <select
-                            value={selectedMember}
-                            onChange={e => setSelectedMember(e.target.value)}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
-                        >
-                            <option value="">Select Member</option>
-                            {members.slice(0, 100).map(m => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
-                            ))}
-                        </select>
+                        <Select value={selectedMember} onValueChange={setSelectedMember}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Member" />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {members.slice(0, 100).map(m => (
+                                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         {members.length > 100 && (
                             <p className="text-xs text-[var(--text-tertiary)] mt-1">
                                 Showing first 100 members. Search by member ID for others.

@@ -6,6 +6,7 @@ import {
   TrendingUp,
   LineChart,
   Download,
+  FileText,
 } from "lucide-react";
 import {
   Select,
@@ -27,6 +28,7 @@ import {
 } from "../lib/reportUtils";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { LiquidButton } from "../components/LiquidButton";
+import ReportGenerator from "../components/ReportGenerator";
 
 interface ReportsSectionProps {
   transactionLog: TransactionLogEntry[];
@@ -57,6 +59,7 @@ const ReportsSection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [processedData, setProcessedData] = useState<any>({});
   const [summary, setSummary] = useState<any>(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   const yearOptions = useMemo(() => {
     const years = new Set(Object.keys(processedData).map(Number));
@@ -169,9 +172,11 @@ const ReportsSection: React.FC = () => {
                 <SelectItem value="daily">Daily</SelectItem>
               </SelectContent>
             </Select>
-            <LiquidButton
-              onClick={handleDownloadCsv}
-            >
+            <LiquidButton onClick={() => setIsReportOpen(true)}>
+              <FileText size={16} className="mr-2" />
+              PDF Reports
+            </LiquidButton>
+            <LiquidButton onClick={handleDownloadCsv}>
               <Download size={16} className="mr-2" />
               Download CSV
             </LiquidButton>
@@ -261,8 +266,14 @@ const ReportsSection: React.FC = () => {
           </p>
         </div>
       )}
-    </div>
-  );
+      <ReportGenerator
+       isOpen={isReportOpen}
+       onClose={() => setIsReportOpen(false)}
+       transactionLog={transactionLog}
+       memberDatabase={memberDatabase}
+     />
+   </div>
+ );
 };
 
 export default ReportsSection;

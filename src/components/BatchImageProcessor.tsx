@@ -9,6 +9,13 @@ import { TitheRecordB } from '../types';
 import Modal from './Modal';
 import Button from './Button';
 import { Upload, X, FileImage, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface BatchImageProcessorProps {
     isOpen: boolean;
@@ -177,44 +184,46 @@ const BatchImageProcessor: React.FC<BatchImageProcessorProps> = ({
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Assembly *
                         </label>
-                        <select
-                            value={selectedAssembly}
-                            onChange={e => setSelectedAssembly(e.target.value)}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
-                        >
-                            <option value="">Select Assembly</option>
-                            {assemblies.map(a => (
-                                <option key={a} value={a}>{a}</option>
-                            ))}
-                        </select>
+                        <Select value={selectedAssembly} onValueChange={setSelectedAssembly}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Assembly" />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {assemblies.map(a => (
+                                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Month
                         </label>
-                        <select
-                            value={selectedMonth}
-                            onChange={e => setSelectedMonth(e.target.value)}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
-                        >
-                            {MONTHS.map(m => (
-                                <option key={m} value={m}>{m}</option>
-                            ))}
-                        </select>
+                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Month" />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {MONTHS.map(m => (
+                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             Week
                         </label>
-                        <select
-                            value={selectedWeek}
-                            onChange={e => setSelectedWeek(e.target.value)}
-                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none"
-                        >
-                            {WEEKS.map(w => (
-                                <option key={w} value={w}>{w}</option>
-                            ))}
-                        </select>
+                        <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Week" />
+                            </SelectTrigger>
+                            <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                {WEEKS.map(w => (
+                                    <SelectItem key={w} value={w}>{w}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
