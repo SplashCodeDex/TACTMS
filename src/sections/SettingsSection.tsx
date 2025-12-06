@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { MemberDatabase } from "../types";
-import { Trash2, AlertTriangle, Building2, Settings2, Info } from "lucide-react";
+import { Trash2, AlertTriangle, Building2, Settings2, Info, RotateCcw } from "lucide-react";
 import Button from "../components/Button";
 import { useAppConfigContext, useToast } from "../context";
+import { resetOrderFromMasterList } from "../services/memberOrderService";
 
 interface SettingsSectionProps {
     memberDatabase: MemberDatabase;
@@ -26,6 +27,33 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
     const handleThresholdChange = (value: number) => {
         setFuzzyMatchThreshold(value);
         addToast(`Fuzzy match threshold set to ${(value * 100).toFixed(0)}%`, "info", 2000);
+    };
+
+    // Reset Order State
+    const [resetAssembly, setResetAssembly] = useState<string>("");
+    const [resetConfirmText, setResetConfirmText] = useState("");
+    const [isResetting, setIsResetting] = useState(false);
+
+    const canReset = resetAssembly && resetConfirmText === resetAssembly;
+
+    const handleResetOrder = async () => {
+        if (!canReset) return;
+        const members = memberDatabase[resetAssembly]?.data || [];
+        if (members.length === 0) {
+            addToast("No members to reset", "error");
+            return;
+        }
+        setIsResetting(true);
+        try {
+            await resetOrderFromMasterList(members, resetAssembly);
+            addToast(`Order reset for ${resetAssembly}. ${members.length} members reordered.`, "success");
+            setResetAssembly("");
+            setResetConfirmText("");
+        } catch (error) {
+            addToast("Failed to reset order", "error");
+        } finally {
+            setIsResetting(false);
+        }
     };
 
     return (
@@ -176,6 +204,60 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
                             >
                                 Reset All Data
                             </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Reset Member Order */}
+                {dataAssemblies.length > 0 && (
+                    <div className="mt-8 pt-6 border-t border-[var(--border-color)]">
+                        <div className="flex items-center gap-2 mb-4">
+                            <RotateCcw size={20} className="text-amber-500" />
+                            <h4 className="font-medium text-[var(--text-primary)]">
+                                Reset Member Order
+                            </h4>
+                        </div>
+                        <p className="text-sm text-[var(--text-secondary)] mb-4">
+                            Reset member order to match the current master list sequence.
+                            This will overwrite any custom ordering you've set.
+                        </p>
+                        <div className="space-y-3">
+                            <select
+                                value={resetAssembly}
+                                onChange={(e) => {
+                                    setResetAssembly(e.target.value);
+                                    setResetConfirmText("");
+                                }}
+                                className="w-full px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)]"
+                            >
+                                <option value="">Select assembly...</option>
+                                {dataAssemblies.map((a) => (
+                                    <option key={a} value={a}>{a}</option>
+                                ))}
+                            </select>
+                            {resetAssembly && (
+                                <>
+                                    <p className="text-xs text-amber-500">
+                                        Type <strong>"{resetAssembly}"</strong> to confirm:
+                                    </p>
+                                    <input
+                                        type="text"
+                                        placeholder={`Type ${resetAssembly} to confirm`}
+                                        value={resetConfirmText}
+                                        onChange={(e) => setResetConfirmText(e.target.value)}
+                                        className="w-full px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)]"
+                                    />
+                                    <Button
+                                        variant="danger"
+                                        disabled={!canReset || isResetting}
+                                        isLoading={isResetting}
+                                        onClick={handleResetOrder}
+                                        leftIcon={<RotateCcw size={16} />}
+                                    >
+                                        Reset Order
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}

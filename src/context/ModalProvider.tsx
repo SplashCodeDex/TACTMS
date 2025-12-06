@@ -18,7 +18,8 @@ export type ModalKey =
   | "scanAssembly"
   | "addAssembly"
   | "memberReorder"
-  | "reorderFromImage";
+  | "reorderFromImage"
+  | "orderHistory";
 
 export type ModalPayloads = {
   fullPreview?: undefined;
@@ -38,6 +39,7 @@ export type ModalPayloads = {
   addAssembly?: undefined;
   memberReorder?: undefined;
   reorderFromImage?: undefined;
+  orderHistory?: undefined;
 };
 
 export type ModalState = {
@@ -73,6 +75,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     addAssembly: { isOpen: false },
     memberReorder: { isOpen: false },
     reorderFromImage: { isOpen: false },
+    orderHistory: { isOpen: false },
   });
 
   const openModal = useCallback<ModalContextValue["openModal"]>((key, payload) => {
