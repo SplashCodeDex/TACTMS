@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import {
     Camera,
     Sparkles,
-    UploadCloud,
     FilePlus,
     ArrowRight,
     Layers,
@@ -24,16 +23,9 @@ interface QuickActionsGridProps {
     assembliesWithData: Set<string>;
     memberDatabaseEmpty: boolean;
     onStartWeek: () => void;
-    onUploadClick: () => void;
     onScanClick: () => void;
     onBatchScanClick?: () => void;
-    isDragOver: boolean;
-    onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
-    onDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
-    onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
-    fileInputRef: React.RefObject<HTMLInputElement>;
     imageInputRef: React.RefObject<HTMLInputElement>;
-    onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -43,16 +35,9 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     assembliesWithData,
     memberDatabaseEmpty,
     onStartWeek,
-    onUploadClick,
     onScanClick,
     onBatchScanClick,
-    isDragOver,
-    onDragOver,
-    onDragLeave,
-    onDrop,
-    fileInputRef,
     imageInputRef,
-    onFileChange,
     onImageChange,
 }) => {
     return (
@@ -188,46 +173,6 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 
             </div>
 
-            {/* Drag and Drop Zone */}
-            <div
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onDrop={onDrop}
-                onClick={onUploadClick}
-                className={`p-8 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-center space-y-3 flex-grow cursor-pointer ${isDragOver
-                    ? "border-[var(--primary-accent-start)] bg-[var(--primary-accent-start)]/10"
-                    : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-subtle-accent)]"
-                    }`}
-                style={{ minHeight: "150px" }}
-            >
-                <div
-                    className={`p-4 rounded-full ${isDragOver ? "bg-[var(--primary-accent-start)]/20" : "bg-[var(--bg-elevated)]"}`}
-                >
-                    <UploadCloud
-                        size={32}
-                        className={
-                            isDragOver
-                                ? "text-[var(--primary-accent-start)]"
-                                : "text-[var(--text-muted)]"
-                        }
-                    />
-                </div>
-                <div>
-                    <p className="text-lg font-medium text-[var(--text-primary)]">
-                        {isDragOver ? "Drop file here" : "Drag & drop files here"}
-                    </p>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                        or click to browse
-                    </p>
-                </div>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={onFileChange}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
-            </div>
         </section>
     );
 };

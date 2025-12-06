@@ -438,3 +438,63 @@ export const findMemberByNameSync = (
 
   return bestMatch;
 };
+
+/**
+ * Get top N fuzzy matches for suggestions when no exact match is found.
+ * Returns candidates sorted by score in descending order.
+ */
+export const getTopFuzzyMatches = (
+  rawName: string,
+  masterData: MemberRecordA[],
+  topN: number = 3,
+  minScore: number = 0.3 // Lower threshold for suggestions
+): FuzzyMatchResult[] => {
+  if (!rawName || !masterData.length) return [];
+
+  const allMatches: FuzzyMatchResult[] = [];
+
+  for (const member of masterData) {
+    const firstName = (member["First Name"] || "").trim();
+    const surname = (member.Surname || "").trim();
+    const otherNames = (member["Other Names"] || "").trim();
+
+    const combinations = [
+      `${firstName} ${surname}`,
+      `${surname} ${firstName}`,
+      `${firstName} ${otherNames} ${surname}`,
+      `${surname} ${firstName} ${otherNames}`,
+      `${firstName} ${surname} ${otherNames}`,
+    ];
+
+    let bestScoreForMember = 0;
+    let bestCombo = "";
+
+    for (const nameCombo of combinations) {
+      const ocrResult = getOCRAwareSimilarity(rawName, nameCombo);
+      const tokenScore = getTokenSimilarity(rawName, nameCombo);
+      const score = Math.max(ocrResult.score, tokenScore);
+
+      if (score > bestScoreForMember) {
+        bestScoreForMember = score;
+        bestCombo = nameCombo;
+      }
+    }
+
+    if (bestScoreForMember >= minScore) {
+      const confidenceTier = bestScoreForMember >= OCR_CONFIDENCE_TIERS.HIGH ? 'high'
+        : bestScoreForMember >= OCR_CONFIDENCE_TIERS.MEDIUM ? 'medium' : 'low';
+
+      allMatches.push({
+        member,
+        score: bestScoreForMember,
+        matchedName: bestCombo,
+        confidenceTier,
+      });
+    }
+  }
+
+  // Sort by score descending and take top N
+  return allMatches
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN);
+};

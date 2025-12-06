@@ -1,7 +1,7 @@
 import React from "react";
 import { TitheRecordB } from "../types";
 import Button from "./Button";
-import { GripVertical, Trash2, Move } from "lucide-react";
+import { GripVertical, Trash2, Move, AlertTriangle, UserX } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { HighlightMatches } from "./HighlightMatches";
@@ -127,11 +127,30 @@ export const TitheRecordRow: React.FC<TitheRecordRowProps> = ({
     "Narration/Description",
   ];
 
+  // Detect row status from record data
+  const membershipNumber = String(record["Membership Number"] || "");
+  const narration = String(record["Narration/Description"] || "");
+
+  const isUnmatched = membershipNumber.startsWith("[UNMATCHED]");
+  const hasAnomaly = narration.startsWith("[ANOMALY:");
+
+  // Extract anomaly message if present
+  const anomalyMessage = hasAnomaly
+    ? narration.match(/\[ANOMALY: ([^\]]+)\]/)?.[1] || "Unusual amount detected"
+    : null;
+
+  // Determine row styling based on status
+  const statusClasses = isUnmatched
+    ? "bg-amber-50 dark:bg-amber-900/20 border-l-4 border-l-amber-500"
+    : hasAnomaly
+      ? "bg-purple-50 dark:bg-purple-900/20 border-l-4 border-l-purple-500"
+      : "";
+
   return (
     <tr
       ref={setNodeRef}
       style={style}
-      className={`${isSelected ? "selected-row" : ""} ${isDragging ? "shadow-lg bg-[var(--bg-card)]" : ""}`}
+      className={`${isSelected ? "selected-row" : ""} ${isDragging ? "shadow-lg bg-[var(--bg-card)]" : ""} ${statusClasses}`}
       id={`row-${record["No."]}`}
     >
       <td className="p-2 align-middle text-center">
@@ -153,6 +172,44 @@ export const TitheRecordRow: React.FC<TitheRecordRowProps> = ({
         />
       </td>
       <td className="p-2 align-middle text-xs text-center">{visualIndex}</td>
+      <td className="p-2 align-middle text-xs text-center">
+        {hasAnomaly && (
+          <div className="group relative inline-flex">
+            <AlertTriangle size={16} className="text-purple-600 dark:text-purple-400" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 p-2 bg-purple-50 dark:bg-purple-900/90 border border-purple-200 dark:border-purple-700 rounded-lg text-xs w-48 shadow-lg">
+              <p className="font-semibold text-purple-800 dark:text-purple-200">Anomaly Detected</p>
+              <p className="text-purple-700 dark:text-purple-300">{anomalyMessage}</p>
+            </div>
+          </div>
+        )}
+        {isUnmatched && (
+          <div className="group relative inline-flex">
+            <UserX size={16} className="text-amber-600 dark:text-amber-400" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 p-2 bg-amber-50 dark:bg-amber-900/90 border border-amber-200 dark:border-amber-700 rounded-lg text-xs w-64 shadow-lg">
+              <p className="font-semibold text-amber-800 dark:text-amber-200">Unmatched Member</p>
+              <p className="text-amber-700 dark:text-amber-300 mb-2">
+                OCR: {membershipNumber.replace("[UNMATCHED] ", "")}
+              </p>
+              {narration.includes("[SUGGESTIONS:") && (
+                <>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200 mt-2">Did you mean?</p>
+                  <ul className="text-amber-700 dark:text-amber-300 mt-1 space-y-1">
+                    {narration
+                      .match(/\[SUGGESTIONS: ([^\]]+)\]/)?.[1]
+                      ?.split("; ")
+                      .map((suggestion, idx) => (
+                        <li key={idx} className="flex items-center gap-1 text-xs">
+                          <span className="text-amber-500">•</span>
+                          {suggestion}
+                        </li>
+                      ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </td>
       {visibleTableHeaders.map((key) => (
         <td
           key={key}

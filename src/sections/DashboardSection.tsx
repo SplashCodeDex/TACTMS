@@ -26,7 +26,7 @@ import BatchImageProcessor from "@/components/BatchImageProcessor";
 import { processTitheImageWithValidation } from "@/services/imageProcessor";
 import { validateTitheBookImage, validateExtractedTitheData } from "@/services/imageValidator";
 import { sequencePages, detectDuplicatePages, mergeDuplicateExtractions } from "@/services/pageSequencer";
-import { findMemberByNameSync } from "@/services/reconciliation";
+import { findMemberByNameSync, getTopFuzzyMatches } from "@/services/reconciliation";
 import { validateAmount, buildMemberHistory } from "@/services/amountValidator";
 import PredictiveInsightsCard from "@/components/dashboard/PredictiveInsightsCard";
 
@@ -45,14 +45,11 @@ const DashboardSection: React.FC = () => {
     transactionLog = [],
     memberDatabase = {},
     onStartNewWeek,
-    onUploadFile,
     userProfile,
     onScanImage,
   } = useOutletContext<DashboardSectionProps>();
   const [selectedAssembly, setSelectedAssembly] = useState("");
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
@@ -95,25 +92,6 @@ const DashboardSection: React.FC = () => {
       initializeChat(currentTitheData, memberDatabase, currentAssembly);
     }
   }, [transactionLog, memberDatabase, initializeChat]);
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(false);
-    const file = event.dataTransfer.files?.[0] || null;
-    if (onUploadFile) {
-      onUploadFile(file, false);
-    }
-  };
 
   const stats = useMemo(() => {
     const currentMonth = new Date().getMonth();
@@ -212,18 +190,6 @@ const DashboardSection: React.FC = () => {
     if (selectedAssembly) {
       onStartNewWeek(selectedAssembly);
     }
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    if (onUploadFile) {
-      onUploadFile(file, false);
-    }
-    if (event.target) event.target.value = "";
   };
 
   const handleScanClick = () => {
@@ -393,10 +359,19 @@ const DashboardSection: React.FC = () => {
             }
           } else {
             unmatchedCount++;
-            // Keep raw OCR name but mark as unmatched
+            // Get top 3 fuzzy suggestions for unmatched names
+            const suggestions = getTopFuzzyMatches(rawName, assemblyMembers, 3);
+            const suggestionsList = suggestions
+              .map(s => `${s.member.Surname} ${s.member["First Name"]} (${Math.round(s.score * 100)}%)`)
+              .join("; ");
+
+            // Keep raw OCR name but mark as unmatched with suggestions
             resultRecord = {
               ...resultRecord,
-              "Membership Number": `[UNMATCHED] ${rawName}`
+              "Membership Number": `[UNMATCHED] ${rawName}`,
+              "Narration/Description": suggestions.length > 0
+                ? `[SUGGESTIONS: ${suggestionsList}] ${resultRecord["Narration/Description"] || ''}`
+                : resultRecord["Narration/Description"] || ''
             };
           }
 
@@ -486,16 +461,9 @@ const DashboardSection: React.FC = () => {
             assembliesWithData={assembliesWithData}
             memberDatabaseEmpty={Object.keys(memberDatabase).length === 0}
             onStartWeek={handleStartWeek}
-            onUploadClick={handleUploadClick}
             onScanClick={handleScanClick}
             onBatchScanClick={handleBatchScanClick}
-            isDragOver={isDragOver}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            fileInputRef={fileInputRef}
             imageInputRef={imageInputRef}
-            onFileChange={handleFileChange}
             onImageChange={handleImageUploadChange}
           />
         </motion.div>
