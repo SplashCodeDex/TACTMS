@@ -170,57 +170,55 @@ export const processTitheImageWithValidation = async (
                 }
                 throw new Error(`Failed to process image after ${maxRetries} attempts.`);
             }
-            throw new Error(`Failed to process image after ${maxRetries} attempts.`);
-        }
 
-        const delay = Math.pow(2, attempt - 1) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+            const delay = Math.pow(2, attempt - 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
     }
-}
 
-if (!result) throw new Error("Unexpected error: No result from AI model.");
+    if (!result) throw new Error("Unexpected error: No result from AI model.");
 
-try {
-    const jsonString = result.response.text().trim();
-    const rawResult: EnhancedRawExtraction = JSON.parse(jsonString);
+    try {
+        const jsonString = result.response.text().trim();
+        const rawResult: EnhancedRawExtraction = JSON.parse(jsonString);
 
-    // Count low confidence entries
-    let lowConfidenceCount = 0;
+        // Count low confidence entries
+        let lowConfidenceCount = 0;
 
-    // Map entries to TitheRecordB format
-    const entries: TitheRecordB[] = (rawResult.entries || []).map((item, index) => {
-        if (item.Confidence < LOW_CONFIDENCE_THRESHOLD) {
-            lowConfidenceCount++;
-        }
+        // Map entries to TitheRecordB format
+        const entries: TitheRecordB[] = (rawResult.entries || []).map((item, index) => {
+            if (item.Confidence < LOW_CONFIDENCE_THRESHOLD) {
+                lowConfidenceCount++;
+            }
 
-        // Clean the OCR name (basic trimming, though AI handles most)
-        const cleanedName = cleanOCRName(item.Name);
+            // Clean the OCR name (basic trimming, though AI handles most)
+            const cleanedName = cleanOCRName(item.Name);
+
+            return {
+                "No.": item["No."] || index + 1,
+                "Transaction Type": "Individual Tithe-[Income]",
+                "Payment Source Type": "Registered Member",
+                "Membership Number": cleanedName, // Placeholder for reconciliation
+                "Transaction Date ('DD-MMM-YYYY')": targetDateString,
+                "Currency": "GHS",
+                "Exchange Rate": 1,
+                "Payment Method": "Cash",
+                "Transaction Amount": item.Amount || 0,
+                "Narration/Description": `Tithe for ${targetDateString}`,
+                "Confidence": item.Confidence || 0.5
+            };
+        });
 
         return {
-            "No.": item["No."] || index + 1,
-            "Transaction Type": "Individual Tithe-[Income]",
-            "Payment Source Type": "Registered Member",
-            "Membership Number": cleanedName, // Placeholder for reconciliation
-            "Transaction Date ('DD-MMM-YYYY')": targetDateString,
-            "Currency": "GHS",
-            "Exchange Rate": 1,
-            "Payment Method": "Cash",
-            "Transaction Amount": item.Amount || 0,
-            "Narration/Description": `Tithe for ${targetDateString}`,
-            "Confidence": item.Confidence || 0.5
+            isValidTitheBook: rawResult.isValidTitheBook ?? true,
+            detectedYear: rawResult.detectedYear || null,
+            pageNumber: rawResult.pageNumber || null,
+            entries,
+            lowConfidenceCount
         };
-    });
 
-    return {
-        isValidTitheBook: rawResult.isValidTitheBook ?? true,
-        detectedYear: rawResult.detectedYear || null,
-        pageNumber: rawResult.pageNumber || null,
-        entries,
-        lowConfidenceCount
-    };
-
-} catch (error) {
-    console.error("Error parsing Gemini response:", error);
-    throw new Error("Failed to parse AI response. The image might be too blurry or contain unexpected data.");
-}
+    } catch (error) {
+        console.error("Error parsing Gemini response:", error);
+        throw new Error("Failed to parse AI response. The image might be too blurry or contain unexpected data.");
+    }
 };
