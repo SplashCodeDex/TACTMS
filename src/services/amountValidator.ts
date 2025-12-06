@@ -9,13 +9,14 @@ export interface AmountValidation {
     originalAmount: number;
     suggestedAmount?: number;
     confidence: number;
-    reason: 'ocr_artifact' | 'unusual_high' | 'unusual_low' | 'valid';
+    reason: 'ocr_artifact' | 'unusual_high' | 'unusual_low' | 'anomaly' | 'valid';
     message?: string;
 }
 
 export interface MemberTitheHistory {
     memberId: string;
     averageAmount: number;
+    standardDeviation: number; // For 2σ anomaly detection
     minAmount: number;
     maxAmount: number;
     lastAmount: number;
@@ -75,10 +76,24 @@ export const validateAmount = (
 
     // If we have member history, check against their typical range
     if (memberHistory && memberHistory.occurrences >= 3) {
-        const { averageAmount, minAmount, maxAmount } = memberHistory;
-        // const tolerance = Math.max(averageAmount * 0.5, 50); // Unused
+        const { averageAmount, standardDeviation, minAmount, maxAmount } = memberHistory;
 
-        // Check for unusually high amount
+        // Statistical anomaly detection: flag amounts >2σ from average
+        if (standardDeviation > 0 && numAmount > 0) {
+            const zScore = Math.abs(numAmount - averageAmount) / standardDeviation;
+            if (zScore > 2) {
+                const direction = numAmount > averageAmount ? 'higher' : 'lower';
+                return {
+                    originalAmount: numAmount,
+                    suggestedAmount: Math.round(averageAmount),
+                    confidence: 0.7,
+                    reason: 'anomaly',
+                    message: `Amount is ${zScore.toFixed(1)}σ ${direction} than average (GHS ${averageAmount})`
+                };
+            }
+        }
+
+        // Fallback: Check for unusually high amount (3x max)
         if (numAmount > maxAmount * 3) {
             return {
                 originalAmount: numAmount,
@@ -89,7 +104,7 @@ export const validateAmount = (
             };
         }
 
-        // Check for unusually low amount (but not zero - zero is valid for "didn't tithe")
+        // Fallback: Check for unusually low amount (but not zero - zero is valid for "didn't tithe")
         if (numAmount > 0 && numAmount < minAmount * 0.3 && minAmount > 10) {
             return {
                 originalAmount: numAmount,
@@ -135,9 +150,17 @@ export const buildMemberHistory = (
 
     if (amounts.length === 0) return null;
 
+    const averageAmount = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+
+    // Calculate standard deviation for anomaly detection
+    const squaredDiffs = amounts.map(amount => Math.pow(amount - averageAmount, 2));
+    const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / amounts.length;
+    const standardDeviation = Math.sqrt(avgSquaredDiff);
+
     return {
         memberId,
-        averageAmount: Math.round(amounts.reduce((a, b) => a + b, 0) / amounts.length),
+        averageAmount: Math.round(averageAmount),
+        standardDeviation: Math.round(standardDeviation),
         minAmount: Math.min(...amounts),
         maxAmount: Math.max(...amounts),
         lastAmount: amounts[amounts.length - 1],
@@ -181,6 +204,8 @@ export const getValidationBadgeStyle = (validation: AmountValidation): {
             return { className: 'bg-green-100 text-green-800', icon: 'check' };
         case 'ocr_artifact':
             return { className: 'bg-red-100 text-red-800', icon: 'alert' };
+        case 'anomaly':
+            return { className: 'bg-purple-100 text-purple-800', icon: 'warning' };
         case 'unusual_high':
         case 'unusual_low':
             return { className: 'bg-yellow-100 text-yellow-800', icon: 'warning' };

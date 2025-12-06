@@ -555,10 +555,6 @@ export const processTitheImageWithValidation = async (
 
         // Map entries to TitheRecordB format
         const entries: TitheRecordB[] = (rawResult.entries || []).map((item, index) => {
-            if (item.Confidence < LOW_CONFIDENCE_THRESHOLD) {
-                lowConfidenceCount++;
-            }
-
             // Clean the OCR name (basic trimming, though AI handles most)
             const cleanedName = cleanOCRName(item.Name);
 
@@ -573,7 +569,7 @@ export const processTitheImageWithValidation = async (
                 "Payment Method": "Cash",
                 "Transaction Amount": item.Amount || 0,
                 "Narration/Description": `Tithe for ${targetDateString}`,
-                "Confidence": item.Confidence || 0.5
+                "Confidence": 0.5 // Default confidence - matching was already removed per user feedback
             };
         });
 

@@ -25,6 +25,9 @@ import {
 import BatchImageProcessor from "@/components/BatchImageProcessor";
 import { processTitheImageWithValidation } from "@/services/imageProcessor";
 import { validateTitheBookImage, validateExtractedTitheData } from "@/services/imageValidator";
+import { sequencePages, detectDuplicatePages, mergeDuplicateExtractions } from "@/services/pageSequencer";
+import { findMemberByNameSync } from "@/services/reconciliation";
+import { validateAmount, buildMemberHistory } from "@/services/amountValidator";
 import PredictiveInsightsCard from "@/components/dashboard/PredictiveInsightsCard";
 
 interface DashboardSectionProps {
@@ -251,7 +254,7 @@ const DashboardSection: React.FC = () => {
     setPendingScanFile(null);
   };
 
-  // Batch Image Processing Handler
+  // Batch Image Processing Handler with Multi-Page Stitching
   const handleBatchProcess = async (
     files: File[],
     _assembly: string,
@@ -263,7 +266,9 @@ const DashboardSection: React.FC = () => {
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
       const dateStr = new Date().toDateString();
-      const results: TitheRecordB[] = [];
+
+      // Collect extractions as separate arrays for intelligent merging
+      const pageExtractions: TitheRecordB[][] = [];
 
       let completed = 0;
       const total = files.length;
@@ -297,7 +302,11 @@ const DashboardSection: React.FC = () => {
             console.warn("Extracted data failed structural validation");
           }
 
-          results.push(...extraction.entries);
+          // Store each extraction separately for intelligent merging
+          if (extraction.entries.length > 0) {
+            pageExtractions.push(extraction.entries);
+          }
+
           completed += 1;
           onProgress?.(completed, total);
         } catch (err) {
@@ -305,7 +314,103 @@ const DashboardSection: React.FC = () => {
         }
       }
 
-      return results;
+      // Use page sequencer to intelligently merge multi-page extractions
+      if (pageExtractions.length === 0) {
+        return [];
+      }
+
+      if (pageExtractions.length === 1) {
+        return pageExtractions[0];
+      }
+
+      // Detect duplicate pages first
+      const duplicateInfo = detectDuplicatePages(pageExtractions);
+
+      // Merge duplicate extractions if found
+      let processedExtractions = [...pageExtractions];
+      if (duplicateInfo.duplicateGroups.length > 0) {
+        console.info(`Detected ${duplicateInfo.duplicateGroups.length} duplicate page groups`);
+
+        // Replace duplicate groups with merged versions
+        for (const group of duplicateInfo.duplicateGroups) {
+          const merged = mergeDuplicateExtractions(pageExtractions, group);
+          // Replace first in group with merged, mark others as processed
+          processedExtractions[group[0]] = merged;
+        }
+
+        // Keep only unique pages (first of each duplicate group)
+        processedExtractions = duplicateInfo.unique.map(idx => processedExtractions[idx]);
+      }
+
+      // Sequence and merge the pages intelligently
+      const sequenceResult = sequencePages(processedExtractions);
+
+      console.info(
+        `Page sequencing complete: ${sequenceResult.merged.length} entries, ` +
+        `${sequenceResult.duplicatesRemoved} duplicates removed, ` +
+        `${sequenceResult.gapsDetected.length} gaps detected`
+      );
+
+      if (sequenceResult.gapsDetected.length > 0) {
+        console.warn(`Gap detected after member numbers: ${sequenceResult.gapsDetected.join(", ")}`);
+      }
+
+      // Match extracted names against assembly member database
+      const assemblyMembers = memberDatabase[_assembly]?.data || [];
+      if (assemblyMembers.length > 0) {
+        let matchedCount = 0;
+        let unmatchedCount = 0;
+        let anomalyCount = 0;
+
+        const matchedResults = sequenceResult.merged.map(record => {
+          const rawName = record["Membership Number"]; // This contains the OCR-extracted name
+          const match = findMemberByNameSync(rawName, assemblyMembers);
+
+          let resultRecord = { ...record };
+
+          if (match) {
+            matchedCount++;
+            // Format matched member ID like ImageVerificationModal does
+            const memberId = `${match.member.Surname} ${match.member["First Name"]} ${match.member["Other Names"] || ""} (${match.member["Membership Number"]}|${match.member["Old Membership Number"] || ""})`.trim();
+            resultRecord = {
+              ...resultRecord,
+              "Membership Number": memberId,
+              memberDetails: match.member
+            };
+
+            // Validate amount against member's history (anomaly detection)
+            const memberHistory = buildMemberHistory(memberId, transactionLog);
+            if (memberHistory) {
+              const amountValidation = validateAmount(record["Transaction Amount"], memberHistory);
+              if (amountValidation.reason === 'anomaly' || amountValidation.reason === 'unusual_high' || amountValidation.reason === 'unusual_low') {
+                anomalyCount++;
+                // Add anomaly warning to the record
+                resultRecord = {
+                  ...resultRecord,
+                  "Narration/Description": `[ANOMALY: ${amountValidation.message}] ${resultRecord["Narration/Description"] || ''}`
+                };
+              }
+            }
+          } else {
+            unmatchedCount++;
+            // Keep raw OCR name but mark as unmatched
+            resultRecord = {
+              ...resultRecord,
+              "Membership Number": `[UNMATCHED] ${rawName}`
+            };
+          }
+
+          return resultRecord;
+        });
+
+        console.info(
+          `Batch processing: ${matchedCount} matched, ${unmatchedCount} unmatched, ` +
+          `${anomalyCount} anomalies detected out of ${sequenceResult.merged.length}`
+        );
+        return matchedResults;
+      }
+
+      return sequenceResult.merged;
     } finally {
       setIsBatchProcessing(false);
     }
