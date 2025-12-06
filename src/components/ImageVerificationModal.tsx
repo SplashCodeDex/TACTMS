@@ -6,6 +6,7 @@ import { validateAmount, AmountValidation } from "@/services/amountValidator";
 import Button from "./Button";
 import { Check, AlertTriangle, AlertCircle } from "lucide-react";
 import MemberSelect from "./MemberSelect";
+import ParsingIndicator from "./ParsingIndicator";
 
 interface ImageVerificationModalProps {
     isOpen: boolean;
@@ -122,84 +123,86 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     names to your membership list. Confirm or correct the matches below.
                 </p>
 
-                {isProcessing ? (
-                    <div className="text-center py-8">Processing matches...</div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-text-secondary uppercase bg-hover-bg">
-                                <tr>
-                                    <th className="px-4 py-2">Extracted Name</th>
-                                    <th className="px-4 py-2">Amount</th>
-                                    <th className="px-4 py-2">AI Conf.</th>
-                                    <th className="px-4 py-2">Matched Member</th>
-                                    <th className="px-4 py-2">Match Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((row) => (
-                                    <tr key={row.id} className="border-b border-border-color">
-                                        <td className="px-4 py-2 font-medium">
-                                            {row.extractedRecord["Membership Number"]}
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <div className="flex items-center gap-2">
-                                                <span>{row.extractedRecord["Transaction Amount"]}</span>
-                                                {row.amountWarning && (
-                                                    <div className="group relative">
-                                                        <AlertCircle size={14} className="text-yellow-500 cursor-help" />
-                                                        <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-10 p-2 bg-yellow-50 dark:bg-yellow-900/90 border border-yellow-200 dark:border-yellow-700 rounded-lg text-xs w-48">
-                                                            <p className="text-yellow-800 dark:text-yellow-200">{row.amountWarning.message}</p>
-                                                            {row.amountWarning.suggestedAmount && (
-                                                                <p className="mt-1 font-medium">Suggested: GHS {row.amountWarning.suggestedAmount}</p>
-                                                            )}
-                                                        </div>
+                <ParsingIndicator
+                    isOpen={isProcessing}
+                    message="Verifying members..."
+                    subMessage="The AI is cross-referencing names with your database."
+                />
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-text-secondary uppercase bg-hover-bg">
+                            <tr>
+                                <th className="px-4 py-2">Extracted Name</th>
+                                <th className="px-4 py-2">Amount</th>
+                                <th className="px-4 py-2">AI Conf.</th>
+                                <th className="px-4 py-2">Matched Member</th>
+                                <th className="px-4 py-2">Match Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row) => (
+                                <tr key={row.id} className="border-b border-border-color">
+                                    <td className="px-4 py-2 font-medium">
+                                        {row.extractedRecord["Membership Number"]}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <div className="flex items-center gap-2">
+                                            <span>{row.extractedRecord["Transaction Amount"]}</span>
+                                            {row.amountWarning && (
+                                                <div className="group relative">
+                                                    <AlertCircle size={14} className="text-yellow-500 cursor-help" />
+                                                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-10 p-2 bg-yellow-50 dark:bg-yellow-900/90 border border-yellow-200 dark:border-yellow-700 rounded-lg text-xs w-48">
+                                                        <p className="text-yellow-800 dark:text-yellow-200">{row.amountWarning.message}</p>
+                                                        {row.amountWarning.suggestedAmount && (
+                                                            <p className="mt-1 font-medium">Suggested: GHS {row.amountWarning.suggestedAmount}</p>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <span
-                                                className={`px-2 py-1 rounded text-xs ${getConfidenceBadgeClass(row.aiConfidence)}`}
-                                            >
-                                                {Math.round(row.aiConfidence * 100)}%
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <MemberSelect
-                                                currentMember={row.matchedMember}
-                                                onSelect={(m) => handleMemberSelect(row.id, m)}
-                                                masterData={masterData}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            {row.matchedMember ? (
-                                                <div className="flex items-center gap-1 text-green-500">
-                                                    <Check size={14} />
-                                                    <span>
-                                                        {row.manualOverride
-                                                            ? "Manual"
-                                                            : `${Math.round(row.matchConfidence * 100)}%`}
-                                                    </span>
-                                                    {row.matchSource === 'ai_semantic' && (
-                                                        <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-800 text-[10px] rounded border border-purple-200">
-                                                            AI Match
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-1 text-yellow-500">
-                                                    <AlertTriangle size={14} />
-                                                    <span>No Match</span>
                                                 </div>
                                             )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <span
+                                            className={`px-2 py-1 rounded text-xs ${getConfidenceBadgeClass(row.aiConfidence)}`}
+                                        >
+                                            {Math.round(row.aiConfidence * 100)}%
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <MemberSelect
+                                            currentMember={row.matchedMember}
+                                            onSelect={(m) => handleMemberSelect(row.id, m)}
+                                            masterData={masterData}
+                                        />
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        {row.matchedMember ? (
+                                            <div className="flex items-center gap-1 text-green-500">
+                                                <Check size={14} />
+                                                <span>
+                                                    {row.manualOverride
+                                                        ? "Manual"
+                                                        : `${Math.round(row.matchConfidence * 100)}%`}
+                                                </span>
+                                                {row.matchSource === 'ai_semantic' && (
+                                                    <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-800 text-[10px] rounded border border-purple-200">
+                                                        AI Match
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-1 text-yellow-500">
+                                                <AlertTriangle size={14} />
+                                                <span>No Match</span>
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
         </Modal>
     );
