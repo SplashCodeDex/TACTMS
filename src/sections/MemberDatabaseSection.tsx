@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "../components/Button";
 import Checkbox from "../components/Checkbox";
@@ -11,9 +11,8 @@ import { useModal } from "../hooks/useModal";
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
   onUploadMasterList: (
-    file: File | null,
-    isMasterList: boolean,
-    assemblyName?: string,
+    file: File,
+    assemblyName: string,
   ) => void;
   onCreateTitheList: (
     selectedMembers: MemberRecordA[],
@@ -36,8 +35,9 @@ const MemberDatabaseSection: React.FC = () => {
     addToast,
     onAddAssembly,
   } = useOutletContext<MemberDatabaseSectionProps>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(
-    Object.keys(memberDatabase)[0] || null,
+    Object.keys(memberDatabase).filter((k) => k !== "true")[0] || null,
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<MemberRecordA[]>([]);
@@ -65,7 +65,7 @@ const MemberDatabaseSection: React.FC = () => {
   ) => {
     const file = event.target.files?.[0];
     if (file) {
-      onUploadMasterList(file, true, assemblyName);
+      onUploadMasterList(file, assemblyName);
     }
   };
 
@@ -278,30 +278,22 @@ const MemberDatabaseSection: React.FC = () => {
 
 
 
-              {(() => {
-                const inputId = `upload-${selectedAssembly?.replace(/\s+/g, "-") || "assembly"}`;
-                return (
-                  <>
-                    <input
-                      id={inputId}
-                      type="file"
-                      accept=".xlsx, .xls"
-                      onChange={(e) => selectedAssembly && handleFileChange(e, selectedAssembly)}
-                      className="hidden"
-                      disabled={selectedAssembly === "ALL MEMBERS"}
-                    />
-                    <label htmlFor={inputId} className="cursor-pointer">
-                      <Button
-                        variant="primary"
-                        leftIcon={<Upload size={16} />}
-                        disabled={selectedAssembly === "ALL MEMBERS"}
-                      >
-                        Update Members List
-                      </Button>
-                    </label>
-                  </>
-                );
-              })()}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={(e) => selectedAssembly && handleFileChange(e, selectedAssembly)}
+                className="hidden"
+                disabled={selectedAssembly === "ALL MEMBERS"}
+              />
+              <Button
+                variant="primary"
+                leftIcon={<Upload size={16} />}
+                disabled={selectedAssembly === "ALL MEMBERS"}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Update Members List
+              </Button>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -495,7 +487,7 @@ const MemberDatabaseSection: React.FC = () => {
           onAddAssembly?.(name);
           if (file) {
             // Upload the file for this new assembly
-            onUploadMasterList(file, true, name);
+            onUploadMasterList(file, name);
           }
           addAssemblyModal.close();
         }}

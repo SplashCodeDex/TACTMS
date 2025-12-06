@@ -7,7 +7,7 @@ interface UpdateMasterListConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  existingData: MasterListData;
+  existingData?: MasterListData;
   pendingUpdate: PendingMasterListUpdate;
 }
 
@@ -27,7 +27,7 @@ const UpdateMasterListConfirmModal: React.FC<
         <div className="flex justify-around p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">Existing Records</p>
-            <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{existingData.data.length}</p>
+            <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{existingData?.data?.length ?? 0}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">New Records</p>

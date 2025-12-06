@@ -367,6 +367,18 @@ const App: React.FC = () => {
     }
   }, [memberDatabase, addToast]);
 
+  // Cleanup: Remove any accidental "true" assembly keys created by earlier uploads
+  useEffect(() => {
+    if ((memberDatabase as any)?.true) {
+      setMemberDatabase((prev) => {
+        const copy: any = { ...prev };
+        delete copy.true;
+        return copy;
+      });
+      addToast("Cleaned up an invalid 'true' assembly entry from the database.", "info");
+    }
+  }, [memberDatabase, setMemberDatabase, addToast]);
+
   // accent color persistence handled by useThemePreferences()
 
 
