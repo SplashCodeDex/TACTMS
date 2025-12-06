@@ -4,6 +4,7 @@ import { Trash2, AlertTriangle, Building2, Settings2, Info, RotateCcw } from "lu
 import Button from "../components/Button";
 import { useAppConfigContext, useToast } from "../context";
 import { resetOrderFromMasterList } from "../services/memberOrderService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SettingsSectionProps {
     memberDatabase: MemberDatabase;
@@ -222,19 +223,22 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
                             This will overwrite any custom ordering you've set.
                         </p>
                         <div className="space-y-3">
-                            <select
+                            <Select
                                 value={resetAssembly}
-                                onChange={(e) => {
-                                    setResetAssembly(e.target.value);
+                                onValueChange={(value) => {
+                                    setResetAssembly(value);
                                     setResetConfirmText("");
                                 }}
-                                className="w-full px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)]"
                             >
-                                <option value="">Select assembly...</option>
-                                {dataAssemblies.map((a) => (
-                                    <option key={a} value={a}>{a}</option>
-                                ))}
-                            </select>
+                                <SelectTrigger className="w-full border-[var(--border-color)] bg-[var(--bg-elevated)]">
+                                    <SelectValue placeholder="Select assembly..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[var(--bg-elevated)] border-[var(--border-color)]">
+                                    {dataAssemblies.map((a) => (
+                                        <SelectItem key={a} value={a}>{a}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             {resetAssembly && (
                                 <>
                                     <p className="text-xs text-amber-500">

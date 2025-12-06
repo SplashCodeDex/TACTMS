@@ -7,6 +7,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, AlertCircle, FileSpreadsheet, Plus } from 'lucide-react';
 import Modal from './Modal';
 import Button from './Button';
+import { DEFAULT_ASSEMBLIES } from '@/context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface AddAssemblyModalProps {
     isOpen: boolean;
@@ -121,17 +123,42 @@ const AddAssemblyModal: React.FC<AddAssemblyModalProps> = ({
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Assembly Name *
                     </label>
-                    <input
-                        type="text"
-                        value={assemblyName}
-                        onChange={(e) => {
-                            setAssemblyName(e.target.value);
-                            if (error) setError('');
-                        }}
-                        placeholder="e.g., Central Assembly"
-                        className="w-full px-4 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none transition-all"
-                        autoFocus
-                    />
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={assemblyName}
+                            onChange={(e) => {
+                                setAssemblyName(e.target.value);
+                                if (error) setError('');
+                            }}
+                            placeholder="e.g., Central Assembly"
+                            className="flex-1 px-4 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] focus:ring-2 focus:ring-[var(--primary-accent-start)] outline-none transition-all"
+                            autoFocus
+                        />
+                        <Select
+                            value=""
+                            onValueChange={(value) => {
+                                if (value) {
+                                    setAssemblyName(value);
+                                    if (error) setError('');
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="w-[140px] border-[var(--border-color)] bg-[var(--bg-elevated)]">
+                                <SelectValue placeholder="Quick Select" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[var(--bg-elevated)] border-[var(--border-color)]">
+                                {DEFAULT_ASSEMBLIES.filter(a => !existingAssemblies.includes(a)).map((assembly) => (
+                                    <SelectItem key={assembly} value={assembly}>
+                                        {assembly}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">
+                        Select from defaults or type a custom name
+                    </p>
                 </div>
 
                 <div>
