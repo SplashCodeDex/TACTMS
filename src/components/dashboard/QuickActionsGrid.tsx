@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
     Camera,
@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import Button from "../Button";
-import { useAppConfigContext } from "../../context";
+import { useAppConfigContext, DEFAULT_ASSEMBLIES } from "../../context";
 
 interface QuickActionsGridProps {
     selectedAssembly: string;
@@ -41,6 +41,14 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     onImageChange,
 }) => {
     const { assemblies } = useAppConfigContext();
+
+    // Filter assemblies: show defaults (even if no data) + custom assemblies WITH data
+    const filteredAssemblies = useMemo(() => {
+        const defaultSet = new Set(DEFAULT_ASSEMBLIES);
+        return assemblies.filter(assembly =>
+            defaultSet.has(assembly) || assembliesWithData.has(assembly)
+        );
+    }, [assemblies, assembliesWithData]);
 
     return (
         <section className="lg:col-span-2 content-card flex flex-col h-full gap-6">
@@ -81,7 +89,7 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
                                     <SelectValue placeholder="-- Select Assembly --" />
                                 </SelectTrigger>
                                 <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
-                                    {assemblies.map((assembly) => (
+                                    {filteredAssemblies.map((assembly) => (
                                         <SelectItem
                                             key={assembly}
                                             value={assembly}
