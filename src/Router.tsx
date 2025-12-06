@@ -2,9 +2,9 @@ import React, { Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
 import { useOutletContext } from "react-router-dom";
-import LoadingSpinner from "./components/LoadingSpinner";
-import NotFound from "./components/NotFound";
-import ErrorElement from "./components/ErrorElement";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import NotFound from "@/components/NotFound";
+import ErrorElement from "@/components/ErrorElement";
 
 // Lazy-loaded sections from App.tsx
 const DashboardSection = React.lazy(

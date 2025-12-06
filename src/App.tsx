@@ -14,52 +14,51 @@ import {
   MembershipReconciliationReport,
   TransactionLogEntry,
 } from "./types";
-import Button from "./components/Button";
+import Button from "@/components/Button";
 import { Toaster } from "@/components/ui/sonner";
-import Modal from "./components/Modal";
+import Modal from "@/components/Modal";
 import {
   ITEMS_PER_FULL_PREVIEW_PAGE,
   DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
-  MEMBER_DATABASE_STORAGE_KEY,
-} from "./constants";
-import AmountEntryModal from "./components/AmountEntryModal";
-import AssemblySelectionModal from "./components/AssemblySelectionModal";
-import MembershipReconciliationModal from "./components/MembershipReconciliationModal";
-import ClearWorkspaceModal from "./components/ClearWorkspaceModal";
-import UpdateMasterListConfirmModal from "./components/UpdateMasterListConfirmModal";
-import EditMemberModal from "./components/EditMemberModal";
-import MobileHeader from "./components/MobileHeader";
-import DesktopNotifications from "./components/DesktopNotifications";
-import ValidationReportModal from "./components/ValidationReportModal";
-import CommandPalette from "./components/CommandPalette";
-import ParsingIndicator from "./components/ParsingIndicator";
-import { useGemini } from "./hooks/useGemini";
-import { usePWAFeatures } from "./hooks/usePWAFeatures";
-import { useGoogleDriveSync } from "./hooks/useGoogleDriveSync";
-import Sidebar from "./components/Sidebar";
-import FullTithePreviewModal from "./components/FullTithePreviewModal";
-import AddNewMemberModal from "./components/AddNewMemberModal";
-import CreateTitheListModal from "./components/CreateTitheListModal";
-import ImageVerificationModal from "./components/ImageVerificationModal";
+ } from "./constants";
+import AmountEntryModal from "@/components/AmountEntryModal";
+import AssemblySelectionModal from "@/components/AssemblySelectionModal";
+import MembershipReconciliationModal from "@/components/MembershipReconciliationModal";
+import ClearWorkspaceModal from "@/components/ClearWorkspaceModal";
+import UpdateMasterListConfirmModal from "@/components/UpdateMasterListConfirmModal";
+import EditMemberModal from "@/components/EditMemberModal";
+import MobileHeader from "@/components/MobileHeader";
+import DesktopNotifications from "@/components/DesktopNotifications";
+import ValidationReportModal from "@/components/ValidationReportModal";
+import CommandPalette from "@/components/CommandPalette";
+import ParsingIndicator from "@/components/ParsingIndicator";
+import { useGemini } from "@/hooks/useGemini";
+import { usePWAFeatures } from "@/hooks/usePWAFeatures";
+import { useGoogleDriveSync } from "@/hooks/useGoogleDriveSync";
+import Sidebar from "@/components/Sidebar";
+import FullTithePreviewModal from "@/components/FullTithePreviewModal";
+import AddNewMemberModal from "@/components/AddNewMemberModal";
+import CreateTitheListModal from "@/components/CreateTitheListModal";
+import ImageVerificationModal from "@/components/ImageVerificationModal";
 import { WifiOff, Save, Trash2 } from "lucide-react";
-import { parseExcelFile, detectExcelFileType } from "./lib/excelUtils";
-import { useThemePreferences } from "./hooks/useThemePreferences";
-import { useOnlineStatus } from "./hooks/useOnlineStatus";
-import { useCommandPaletteHotkeys } from "./hooks/useCommandPaletteHotkeys";
-import { useModalsPhase2 as useModals } from "./hooks/useModals";
-import { useModal } from "./hooks/useModal";
+import { parseExcelFile, detectExcelFileType } from "@/lib/excelUtils";
+import { useThemePreferences } from "@/hooks/useThemePreferences";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useCommandPaletteHotkeys } from "@/hooks/useCommandPaletteHotkeys";
+import { useModalsPhase2 as useModals } from "@/hooks/useModals";
+import { useModal } from "@/hooks/useModal";
 // Context hooks - shared state across app
-import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext } from "./context";
+import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext } from "@/context";
 import { useFavorites } from "./hooks/useFavorites";
 // import { useTitheProcessor } from "./hooks/useTitheProcessor"; // Commented pending component migration
 import {
   createTitheList,
   reconcileMembers,
   filterMembersByAge,
-} from "./services/excelProcessor";
-import { exportToExcel } from "./lib/excelUtils";
-import { formatDateDDMMMYYYY, calculateSundayDate, getMostRecentSunday } from "./lib/dataTransforms";
-import { analyticsService } from "./services/AnalyticsService";
+} from "@/services/excelProcessor";
+import { exportToExcel } from "@/lib/excelUtils";
+import { formatDateDDMMMYYYY, calculateSundayDate, getMostRecentSunday } from "@/lib/dataTransforms";
+import { analyticsService } from "@/services/AnalyticsService";
 
 interface PendingData {
   data: MemberRecordA[];
@@ -355,17 +354,6 @@ const App: React.FC = () => {
     );
   }, [theme]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        MEMBER_DATABASE_STORAGE_KEY,
-        JSON.stringify(memberDatabase),
-      );
-    } catch (e) {
-      console.error("Failed to save member database:", e);
-      addToast("Storage quota exceeded. Some data may not be persisted locally.", "warning", 5000);
-    }
-  }, [memberDatabase, addToast]);
 
   // Cleanup: Remove any accidental "true" assembly keys created by earlier uploads
   useEffect(() => {

@@ -9,7 +9,7 @@ import Modal from "@/components/Modal";
 import Button from "@/components/Button";
 import { generateReport, ReportType, GeneratedReport } from "@/services/reportGenerator";
 import { TransactionLogEntry, MemberDatabase } from "@/types";
-import { ASSEMBLIES } from "@/constants";
+import { useAppConfigContext } from "@/context";
 
 interface ReportGeneratorModalProps {
     isOpen: boolean;
@@ -77,6 +77,8 @@ const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
         URL.revokeObjectURL(url);
     };
 
+    const { assemblies } = useAppConfigContext();
+
     return (
         <Modal
             isOpen={isOpen}
@@ -118,7 +120,7 @@ const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
                         className="w-full p-3 rounded-xl bg-hover-bg border border-border-color text-text-primary"
                     >
                         <option value="all">All Assemblies</option>
-                        {ASSEMBLIES.map(asm => (
+                        {assemblies.map(asm => (
                             <option key={asm} value={asm}>{asm}</option>
                         ))}
                     </select>

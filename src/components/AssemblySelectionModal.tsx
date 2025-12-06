@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import Modal from "./Modal";
-import Button from "./Button";
-import { ASSEMBLIES } from "../constants";
+import Modal from "@/components/Modal";
+import Button from "@/components/Button";
+import { useAppConfigContext } from "@/context";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
+} from "@/components/ui/select";
 
 interface AssemblySelectionModalProps {
   isOpen: boolean;
@@ -38,6 +38,8 @@ const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({
       onConfirm(selectedAssembly);
     }
   };
+
+  const { assemblies } = useAppConfigContext();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Select Assembly">
@@ -90,7 +92,7 @@ const AssemblySelectionModal: React.FC<AssemblySelectionModalProps> = ({
               <SelectValue placeholder="-- Choose an assembly --" />
             </SelectTrigger>
             <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl shadow-xl max-h-[300px]">
-              {ASSEMBLIES.map((assembly) => (
+              {assemblies.map((assembly) => (
                 <SelectItem
                   key={assembly}
                   value={assembly}

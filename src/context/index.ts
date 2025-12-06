@@ -22,3 +22,6 @@ export type { AppConfigContextValue } from "./AppConfigProvider";
 // Modal Management (existing)
 export { ModalProvider, useModalContext } from "./ModalProvider";
 export type { ModalKey, ModalPayloads, ModalState, ModalContextValue } from "./ModalProvider";
+
+// AppProviders (root providers composition)
+export { AppProviders } from "./AppProviders";

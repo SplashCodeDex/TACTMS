@@ -1,5 +1,5 @@
 import { TransactionLogEntry, MemberDatabase, ReportData } from "../types";
-import { ASSEMBLIES } from "../constants";
+import { DEFAULT_ASSEMBLIES } from "@/context";
 import { escapeCsvField } from "./exportUtils";
 
 const getWeekOfYear = (date: Date) => {
@@ -27,7 +27,7 @@ export const processDataForReports = (
     }
   > = {};
 
-  const initAssemblyData = () => ASSEMBLIES.map((name) => ({
+  const initAssemblyData = () => DEFAULT_ASSEMBLIES.map((name) => ({
     assemblyName: name,
     totalTithe: 0,
     soulsWon: 0,

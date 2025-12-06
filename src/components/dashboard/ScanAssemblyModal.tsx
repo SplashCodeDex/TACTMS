@@ -7,9 +7,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import Modal from "../Modal";
-import Button from "../Button";
-import { ASSEMBLIES } from "../../constants";
+import Modal from "@/components/Modal";
+import Button from "@/components/Button";
+import { useAppConfigContext } from "@/context";
 
 interface ScanAssemblyModalProps {
     isOpen: boolean;
@@ -53,6 +53,7 @@ const ScanAssemblyModal: React.FC<ScanAssemblyModalProps> = ({
     assembliesWithData,
     onConfirm,
 }) => {
+    const { assemblies } = useAppConfigContext();
     return (
         <Modal
             isOpen={isOpen}
@@ -83,7 +84,7 @@ const ScanAssemblyModal: React.FC<ScanAssemblyModalProps> = ({
                         <SelectValue placeholder="-- Select Assembly --" />
                     </SelectTrigger>
                     <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
-                        {ASSEMBLIES.map((assembly) => (
+                        {assemblies.map((assembly) => (
                             <SelectItem
                                 key={assembly}
                                 value={assembly}

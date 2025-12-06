@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import Router from "./Router";
 import "./index.css";
-import { AppProviders } from "./context/AppProviders";
+import { AppProviders } from "@/context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();
