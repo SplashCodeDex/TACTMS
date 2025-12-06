@@ -16,7 +16,9 @@ export type ModalKey =
   | "batchProcessor"
   | "reportGenerator"
   | "scanAssembly"
-  | "addAssembly";
+  | "addAssembly"
+  | "memberReorder"
+  | "reorderFromImage";
 
 export type ModalPayloads = {
   fullPreview?: undefined;
@@ -34,6 +36,8 @@ export type ModalPayloads = {
   reportGenerator?: undefined;
   scanAssembly?: { file: File; assembly?: string } | undefined;
   addAssembly?: undefined;
+  memberReorder?: undefined;
+  reorderFromImage?: undefined;
 };
 
 export type ModalState = {
@@ -67,6 +71,8 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     reportGenerator: { isOpen: false },
     scanAssembly: { isOpen: false },
     addAssembly: { isOpen: false },
+    memberReorder: { isOpen: false },
+    reorderFromImage: { isOpen: false },
   });
 
   const openModal = useCallback<ModalContextValue["openModal"]>((key, payload) => {

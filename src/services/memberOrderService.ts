@@ -291,6 +291,30 @@ export const updateMemberPosition = async (
 };
 
 /**
+ * Update multiple member positions (batch reorder)
+ */
+export const updateMemberOrder = async (
+    updates: { memberId: string; newIndex: number }[],
+    assemblyName: string
+): Promise<void> => {
+    const db = await getDB();
+    const tx = db.transaction('memberOrders', 'readwrite');
+    const store = tx.objectStore('memberOrders');
+
+    for (const update of updates) {
+        const id = generateId(update.memberId, assemblyName);
+        const entry = await store.get(id);
+        if (entry) {
+            entry.titheBookIndex = update.newIndex;
+            entry.lastUpdated = Date.now();
+            await store.put(entry);
+        }
+    }
+
+    await tx.done;
+};
+
+/**
  * Get assembly metadata
  */
 export const getAssemblyMetadata = async (

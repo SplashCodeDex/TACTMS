@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, SchemaType, type Schema } from "@google/generative-ai";
-import { TitheRecordB } from "../types";
+import { TitheRecordB, MemberRecordA } from "../types";
 import { cleanOCRName } from "./imageValidator";
 
 // UPGRADE: Using Gemini 2.5 Pro for "Retina-level" perception
@@ -584,5 +584,199 @@ export const processTitheImageWithValidation = async (
     } catch (error) {
         console.error("Error parsing Gemini response:", error);
         throw new Error("Failed to parse AI response. The image might be too blurry or contain unexpected data.");
+    }
+};
+
+// ============================================================================
+// NAME EXTRACTION FOR REORDERING
+// ============================================================================
+
+export interface NameMatchResult {
+    extractedName: string;
+    matchedMember: MemberRecordA | null;
+    confidence: number;
+    position: number;
+}
+
+export interface NameExtractionResult {
+    matches: NameMatchResult[];
+    totalExtracted: number;
+    successfulMatches: number;
+}
+
+const NAME_EXTRACTION_SCHEMA: Schema = {
+    type: SchemaType.OBJECT,
+    properties: {
+        names: {
+            type: SchemaType.ARRAY,
+            items: {
+                type: SchemaType.OBJECT,
+                properties: {
+                    "No.": { type: SchemaType.NUMBER, description: "The row number from the NO. column" },
+                    "Name": { type: SchemaType.STRING, description: "The full handwritten name from the NAME column" },
+                },
+                required: ["No.", "Name"]
+            }
+        }
+    },
+    required: ["names"]
+};
+
+/**
+ * Calculate Levenshtein distance between two strings
+ */
+function levenshteinDistance(str1: string, str2: string): number {
+    const m = str1.length;
+    const n = str2.length;
+    const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            if (str1[i - 1] === str2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1];
+            } else {
+                dp[i][j] = Math.min(
+                    dp[i - 1][j - 1] + 1,
+                    dp[i - 1][j] + 1,
+                    dp[i][j - 1] + 1
+                );
+            }
+        }
+    }
+    return dp[m][n];
+}
+
+/**
+ * Calculate similarity score between 0 and 1
+ */
+function calculateSimilarity(str1: string, str2: string): number {
+    const s1 = str1.toLowerCase().trim();
+    const s2 = str2.toLowerCase().trim();
+
+    if (s1 === s2) return 1.0;
+    if (s1.length === 0 || s2.length === 0) return 0.0;
+
+    const distance = levenshteinDistance(s1, s2);
+    const maxLen = Math.max(s1.length, s2.length);
+    return 1 - (distance / maxLen);
+}
+
+/**
+ * Find best matching member from database based on extracted name
+ */
+function findBestMatch(
+    extractedName: string,
+    members: MemberRecordA[]
+): { member: MemberRecordA | null; score: number } {
+    let bestMatch: MemberRecordA | null = null;
+    let bestScore = 0;
+
+    const cleanedExtracted = extractedName.toLowerCase().trim();
+
+    for (const member of members) {
+        // Build various name combinations to match against
+        const nameParts = [
+            member.Surname,
+            member["First Name"],
+            member["Other Names"],
+        ].filter(Boolean);
+
+        const fullName = nameParts.join(" ").toLowerCase();
+        const reverseName = nameParts.reverse().join(" ").toLowerCase();
+        const surnameFirst = `${member.Surname} ${member["First Name"]}`.toLowerCase();
+        const firstSurname = `${member["First Name"]} ${member.Surname}`.toLowerCase();
+
+        // Calculate similarity for each combination
+        const scores = [
+            calculateSimilarity(cleanedExtracted, fullName),
+            calculateSimilarity(cleanedExtracted, reverseName),
+            calculateSimilarity(cleanedExtracted, surnameFirst),
+            calculateSimilarity(cleanedExtracted, firstSurname),
+        ];
+
+        const maxScore = Math.max(...scores);
+
+        if (maxScore > bestScore) {
+            bestScore = maxScore;
+            bestMatch = member;
+        }
+    }
+
+    // Threshold: only return match if score is decent
+    return {
+        member: bestScore >= 0.6 ? bestMatch : null,
+        score: bestScore
+    };
+}
+
+/**
+ * Extract names from tithe book NAME column image and match to database
+ * Used for reordering members to match physical book
+ */
+export const extractNamesFromTitheBook = async (
+    imageFile: File,
+    apiKey: string,
+    memberDatabase: MemberRecordA[]
+): Promise<NameExtractionResult> => {
+    if (!apiKey) throw new Error("API Key is missing");
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const imageParts = await fileToGenerativePart(imageFile);
+
+    const prompt = `
+    You are an expert at reading handwritten documents from The Apostolic Church Ghana.
+
+    Extract all names from the NAME column of this tithe book page.
+
+    INSTRUCTIONS:
+    1. Read the "NO." column to get the row number
+    2. Read the "NAME" column to get each person's handwritten name
+    3. Return ALL names you can read, in order from top to bottom
+    4. Clean up obvious OCR errors but preserve the name structure
+    5. Ghanaian names often have patterns: Surname, First Name, Other Names
+
+    Return the data as a JSON array of objects with "No." and "Name" fields.
+    `;
+
+    try {
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }, imageParts] }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: NAME_EXTRACTION_SCHEMA,
+            },
+        });
+
+        const jsonString = result.response.text().trim();
+        const parsed: { names: Array<{ "No.": number; "Name": string }> } = JSON.parse(jsonString);
+
+        // Match each extracted name to database
+        const matches: NameMatchResult[] = parsed.names.map((item, index) => {
+            const cleanedName = cleanOCRName(item.Name);
+            const { member, score } = findBestMatch(cleanedName, memberDatabase);
+
+            return {
+                extractedName: cleanedName,
+                matchedMember: member,
+                confidence: score,
+                position: item["No."] || index + 1
+            };
+        });
+
+        // Sort by position
+        matches.sort((a, b) => a.position - b.position);
+
+        return {
+            matches,
+            totalExtracted: matches.length,
+            successfulMatches: matches.filter(m => m.matchedMember !== null).length
+        };
+    } catch (error) {
+        console.error("Error extracting names from image:", error);
+        throw new Error("Failed to extract names from image. Please ensure the image is clear and contains the NAME column.");
     }
 };

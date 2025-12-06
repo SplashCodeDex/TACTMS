@@ -1,12 +1,15 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "../components/Button";
 import Checkbox from "../components/Checkbox";
 import AddAssemblyModal from "../components/AddAssemblyModal";
-import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown, Filter, Hash, GripVertical, Image } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { filterMembersByAge } from "../services/excelProcessor";
 import { useModal } from "../hooks/useModal";
+import { getOrderedMembers, MemberOrderEntry } from "../services/memberOrderService";
+import MemberReorderModal from "../components/MemberReorderModal";
+import ReorderFromImageModal from "../components/ReorderFromImageModal";
 
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
@@ -48,6 +51,20 @@ const MemberDatabaseSection: React.FC = () => {
     direction: "asc" | "desc";
   }>({ key: "customOrder", direction: "asc" });
 
+  // Order Map State
+  const [memberOrderMap, setMemberOrderMap] = useState<Map<string, number>>(new Map());
+
+  // Fetch updated order when assembly or database updates
+  useEffect(() => {
+    if (selectedAssembly && selectedAssembly !== "ALL MEMBERS") {
+      getOrderedMembers(selectedAssembly).then((ordered) => {
+        const map = new Map<string, number>();
+        ordered.forEach((o) => map.set(o.memberId.toLowerCase(), o.titheBookIndex));
+        setMemberOrderMap(map);
+      }).catch(err => console.error("Failed to fetch member order:", err));
+    }
+  }, [selectedAssembly, memberDatabase[selectedAssembly || ""]?.lastUpdated]);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [membersPerPage] = useState(10); // You can make this configurable if needed
@@ -58,6 +75,11 @@ const MemberDatabaseSection: React.FC = () => {
 
   // Add Assembly Modal state
   const addAssemblyModal = useModal("addAssembly");
+
+  // Reorder Modal state
+  const reorderModal = useModal("memberReorder");
+  const reorderFromImageModal = useModal("reorderFromImage");
+  const [orderedMembersForModal, setOrderedMembersForModal] = useState<MemberOrderEntry[]>([]);
 
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -107,7 +129,16 @@ const MemberDatabaseSection: React.FC = () => {
     if (sortConfig.key) {
       members.sort((a, b) => {
         if (sortConfig.key === 'customOrder') {
-          return (a.customOrder || 0) - (b.customOrder || 0);
+          const idA = (a["Membership Number"] || a["Old Membership Number"] || "").toLowerCase();
+          const idB = (b["Membership Number"] || b["Old Membership Number"] || "").toLowerCase();
+          const orderA = memberOrderMap.get(idA);
+          const orderB = memberOrderMap.get(idB);
+
+          // Prioritize mapped order, then fallback to property, then 0
+          const valA = orderA !== undefined ? orderA : (a.customOrder || 99999);
+          const valB = orderB !== undefined ? orderB : (b.customOrder || 99999);
+
+          return valA - valB;
         }
         const aValue = String(a[sortConfig.key!]).toLowerCase();
         const bValue = String(b[sortConfig.key!]).toLowerCase();
@@ -122,7 +153,7 @@ const MemberDatabaseSection: React.FC = () => {
       });
     }
     return members;
-  }, [memberDatabase, selectedAssembly, searchTerm, sortConfig, ageRangeMin, ageRangeMax]);
+  }, [memberDatabase, selectedAssembly, searchTerm, sortConfig, ageRangeMin, ageRangeMax, memberOrderMap]);
 
   const handleSort = (key: keyof MemberRecordA) => {
     if (sortConfig.key === key) {
@@ -176,7 +207,18 @@ const MemberDatabaseSection: React.FC = () => {
       return;
     }
     if (selectedAssembly) {
-      const sortedSelectedMembers = [...selectedMembers].sort((a, b) => (a.customOrder || 0) - (b.customOrder || 0));
+      const sortedSelectedMembers = [...selectedMembers].sort((a, b) => {
+        const idA = (a["Membership Number"] || a["Old Membership Number"] || "").toLowerCase();
+        const idB = (b["Membership Number"] || b["Old Membership Number"] || "").toLowerCase();
+        const orderA = memberOrderMap.get(idA);
+        const orderB = memberOrderMap.get(idB);
+
+        // Prioritize mapped order, then fallback to property, then 0
+        const valA = orderA !== undefined ? orderA : (a.customOrder || 99999);
+        const valB = orderB !== undefined ? orderB : (b.customOrder || 99999);
+
+        return valA - valB;
+      });
       onCreateTitheList(sortedSelectedMembers, selectedAssembly);
     }
   };
@@ -294,6 +336,28 @@ const MemberDatabaseSection: React.FC = () => {
               >
                 Update Members List
               </Button>
+              <Button
+                variant="secondary"
+                leftIcon={<GripVertical size={16} />}
+                disabled={selectedAssembly === "ALL MEMBERS"}
+                onClick={async () => {
+                  if (selectedAssembly) {
+                    const ordered = await getOrderedMembers(selectedAssembly);
+                    setOrderedMembersForModal(ordered);
+                    reorderModal.open();
+                  }
+                }}
+              >
+                Reorder
+              </Button>
+              <Button
+                variant="secondary"
+                leftIcon={<Image size={16} />}
+                disabled={selectedAssembly === "ALL MEMBERS"}
+                onClick={() => reorderFromImageModal.open()}
+              >
+                AI Reorder
+              </Button>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -308,6 +372,23 @@ const MemberDatabaseSection: React.FC = () => {
                       }
                       onChange={() => handleSelectAll()}
                     />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    onClick={() => handleSort("customOrder")}
+                    title="Tithe Book Order - Position in physical tithe book"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <Hash size={14} />
+                      {sortConfig.key === "customOrder" && (
+                        sortConfig.direction === "asc" ? (
+                          <ArrowUp size={14} />
+                        ) : (
+                          <ArrowDown size={14} />
+                        )
+                      )}
+                    </div>
                   </th>
                   <th
                     scope="col"
@@ -376,7 +457,13 @@ const MemberDatabaseSection: React.FC = () => {
                         onChange={() => handleSelectMember(member)}
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]"> {/* Fixed: Changed color to text-primary (white in dark mode) */}
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-[var(--primary-accent-start)] font-semibold">
+                      {(() => {
+                        const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
+                        return memberOrderMap.get(memberId) || "-";
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">
                       {member["First Name"]} {member.Surname}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -492,6 +579,42 @@ const MemberDatabaseSection: React.FC = () => {
           addAssemblyModal.close();
         }}
         existingAssemblies={Object.keys(memberDatabase)}
+      />
+
+      {/* Member Reorder Modal */}
+      <MemberReorderModal
+        isOpen={reorderModal.isOpen}
+        onClose={reorderModal.close}
+        assemblyName={selectedAssembly || ""}
+        orderedMembers={orderedMembersForModal}
+        onSaveComplete={async () => {
+          // Refresh the order map after save
+          if (selectedAssembly) {
+            const ordered = await getOrderedMembers(selectedAssembly);
+            const map = new Map<string, number>();
+            ordered.forEach((o) => map.set(o.memberId.toLowerCase(), o.titheBookIndex));
+            setMemberOrderMap(map);
+          }
+        }}
+        addToast={addToast}
+      />
+
+      {/* Reorder from Image Modal */}
+      <ReorderFromImageModal
+        isOpen={reorderFromImageModal.isOpen}
+        onClose={reorderFromImageModal.close}
+        assemblyName={selectedAssembly || ""}
+        memberDatabase={memberDatabase[selectedAssembly || ""]?.data || []}
+        onSaveComplete={async () => {
+          // Refresh the order map after save
+          if (selectedAssembly) {
+            const ordered = await getOrderedMembers(selectedAssembly);
+            const map = new Map<string, number>();
+            ordered.forEach((o) => map.set(o.memberId.toLowerCase(), o.titheBookIndex));
+            setMemberOrderMap(map);
+          }
+        }}
+        addToast={addToast}
       />
     </div >
   );

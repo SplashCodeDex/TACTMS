@@ -59,6 +59,12 @@ import {
 import { exportToExcel } from "@/lib/excelUtils";
 import { formatDateDDMMMYYYY, calculateSundayDate, getMostRecentSunday } from "@/lib/dataTransforms";
 import { analyticsService } from "@/services/AnalyticsService";
+import {
+  initializeOrder,
+  getOrderedMembers,
+  updateMemberOrder,
+  syncWithMasterList,
+} from "@/services/memberOrderService";
 
 interface PendingData {
   data: MemberRecordA[];
@@ -699,6 +705,11 @@ const App: React.FC = () => {
         `${assembly} data processed. ${data.length} records loaded.`,
         "success",
       );
+
+      // Sync with Member Order Service (IndexedDB)
+      syncWithMasterList(enrichedData, assembly).catch((err) =>
+        console.error("Failed to sync member order:", err),
+      );
     };
   };
 
@@ -877,6 +888,27 @@ const App: React.FC = () => {
       "success",
     );
     fullPreview.close()
+
+    // Persist to IndexedDB
+    if (currentAssembly) {
+      const updates = updatedList
+        .map((record, index) => {
+          const rawId =
+            record.memberDetails?.["Membership Number"] ||
+            record.memberDetails?.["Old Membership Number"];
+          if (rawId) {
+            return { memberId: rawId, newIndex: index + 1 };
+          }
+          return null;
+        })
+        .filter((u): u is { memberId: string; newIndex: number } => u !== null);
+
+      if (updates.length > 0) {
+        updateMemberOrder(updates, currentAssembly).catch((err) =>
+          console.error("Failed to persist member order:", err),
+        );
+      }
+    }
   };
 
   const { tithersCount, totalTitheAmount } = useMemo(() => {
@@ -1095,7 +1127,7 @@ const App: React.FC = () => {
 
 
 
-  const startNewWeek = (assemblyName: string) => {
+  const startNewWeek = async (assemblyName: string) => {
     const masterList = memberDatabase[assemblyName];
     if (!masterList || !masterList.data || masterList.data.length === 0) {
       addToast(
@@ -1107,7 +1139,56 @@ const App: React.FC = () => {
 
     clearWorkspace();
 
-    const memberSourceRecords = masterList.data;
+    let memberSourceRecords = masterList.data;
+
+    // Load persisted order from IndexedDB
+    try {
+      const orderedMembers = await getOrderedMembers(assemblyName);
+      if (orderedMembers.length > 0) {
+        const memberMap = new Map(
+          memberSourceRecords.map((m) => [
+            (
+              m["Membership Number"] ||
+              m["Old Membership Number"] ||
+              ""
+            ).toLowerCase(),
+            m,
+          ]),
+        );
+
+        const reordered = orderedMembers
+          .map((entry) => memberMap.get(entry.memberId.toLowerCase()))
+          .filter((m): m is MemberRecordA => !!m);
+
+        const orderedIds = new Set(
+          orderedMembers.map((e) => e.memberId.toLowerCase()),
+        );
+        const leftovers = memberSourceRecords.filter(
+          (m) =>
+            !orderedIds.has(
+              (
+                m["Membership Number"] ||
+                m["Old Membership Number"] ||
+                ""
+              ).toLowerCase(),
+            ),
+        );
+
+        // leftovers.sort... (could sort leftovers alphabetically or by customOrder if needed)
+
+        memberSourceRecords = [...reordered, ...leftovers];
+        console.log("Loaded member order from DB", memberSourceRecords.length);
+      } else {
+        // Migration: No order in DB, populate it from current list
+        await initializeOrder(memberSourceRecords, assemblyName).catch((err) =>
+          console.error("Failed to auto-initialize member order:", err),
+        );
+        console.log("Auto-initialized member order from current list.");
+      }
+    } catch (error) {
+      console.error("Failed to load ordered members", error);
+    }
+
     const sundayDate = getMostRecentSunday(new Date()); // Use the helper function
     const formattedDate = formatDateDDMMMYYYY(sundayDate);
     const newDescription = `Tithe for ${formattedDate}`;
@@ -1118,7 +1199,11 @@ const App: React.FC = () => {
       sundayDate, // Use sundayDate here
       newDescription,
       amountMappingColumn,
-    ).map((record) => ({ ...record, "Transaction Amount": "" }));
+    ).map((record, index) => ({
+      ...record,
+      "Transaction Amount": "",
+      "No.": index + 1 // Ensure No. is reset
+    }));
 
     setTitheListData(freshTitheList);
 
@@ -1190,6 +1275,12 @@ const App: React.FC = () => {
           },
         };
       });
+
+      // Sync new member to order service
+      const updatedAssemblyData = [...(memberDatabase[currentAssembly]?.data || []), enrichedMember];
+      syncWithMasterList(updatedAssemblyData, currentAssembly).catch(err =>
+        console.error("Failed to sync new member to order service:", err)
+      );
 
       const sundayDate = getMostRecentSunday(new Date());
       const formattedDate = formatDateDDMMMYYYY(sundayDate);
@@ -1310,75 +1401,78 @@ const App: React.FC = () => {
       return;
     }
 
-    setMemberDatabase((prev) => {
-      const prevAssemblyData = prev[assembly]?.data || [];
-      let updatedData = [...prevAssemblyData];
+    const prevAssemblyData = memberDatabase[assembly]?.data || [];
+    let updatedData = [...prevAssemblyData];
 
-      // 1. Apply Changes (Non-conflicting)
-      if (changedMembers.length > 0) {
-        const changesMap = new Map(
-          changedMembers.map((c) => [c.oldRecord, c]),
-        );
-        updatedData = updatedData.map((member) => {
-          const change = changesMap.get(member);
-          if (change) {
+    // 1. Apply Changes (Non-conflicting)
+    if (changedMembers.length > 0) {
+      const changesMap = new Map(
+        changedMembers.map((c) => [c.oldRecord, c]),
+      );
+      updatedData = updatedData.map((member) => {
+        const change = changesMap.get(member);
+        if (change) {
+          return {
+            ...member,
+            ...change.newRecord,
+            firstSeenDate: member.firstSeenDate,
+            firstSeenSource: member.firstSeenSource,
+            customOrder: member.customOrder,
+          };
+        }
+        return member;
+      });
+    }
+
+    // 2. Handle Conflicts
+    if (conflicts.length > 0) {
+      const conflictsMap = new Map(
+        conflicts.map((c) => [c.existingMember, c]),
+      );
+
+      updatedData = updatedData.map((member) => {
+        const conflict = conflictsMap.get(member);
+        if (conflict) {
+          if (resolution === "use_new") {
             return {
               ...member,
-              ...change.newRecord,
+              ...conflict.newRecord,
               firstSeenDate: member.firstSeenDate,
               firstSeenSource: member.firstSeenSource,
               customOrder: member.customOrder,
             };
+          } else {
+            // Keep existing, do nothing
+            return member;
           }
-          return member;
-        });
-      }
+        }
+        return member;
+      });
+    }
 
-      // 2. Handle Conflicts
-      if (conflicts.length > 0) {
-        const conflictsMap = new Map(
-          conflicts.map((c) => [c.existingMember, c]),
-        );
+    // 3. Append New Members
+    if (newMembers.length > 0) {
+      updatedData = [...updatedData, ...newMembers];
+    }
 
-        updatedData = updatedData.map((member) => {
-          const conflict = conflictsMap.get(member);
-          if (conflict) {
-            if (resolution === "use_new") {
-              return {
-                ...member,
-                ...conflict.newRecord,
-                firstSeenDate: member.firstSeenDate,
-                firstSeenSource: member.firstSeenSource,
-                customOrder: member.customOrder,
-              };
-            } else {
-              // Keep existing, do nothing
-              return member;
-            }
-          }
-          return member;
-        });
-      }
-
-      // 3. Append New Members
-      if (newMembers.length > 0) {
-        updatedData = [...updatedData, ...newMembers];
-      }
-
-      return {
-        ...prev,
-        [assembly]: {
-          ...(prev[assembly] || {
-            lastUpdated: Date.now(),
-          }),
-          data: updatedData,
+    setMemberDatabase((prev) => ({
+      ...prev,
+      [assembly]: {
+        ...(prev[assembly] || {
           lastUpdated: Date.now(),
-          fileName: reconciliationReport.previousFileDate.includes("updated")
-            ? prev[assembly].fileName
-            : "Mixed Source", // Or update based on context
-        },
-      };
-    });
+        }),
+        data: updatedData,
+        lastUpdated: Date.now(),
+        fileName: reconciliationReport.previousFileDate.includes("updated")
+          ? prev[assembly].fileName
+          : "Mixed Source",
+      },
+    }));
+
+    // Sync with Member Order Service
+    syncWithMasterList(updatedData, assembly).catch((err) =>
+      console.error("Failed to sync member order after reconciliation:", err),
+    );
 
     setIsReconciliationModalOpen(false);
     setReconciliationReport(null);
