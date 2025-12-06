@@ -353,14 +353,22 @@ const MemberDatabaseSection: React.FC = () => {
                     onClick={async () => {
                       if (selectedAssembly) {
                         let ordered = await getOrderedMembers(selectedAssembly);
+                        const currentMembers = memberDatabase[selectedAssembly]?.data || [];
 
                         // If no order exists in IndexedDB, initialize from member database
                         if (ordered.length === 0) {
-                          const members = memberDatabase[selectedAssembly]?.data || [];
-                          if (members.length > 0) {
-                            await initializeOrder(members, selectedAssembly);
+                          if (currentMembers.length > 0) {
+                            await initializeOrder(currentMembers, selectedAssembly);
                             ordered = await getOrderedMembers(selectedAssembly);
                           }
+                        } else {
+                          // Filter to only include members that exist in current database
+                          const currentMemberIds = new Set(
+                            currentMembers.map(m =>
+                              (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase()
+                            )
+                          );
+                          ordered = ordered.filter(o => currentMemberIds.has(o.memberId.toLowerCase()));
                         }
 
                         setOrderedMembersForModal(ordered);
