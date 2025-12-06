@@ -213,6 +213,7 @@ const App: React.FC = () => {
   } = useDatabaseContext();
 
   const [isParsing, setIsParsing] = useState(false);
+  const [isImageScanning, setIsImageScanning] = useState(false);
 
   // State for editing members in the database
   const [memberToEdit, setMemberToEdit] = useState<{
@@ -1447,7 +1448,7 @@ const App: React.FC = () => {
                       return;
                     }
 
-                    addToast("Analyzing image with Gemini...", "info");
+                    setIsImageScanning(true);
                     // Generate a date string for the transaction
                     const currentYear = new Date().getFullYear();
                     let dateString = "";
@@ -1464,12 +1465,16 @@ const App: React.FC = () => {
                       dateString = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/ /g, '-');
                     }
 
-                    const data = await analyzeImage(file, month, week, dateString);
-                    if (data) {
-                      setExtractedTitheData(data);
-                      // Ensure we use the master data for the TARGET assembly
-                      setImageVerificationMasterData(masterList.data);
-                      setIsImageVerificationModalOpen(true);
+                    try {
+                      const data = await analyzeImage(file, month, week, dateString);
+                      if (data) {
+                        setExtractedTitheData(data);
+                        // Ensure we use the master data for the TARGET assembly
+                        setImageVerificationMasterData(masterList.data);
+                        setIsImageVerificationModalOpen(true);
+                      }
+                    } finally {
+                      setIsImageScanning(false);
                     }
                   },
                   // Processor Props
@@ -1818,7 +1823,11 @@ const App: React.FC = () => {
         )
       }
 
-      <ParsingIndicator isOpen={isParsing} />
+      <ParsingIndicator
+        isOpen={isParsing || isImageScanning}
+        message={isImageScanning ? "Processing image..." : "Parsing file..."}
+        subMessage={isImageScanning ? "The AI is analyzing your tithe record..." : "This may take a moment."}
+      />
     </div >
   );
 };

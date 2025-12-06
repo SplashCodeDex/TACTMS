@@ -4,9 +4,15 @@ import { Spinner } from "./ui/spinner"; // Import the shadcn spinner
 
 interface ParsingIndicatorProps {
   isOpen: boolean;
+  message?: string;
+  subMessage?: string;
 }
 
-const ParsingIndicator: React.FC<ParsingIndicatorProps> = ({ isOpen }) => {
+const ParsingIndicator: React.FC<ParsingIndicatorProps> = ({
+  isOpen,
+  message = "Parsing file...",
+  subMessage = "This may take a moment."
+}) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -24,10 +30,10 @@ const ParsingIndicator: React.FC<ParsingIndicatorProps> = ({ isOpen }) => {
           >
             <Spinner className="h-12 w-12 text-[var(--brand)]" />
             <p className="mt-4 text-lg font-semibold text-[var(--text-primary)]">
-              Parsing file...
+              {message}
             </p>
             <p className="text-sm text-[var(--text-secondary)]">
-              This may take a moment.
+              {subMessage}
             </p>
           </motion.div>
         </motion.div>
