@@ -9,6 +9,17 @@ const MODEL_NAME = "gemini-2.5-pro";
 export const LOW_CONFIDENCE_THRESHOLD = 0.8; // Increased threshold for higher quality
 
 // Enhanced schema with validation metadata
+const TITHE_BOOK_HTML_TEMPLATE = `
+<table class="tg"><thead>
+<tr><th class="c">NO</th><th class="c">NAME</th><th class="c" colspan="6">JANUARY </th><th class="c" colspan="6">FEBRUARY </th>
+<th class="c" colspan="6">MARCH </th><th class="c" colspan="6">APRIL </th><th class="c" colspan="6">MAY </th><th class="c" colspan="6">JUNE </th>...</tr>
+</thead>
+<tbody>
+<tr><td class="c"></td><td class="c"></td><td class="c" colspan="6">WEEK</td>...</tr>
+<tr><td class="c"></td><td class="c"></td><td class="c">1st</td><td class="c">2nd</td><td class="c">3rd</td><td class="c">4th</td><td class="c">5th</td><td class="c">TOTAL</td>...</tr>
+</tbody></table>
+`;
+
 const TITHE_EXTRACTION_SCHEMA: Schema = {
     type: SchemaType.OBJECT,
     properties: {
@@ -106,21 +117,30 @@ export const processTitheImageWithValidation = async (
     You are an expert Data Entry Specialist for The Apostolic Church Ghana.
     Your task is to digitize a page from the "TITHES REGISTER" book.
 
+    CONTEXT - THE BLUEPRINT:
+    The physical book in the image corresponds EXACTLY to this HTML structure. Use this as your map to locate columns:
+    \`\`\`html
+    ${TITHE_BOOK_HTML_TEMPLATE}
+    \`\`\`
+
     TARGET DATA:
     - Month: ${targetMonth.toUpperCase()}
     - Column: ${targetWeek.replace("Week ", "")} (e.g., "1st", "2nd", etc.)
 
     INSTRUCTIONS:
-    1. **Scan the Image**: Identify the grid structure. Locate the row numbers, names, and the specific column for ${targetMonth} / ${targetWeek}.
-    2. **Verify Context**: Ensure this is a valid Tithe Register page. Look for the year in the header.
-    3. **Extract Rows**: For every handwritten entry:
-       - Read the "No." (Sequence Number).
-       - Read the "Name". *Reasoning*: If the handwriting is messy, infer the name based on common Ghanaian Christian names (e.g., "Kwame", "Emmanuel", "Grace", "Osei").
-       - Read the "Amount" ONLY from the ${targetWeek} column of ${targetMonth}.
-    4. **Handle Blanks**: If the cell has a dash (-), empty space, or "0", record the Amount as 0.
-    5. **Self-Correction**:
-       - If a number looks like "50" but is slightly smudged, use your vision reasoning to decide the most likely value.
-       - Do not hallucinate amounts. If unsure, lower the confidence score.
+    1. **Map the Grid**: Overlay the HTML blueprint onto the image. Identify the "JANUARY", "FEBRUARY", etc. headers.
+    2. **Locate the Target**: Find the specific vertical column for ${targetMonth} -> ${targetWeek}.
+       - Note: The "TOTAL" column is always after the "5th" week. Do not confuse them.
+    3. **Handwriting Expert Mode**:
+       - You are reading financial records.
+       - If a character in the Amount column looks like 'S', it is '5'.
+       - If it looks like 'O', it is '0'.
+       - If it looks like 'l', it is '1'.
+       - dashes (-) or empty spaces mean 0.
+    4. **Extract Rows**:
+       - **No.**: Read the printed row number.
+       - **Name**: Read the handwritten name. Fix obvious spelling errors in common Ghanaian names (e.g., "Kwame", "Adjei", "Mensah").
+       - **Amount**: Extract the value strictly from the ${targetWeek} column.
 
     OUTPUT:
     Return a JSON object matching the schema.
@@ -140,65 +160,67 @@ export const processTitheImageWithValidation = async (
                 },
             });
             break;
-        } catch (error: any) {
+        } catch (error) {
             attempt++;
             console.warn(`Gemini API attempt ${attempt} failed:`, error);
 
             if (attempt >= maxRetries) {
-                if (error.message?.includes("429")) {
+                if (error instanceof Error && error.message.includes("429")) {
                     throw new Error("Service is busy (Rate Limit Exceeded). Please try again in a minute.");
                 }
                 throw new Error(`Failed to process image after ${maxRetries} attempts.`);
             }
-
-            const delay = Math.pow(2, attempt - 1) * 1000;
-            await new Promise(resolve => setTimeout(resolve, delay));
+            throw new Error(`Failed to process image after ${maxRetries} attempts.`);
         }
+
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
     }
+}
 
-    if (!result) throw new Error("Unexpected error: No result from AI model.");
+if (!result) throw new Error("Unexpected error: No result from AI model.");
 
-    try {
-        const jsonString = result.response.text().trim();
-        const rawResult: EnhancedRawExtraction = JSON.parse(jsonString);
+try {
+    const jsonString = result.response.text().trim();
+    const rawResult: EnhancedRawExtraction = JSON.parse(jsonString);
 
-        // Count low confidence entries
-        let lowConfidenceCount = 0;
+    // Count low confidence entries
+    let lowConfidenceCount = 0;
 
-        // Map entries to TitheRecordB format
-        const entries: TitheRecordB[] = (rawResult.entries || []).map((item, index) => {
-            if (item.Confidence < LOW_CONFIDENCE_THRESHOLD) {
-                lowConfidenceCount++;
-            }
+    // Map entries to TitheRecordB format
+    const entries: TitheRecordB[] = (rawResult.entries || []).map((item, index) => {
+        if (item.Confidence < LOW_CONFIDENCE_THRESHOLD) {
+            lowConfidenceCount++;
+        }
 
-            // Clean the OCR name (basic trimming, though AI handles most)
-            const cleanedName = cleanOCRName(item.Name);
-
-            return {
-                "No.": item["No."] || index + 1,
-                "Transaction Type": "Individual Tithe-[Income]",
-                "Payment Source Type": "Registered Member",
-                "Membership Number": cleanedName, // Placeholder for reconciliation
-                "Transaction Date ('DD-MMM-YYYY')": targetDateString,
-                "Currency": "GHS",
-                "Exchange Rate": 1,
-                "Payment Method": "Cash",
-                "Transaction Amount": item.Amount || 0,
-                "Narration/Description": `Tithe for ${targetDateString}`,
-                "Confidence": item.Confidence || 0.5
-            };
-        });
+        // Clean the OCR name (basic trimming, though AI handles most)
+        const cleanedName = cleanOCRName(item.Name);
 
         return {
-            isValidTitheBook: rawResult.isValidTitheBook ?? true,
-            detectedYear: rawResult.detectedYear || null,
-            pageNumber: rawResult.pageNumber || null,
-            entries,
-            lowConfidenceCount
+            "No.": item["No."] || index + 1,
+            "Transaction Type": "Individual Tithe-[Income]",
+            "Payment Source Type": "Registered Member",
+            "Membership Number": cleanedName, // Placeholder for reconciliation
+            "Transaction Date ('DD-MMM-YYYY')": targetDateString,
+            "Currency": "GHS",
+            "Exchange Rate": 1,
+            "Payment Method": "Cash",
+            "Transaction Amount": item.Amount || 0,
+            "Narration/Description": `Tithe for ${targetDateString}`,
+            "Confidence": item.Confidence || 0.5
         };
+    });
 
-    } catch (error) {
-        console.error("Error parsing Gemini response:", error);
-        throw new Error("Failed to parse AI response. The image might be too blurry or contain unexpected data.");
-    }
+    return {
+        isValidTitheBook: rawResult.isValidTitheBook ?? true,
+        detectedYear: rawResult.detectedYear || null,
+        pageNumber: rawResult.pageNumber || null,
+        entries,
+        lowConfidenceCount
+    };
+
+} catch (error) {
+    console.error("Error parsing Gemini response:", error);
+    throw new Error("Failed to parse AI response. The image might be too blurry or contain unexpected data.");
+}
 };
