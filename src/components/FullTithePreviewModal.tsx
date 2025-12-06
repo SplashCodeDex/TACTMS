@@ -280,7 +280,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   );
 
   const handleTitheValueChangeInternal = useCallback(
-    (recordNo: number | string, field: keyof TitheRecordB, value: any) => {
+    (recordNo: number | string, field: keyof TitheRecordB, value: TitheRecordB[keyof TitheRecordB]) => {
       setInternalList((list) =>
         list.map((r) => (r["No."] === recordNo ? { ...r, [field]: value } : r)),
       );
@@ -471,7 +471,11 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     (recordNo: number | string) => {
       setSelectedRowIds((prev) => {
         const newSet = new Set(prev);
-        newSet.has(recordNo) ? newSet.delete(recordNo) : newSet.add(recordNo);
+        if (newSet.has(recordNo)) {
+          newSet.delete(recordNo);
+        } else {
+          newSet.add(recordNo);
+        }
         return newSet;
       });
     },
@@ -524,7 +528,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
       );
       if (currentIndexInList === -1) return;
 
-      let nextIndexInList =
+      const nextIndexInList =
         direction === "down" ? currentIndexInList + 1 : currentIndexInList - 1;
 
       if (nextIndexInList >= 0 && nextIndexInList < recordsToShow.length) {

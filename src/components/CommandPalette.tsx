@@ -68,10 +68,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
     );
   }, [query, allActions]);
 
-  const handleAction = (action: CommandAction) => {
+  const handleAction = useCallback((action: CommandAction) => {
     action.onPerform();
     onClose();
-  };
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen) {

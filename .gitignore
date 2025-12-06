@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*log.txt
 
 node_modules
 dist
@@ -35,3 +36,4 @@ dev-dist/
 # Test output
 test_output*.txt
 build_errors*.txt
+lint_log.txt

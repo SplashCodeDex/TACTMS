@@ -1,0 +1,15 @@
+
+> tactms-app@1.0.0 lint
+> eslint .
+
+
+Oops! Something went wrong! :(
+
+ESLint: 9.39.1
+
+SyntaxError: Unexpected token ')'
+    at compileSourceTextModule (node:internal/modules/esm/utils:338:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:106:18)
+    at #translate (node:internal/modules/esm/loader:470:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:517:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:115:19)

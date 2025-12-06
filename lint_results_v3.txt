@@ -1,0 +1,237 @@
+
+> tactms-app@1.0.0 lint
+> eslint .
+
+
+W:\CodeDeX\TACTMS\src\App.tsx
+    88:61  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   158:58  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   160:74  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   458:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   466:5   warning  React Hook useCallback has missing dependencies: 'assemblies', 'assemblySelectionModal', 'handleMasterListUpdate', 'setUploadedFile', and 'updateConfirm'. Either include them or remove the dependency array                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+   471:18  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   472:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   546:5   warning  React Hook useCallback has missing dependencies: 'processData', 'setCurrentAssembly', and 'setUploadedFile'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+   734:6   warning  React Hook useCallback has missing dependencies: 'setHasUnsavedChanges', 'setIsAgeFilterActive', 'setProcessedDataA', and 'setTitheListData'. Either include them or remove the dependency array                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+   762:6   warning  React Hook useCallback has missing dependencies: 'setAgeRangeMax', 'setAgeRangeMin', 'setHasUnsavedChanges', 'setIsAgeFilterActive', 'setProcessedDataA', and 'setTitheListData'. Either include them or remove the dependency array                                                                                                                                                                                                    react-hooks/exhaustive-deps
+  1075:5   warning  React Hook useCallback has missing dependencies: 'setAgeRangeMax', 'setAgeRangeMin', 'setAmountMappingColumn', 'setConcatenationConfig', 'setCurrentAssembly', 'setDescriptionText', 'setFileNameToSave', 'setHasUnsavedChanges', 'setIsAgeFilterActive', 'setOriginalData', 'setProcessedDataA', 'setSelectedDate', 'setSoulsWonCount', 'setTitheListData', and 'setUploadedFile'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  1774:59  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1779:57  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1787:68  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1788:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1793:53  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1798:48  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1799:50  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1820:57  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+  1821:53  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\Router.tsx
+  48:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\components\AddNewMemberModal.tsx
+  217:48  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  217:59  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+W:\CodeDeX\TACTMS\src\components\AmountEntryModal.tsx
+  39:8  warning  React Hook useEffect has a missing dependency: 'record'. Either include it or remove the dependency array. If 'setLocalAmount' needs the current value of 'record', you can also switch to useReducer instead of useState and read 'record' in the reducer  react-hooks/exhaustive-deps
+  39:9  warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked                                                                                                                    react-hooks/exhaustive-deps
+
+W:\CodeDeX\TACTMS\src\components\BatchImageProcessor.tsx
+  149:23  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  197:70  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+W:\CodeDeX\TACTMS\src\components\Button.tsx
+  115:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  123:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\components\CommandPalette.tsx
+  71:9  warning  The 'handleAction' function makes the dependencies of useCallback Hook (at line 105) change on every render. To fix this, wrap the definition of 'handleAction' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+W:\CodeDeX\TACTMS\src\components\DistrictTrendChart.tsx
+  15:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\components\FullTithePreviewModal.tsx
+  283:67  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  416:16  warning  'e' is defined but never used                                          @typescript-eslint/no-unused-vars
+  474:9   error    Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  527:11  error    'nextIndexInList' is never reassigned. Use 'const' instead             prefer-const
+
+W:\CodeDeX\TACTMS\src\components\LiquidButton.tsx
+  7:242  error  Unnecessary escape character: \	  no-useless-escape
+
+W:\CodeDeX\TACTMS\src\components\ReportGenerator.tsx
+  102:21  error  Unexpected lexical declaration in case block  no-case-declarations
+  126:21  error  Unexpected lexical declaration in case block  no-case-declarations
+  157:23  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\components\TitheRecordRow.tsx
+  67:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\context\ModalProvider.tsx
+  26:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\hooks\useGemini.ts
+  107:21  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  124:50  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  243:41  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  272:36  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  273:35  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  288:36  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  289:35  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  344:19  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  352:5   warning  React Hook useCallback has a missing dependency: 'apiKey'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+W:\CodeDeX\TACTMS\src\hooks\useGoogleDriveQuery.ts
+  36:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  79:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\hooks\useGoogleDriveSync.ts
+   24:58  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  116:22  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  146:55  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  149:35  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  223:21  error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\hooks\useModals.ts
+  11:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:66  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\hooks\usePWAFeatures.ts
+  71:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  91:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\lib\dataTransforms.ts
+  31:7  error  'dayOfWeek' is never reassigned. Use 'const' instead          prefer-const
+  35:7  error  'daysToFirstSunday' is never reassigned. Use 'const' instead  prefer-const
+
+W:\CodeDeX\TACTMS\src\lib\excelUtils.ts
+   31:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   36:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  243:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  245:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\lib\exportUtils.ts
+   4:39  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+   6:7   error  'value' is never reassigned. Use 'const' instead  prefer-const
+  15:47  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  15:53  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  23:64  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\lib\reportUtils.ts
+  119:18  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  130:24  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  138:24  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  221:38  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  235:38  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\sections\AgeFilterSection.tsx
+  23:59  error  Component definition is missing display name  react/display-name
+
+W:\CodeDeX\TACTMS\src\sections\AmountMappingSection.tsx
+  20:67  error  Component definition is missing display name  react/display-name
+
+W:\CodeDeX\TACTMS\src\sections\AnalyticsSection.tsx
+  485:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  629:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\sections\ConcatenationConfigSection.tsx
+  14:3   error  Component definition is missing display name                     react/display-name
+  33:48  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  33:66  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+W:\CodeDeX\TACTMS\src\sections\DashboardSection.tsx
+  144:22  warning  'e' is defined but never used                                    @typescript-eslint/no-unused-vars
+  334:18  warning  'e' is defined but never used                                    @typescript-eslint/no-unused-vars
+  363:15  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  363:31  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+W:\CodeDeX\TACTMS\src\sections\FavoritesView.tsx
+   33:33  error    Component definition is missing display name                                                                 react/display-name
+  139:6   warning  React Hook useMemo has a missing dependency: 'assemblies'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+W:\CodeDeX\TACTMS\src\sections\FileUploadSection.tsx
+  21:61  error  Component definition is missing display name  react/display-name
+
+W:\CodeDeX\TACTMS\src\sections\ListOverviewActionsSection.tsx
+  520:28  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  520:43  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+W:\CodeDeX\TACTMS\src\sections\ReportsSection.tsx
+   60:54  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   61:42  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  264:48  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  264:64  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+W:\CodeDeX\TACTMS\src\sections\TitheDetailsSection.tsx
+  13:65  error  Component definition is missing display name     react/display-name
+  35:11  error  'date' is never reassigned. Use 'const' instead  prefer-const
+
+W:\CodeDeX\TACTMS\src\services\AnalyticsService.ts
+   8:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\services\SyncManager.ts
+   9:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\services\excelProcessor.test.ts
+  264:67  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  265:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  274:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  285:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  401:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\services\imageProcessor.ts
+  143:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\services\imageValidator.ts
+  140:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  229:27  error  Unnecessary escape character: \/          no-useless-escape
+  229:29  error  Unnecessary escape character: \[          no-useless-escape
+
+W:\CodeDeX\TACTMS\src\services\offline-analytics.ts
+  3:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\services\reconciliation.ts
+  104:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:64  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\services\semanticCache.ts
+  31:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\services\titheList.test.ts
+  64:104  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  65:97   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:101  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  67:10   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\src\sw.ts
+   90:24  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:24  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  209:50  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  220:16  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+W:\CodeDeX\TACTMS\src\types.ts
+    2:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+W:\CodeDeX\TACTMS\vite-plugin-devtools-settings-local.ts
+  4:22  warning  'createHash' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+Γ£û 140 problems (124 errors, 16 warnings)
+  5 errors and 0 warnings potentially fixable with the `--fix` option.
+

@@ -95,7 +95,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             let doc;
 
             switch (reportType) {
-                case 'weekly':
+                case 'weekly': {
                     if (!selectedWeek) {
                         throw new Error('Please select a week');
                     }
@@ -109,6 +109,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                         selectedWeek
                     );
                     break;
+                }
 
                 case 'monthly':
                     doc = generateMonthlySummaryPDF(
@@ -119,7 +120,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                     );
                     break;
 
-                case 'member':
+                case 'member': {
                     if (!selectedMember) {
                         throw new Error('Please select a member');
                     }
@@ -134,6 +135,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                         selectedYear
                     );
                     break;
+                }
 
                 case 'annual':
                     doc = generateAnnualReportPDF(

@@ -136,7 +136,7 @@ const FavoritesView: React.FC = React.memo(() => {
 
     // Defensive sorting to prevent crashes on malformed data
     return result.sort((a, b) => (a[0] || "").localeCompare(b[0] || ""));
-  }, [favorites, favoritesSearchTerm]);
+  }, [favorites, favoritesSearchTerm, assemblies]);
 
   const hasSearchResults = groupedAndFilteredFavorites.length > 0;
 

@@ -375,6 +375,26 @@ const App: React.FC = () => {
 
 
 
+  const handleMasterListUpdate = (
+    assemblyName: string,
+    newData: MemberRecordA[],
+    newFileName: string,
+  ) => {
+    setMemberDatabase((prev) => ({
+      ...prev,
+      [assemblyName]: {
+        data: newData,
+        lastUpdated: Date.now(),
+        fileName: newFileName,
+        sourceFileDate: uploadedFile?.lastModified || Date.now(), // Capture file date
+      },
+    }));
+    addToast(
+      `${assemblyName} master list has been updated with ${newData.length} records.`,
+      "success",
+    );
+  };
+
   const handleFileAccepted = useCallback(
     async (file: File | null, isMasterList: boolean, assemblyName?: string) => {
       if (!file) {
@@ -463,13 +483,23 @@ const App: React.FC = () => {
         setIsParsing(false); // Set isParsing to false
       }
     },
-    [hasUnsavedChanges, addToast, memberDatabase, clearWorkspace],
+    [
+      hasUnsavedChanges,
+      addToast,
+      memberDatabase,
+      clearWorkspace,
+      assemblies,
+      assemblySelectionModal,
+      handleMasterListUpdate,
+      setUploadedFile,
+      updateConfirm,
+    ],
   );
 
   useEffect(() => {
-    if ("launchQueue" in window) {
-      (window as any).launchQueue.setConsumer(
-        async (launchParams: { files: any[] }) => {
+    if ("launchQueue" in window && window["launchQueue"]) {
+      window["launchQueue"].setConsumer(
+        async (launchParams: { files: FileSystemFileHandle[] }) => {
           if (!launchParams.files || launchParams.files.length === 0) {
             return;
           }
@@ -482,25 +512,7 @@ const App: React.FC = () => {
     }
   }, [handleFileAccepted]);
 
-  const handleMasterListUpdate = (
-    assemblyName: string,
-    newData: MemberRecordA[],
-    newFileName: string,
-  ) => {
-    setMemberDatabase((prev) => ({
-      ...prev,
-      [assemblyName]: {
-        data: newData,
-        lastUpdated: Date.now(),
-        fileName: newFileName,
-        sourceFileDate: uploadedFile?.lastModified || Date.now(), // Capture file date
-      },
-    }));
-    addToast(
-      `${assemblyName} master list has been updated with ${newData.length} records.`,
-      "success",
-    );
-  };
+
 
   const handleDeleteAssembly = (assemblyName: string) => {
     if (assemblyName === "ALL MEMBERS") {
@@ -529,23 +541,6 @@ const App: React.FC = () => {
   };
 
   const navigate = useNavigate();
-  const handleConfirmAssemblySelection = useCallback(
-    async (assembly: string) => {
-      const pending = assemblySelectionModal.payload?.pending as PendingData | undefined;
-      if (!pending) return;
-
-      clearWorkspace();
-      setUploadedFile(pending.file);
-      setCurrentAssembly(assembly);
-
-      processData(pending.data, assembly, pending.file.name);
-
-      navigate("/processor");
-      assemblySelectionModal.close();
-    },
-    [assemblySelectionModal, clearWorkspace, navigate],
-  );
-
   const processData = (
     data: MemberRecordA[],
     assembly: string,
@@ -705,6 +700,25 @@ const App: React.FC = () => {
     };
   };
 
+  const handleConfirmAssemblySelection = useCallback(
+    async (assembly: string) => {
+      const pending = assemblySelectionModal.payload?.pending as PendingData | undefined;
+      if (!pending) return;
+
+      clearWorkspace();
+      setUploadedFile(pending.file);
+      setCurrentAssembly(assembly);
+
+      processData(pending.data, assembly, pending.file.name);
+
+      navigate("/processor");
+      assemblySelectionModal.close();
+    },
+    [assemblySelectionModal, clearWorkspace, navigate, processData, setCurrentAssembly, setUploadedFile],
+  );
+
+
+
 
 
   const handleApplyAgeFilter = useCallback(() => {
@@ -800,7 +814,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleConcatenationConfigChange = (key: keyof ConcatenationConfig) => {
+  const handleConcatenationConfigChange = useCallback((key: keyof ConcatenationConfig) => {
     setConcatenationConfig((prev) => {
       const newConfig = { ...prev, [key]: !prev[key] };
       localStorage.setItem(
@@ -821,7 +835,7 @@ const App: React.FC = () => {
       }
       return newConfig;
     });
-  };
+  }, [originalData.length, processedDataA, selectedDate, descriptionText, amountMappingColumn]);
 
   const handleSaveFromPreview = (updatedList: TitheRecordB[]) => {
     setTitheListData(updatedList);
@@ -990,6 +1004,8 @@ const App: React.FC = () => {
     concatenationConfig,
     descriptionText,
     amountMappingColumn,
+    exportToExcel,
+    pushAnalyticsEvent,
   ]);
 
 

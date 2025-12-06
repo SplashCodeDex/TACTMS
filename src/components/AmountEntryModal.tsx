@@ -36,7 +36,7 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
     useEffect(() => {
       // Sync local state if the master record changes from outside
       setLocalAmount(String(record["Transaction Amount"] ?? ""));
-    }, [record["Transaction Amount"]]);
+    }, [record]);
 
     useEffect(() => {
       if (isActive) {

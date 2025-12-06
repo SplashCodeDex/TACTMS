@@ -349,7 +349,7 @@ export const useGeminiChat = (apiKey: string) => {
         setIsLoading(false);
       }
     },
-    [chatHistory, dataContext],
+    [chatHistory, dataContext, apiKey],
   );
 
   return { chatHistory, chartData, isLoading, error, initializeChat, sendMessage };
