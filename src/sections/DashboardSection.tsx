@@ -7,7 +7,6 @@ import {
   GoogleUserProfile,
   MasterListData,
   MemberRecordA,
-  TitheRecordB,
 } from "@/types";
 import { formatDateDDMMMYYYY } from "@/lib/dataTransforms";
 import { useOutletContext } from "react-router-dom";
@@ -22,12 +21,6 @@ import {
   QuickActionsGrid,
   ScanAssemblyModal,
 } from "@/components/dashboard";
-import BatchImageProcessor from "@/components/BatchImageProcessor";
-import { processTitheImageWithValidation } from "@/services/imageProcessor";
-import { validateTitheBookImage, validateExtractedTitheData } from "@/services/imageValidator";
-import { sequencePages, detectDuplicatePages, mergeDuplicateExtractions } from "@/services/pageSequencer";
-import { findMemberByNameSync, getTopFuzzyMatches } from "@/services/reconciliation";
-import { validateAmount, buildMemberHistory } from "@/services/amountValidator";
 import PredictiveInsightsCard from "@/components/dashboard/PredictiveInsightsCard";
 
 interface DashboardSectionProps {
@@ -51,10 +44,8 @@ const DashboardSection: React.FC = () => {
   const [selectedAssembly, setSelectedAssembly] = useState("");
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   // Modals
-  const batchProcessor = useModal("batchProcessor");
   const scanAssemblyModal = useModal("scanAssembly");
 
   // Image Scan State
@@ -63,10 +54,7 @@ const DashboardSection: React.FC = () => {
   const [scanMonth, setScanMonth] = useState<string>(new Date().toLocaleString('default', { month: 'long' }));
   const [scanWeek, setScanWeek] = useState<string>("Week 1");
 
-  // Handlers
-  const handleBatchScanClick = () => {
-    batchProcessor.open();
-  };
+
 
 
   // Chat Integration
@@ -220,176 +208,7 @@ const DashboardSection: React.FC = () => {
     setPendingScanFile(null);
   };
 
-  // Batch Image Processing Handler with Multi-Page Stitching
-  const handleBatchProcess = async (
-    files: File[],
-    _assembly: string,
-    month: string,
-    week: string,
-    onProgress?: (completed: number, total: number) => void
-  ): Promise<TitheRecordB[]> => {
-    setIsBatchProcessing(true);
-    try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
-      const dateStr = new Date().toDateString();
 
-      // Collect extractions as separate arrays for intelligent merging
-      const pageExtractions: TitheRecordB[][] = [];
-
-      let completed = 0;
-      const total = files.length;
-      for (const file of files) {
-        try {
-          // Pre-validate the image file before expensive OCR
-          const imgValidation = await validateTitheBookImage(file);
-          if (!imgValidation.isValid) {
-            console.warn("Skipping invalid image:", imgValidation.errors.join("; "));
-            continue;
-          }
-
-          const extraction = await processTitheImageWithValidation(
-            file,
-            apiKey,
-            month,
-            week,
-            dateStr
-          );
-
-          // Validate extracted rows structurally
-          const structuralValidation = validateExtractedTitheData(
-            extraction.entries.map(e => ({
-              Name: e["Membership Number"],
-              Amount: e["Transaction Amount"],
-              Confidence: e["Confidence"],
-            }))
-          );
-
-          if (!structuralValidation.isValidFormat) {
-            console.warn("Extracted data failed structural validation");
-          }
-
-          // Store each extraction separately for intelligent merging
-          if (extraction.entries.length > 0) {
-            pageExtractions.push(extraction.entries);
-          }
-
-          completed += 1;
-          onProgress?.(completed, total);
-        } catch (err) {
-          console.warn("Failed to process one image in batch:", err);
-        }
-      }
-
-      // Use page sequencer to intelligently merge multi-page extractions
-      if (pageExtractions.length === 0) {
-        return [];
-      }
-
-      if (pageExtractions.length === 1) {
-        return pageExtractions[0];
-      }
-
-      // Detect duplicate pages first
-      const duplicateInfo = detectDuplicatePages(pageExtractions);
-
-      // Merge duplicate extractions if found
-      let processedExtractions = [...pageExtractions];
-      if (duplicateInfo.duplicateGroups.length > 0) {
-        console.info(`Detected ${duplicateInfo.duplicateGroups.length} duplicate page groups`);
-
-        // Replace duplicate groups with merged versions
-        for (const group of duplicateInfo.duplicateGroups) {
-          const merged = mergeDuplicateExtractions(pageExtractions, group);
-          // Replace first in group with merged, mark others as processed
-          processedExtractions[group[0]] = merged;
-        }
-
-        // Keep only unique pages (first of each duplicate group)
-        processedExtractions = duplicateInfo.unique.map(idx => processedExtractions[idx]);
-      }
-
-      // Sequence and merge the pages intelligently
-      const sequenceResult = sequencePages(processedExtractions);
-
-      console.info(
-        `Page sequencing complete: ${sequenceResult.merged.length} entries, ` +
-        `${sequenceResult.duplicatesRemoved} duplicates removed, ` +
-        `${sequenceResult.gapsDetected.length} gaps detected`
-      );
-
-      if (sequenceResult.gapsDetected.length > 0) {
-        console.warn(`Gap detected after member numbers: ${sequenceResult.gapsDetected.join(", ")}`);
-      }
-
-      // Match extracted names against assembly member database
-      const assemblyMembers = memberDatabase[_assembly]?.data || [];
-      if (assemblyMembers.length > 0) {
-        let matchedCount = 0;
-        let unmatchedCount = 0;
-        let anomalyCount = 0;
-
-        const matchedResults = sequenceResult.merged.map(record => {
-          const rawName = record["Membership Number"]; // This contains the OCR-extracted name
-          const match = findMemberByNameSync(rawName, assemblyMembers);
-
-          let resultRecord = { ...record };
-
-          if (match) {
-            matchedCount++;
-            // Format matched member ID like ImageVerificationModal does
-            const memberId = `${match.member.Surname} ${match.member["First Name"]} ${match.member["Other Names"] || ""} (${match.member["Membership Number"]}|${match.member["Old Membership Number"] || ""})`.trim();
-            resultRecord = {
-              ...resultRecord,
-              "Membership Number": memberId,
-              memberDetails: match.member
-            };
-
-            // Validate amount against member's history (anomaly detection)
-            const memberHistory = buildMemberHistory(memberId, transactionLog);
-            if (memberHistory) {
-              const amountValidation = validateAmount(record["Transaction Amount"], memberHistory);
-              if (amountValidation.reason === 'anomaly' || amountValidation.reason === 'unusual_high' || amountValidation.reason === 'unusual_low') {
-                anomalyCount++;
-                // Add anomaly warning to the record
-                resultRecord = {
-                  ...resultRecord,
-                  "Narration/Description": `[ANOMALY: ${amountValidation.message}] ${resultRecord["Narration/Description"] || ''}`
-                };
-              }
-            }
-          } else {
-            unmatchedCount++;
-            // Get top 3 fuzzy suggestions for unmatched names
-            const suggestions = getTopFuzzyMatches(rawName, assemblyMembers, 3);
-            const suggestionsList = suggestions
-              .map(s => `${s.member.Surname} ${s.member["First Name"]} (${Math.round(s.score * 100)}%)`)
-              .join("; ");
-
-            // Keep raw OCR name but mark as unmatched with suggestions
-            resultRecord = {
-              ...resultRecord,
-              "Membership Number": `[UNMATCHED] ${rawName}`,
-              "Narration/Description": suggestions.length > 0
-                ? `[SUGGESTIONS: ${suggestionsList}] ${resultRecord["Narration/Description"] || ''}`
-                : resultRecord["Narration/Description"] || ''
-            };
-          }
-
-          return resultRecord;
-        });
-
-        console.info(
-          `Batch processing: ${matchedCount} matched, ${unmatchedCount} unmatched, ` +
-          `${anomalyCount} anomalies detected out of ${sequenceResult.merged.length}`
-        );
-        return matchedResults;
-      }
-
-      return sequenceResult.merged;
-    } finally {
-      setIsBatchProcessing(false);
-    }
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -462,7 +281,6 @@ const DashboardSection: React.FC = () => {
             memberDatabaseEmpty={Object.keys(memberDatabase).length === 0}
             onStartWeek={handleStartWeek}
             onScanClick={handleScanClick}
-            onBatchScanClick={handleBatchScanClick}
             imageInputRef={imageInputRef}
             onImageChange={handleImageUploadChange}
           />
@@ -520,14 +338,7 @@ const DashboardSection: React.FC = () => {
         onConfirm={handleConfirmScanAssembly}
       />
 
-      {/* Batch Image Processor Modal */}
-      <BatchImageProcessor
-        isOpen={batchProcessor.isOpen}
-        onClose={batchProcessor.close}
-        onProcess={handleBatchProcess}
-        assemblies={Array.from(assembliesWithData)}
-        isProcessing={isBatchProcessing}
-      />
+
 
     </motion.div>
   );

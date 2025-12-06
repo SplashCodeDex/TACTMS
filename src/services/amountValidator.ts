@@ -134,6 +134,7 @@ export const buildMemberHistory = (
     const amounts: number[] = [];
 
     for (const log of transactionLogs) {
+        if (!log || !log.titheListData) continue;
         for (const record of log.titheListData) {
             // Check if this record belongs to the member
             const recordMemberId = record["Membership Number"] || "";

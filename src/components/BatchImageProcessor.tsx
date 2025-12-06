@@ -24,6 +24,8 @@ interface BatchImageProcessorProps {
     onProcess: (files: File[], assembly: string, month: string, week: string, onProgress?: (completed: number, total: number) => void) => Promise<TitheRecordB[]>;
     assemblies: string[];
     isProcessing: boolean;
+    defaultAssembly?: string;
+    lockedAssembly?: boolean;
 }
 
 interface UploadedImage {
@@ -46,10 +48,12 @@ const BatchImageProcessor: React.FC<BatchImageProcessorProps> = ({
     onClose,
     onProcess,
     assemblies,
-    isProcessing
+    isProcessing,
+    defaultAssembly,
+    lockedAssembly = false
 }) => {
     const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-    const [selectedAssembly, setSelectedAssembly] = useState('');
+    const [selectedAssembly, setSelectedAssembly] = useState(defaultAssembly || '');
     const [selectedMonth, setSelectedMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
     const [selectedWeek, setSelectedWeek] = useState('Week 1');
     const [processingProgress, setProcessingProgress] = useState(0);
@@ -65,7 +69,8 @@ const BatchImageProcessor: React.FC<BatchImageProcessorProps> = ({
             setResults([]);
             setError(null);
             setProcessingProgress(0);
-            setSelectedAssembly('');
+            setProcessingProgress(0);
+            setSelectedAssembly(defaultAssembly || '');
         }
     }, [isOpen]);
 
@@ -192,29 +197,27 @@ const BatchImageProcessor: React.FC<BatchImageProcessorProps> = ({
                 footerContent={footerContent}
             >
                 <div className="space-y-6">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
-                            Upload up to 4 pages of the same assembly's tithe book. The AI will process them sequentially.
-                        </p>
-                    </div>
+
 
                     {/* Configuration Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                                Assembly *
-                            </label>
-                            <Select value={selectedAssembly} onValueChange={setSelectedAssembly}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select Assembly" />
-                                </SelectTrigger>
-                                <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
-                                    {assemblies.map(a => (
-                                        <SelectItem key={a} value={a}>{a}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div className={`grid grid-cols-1 ${lockedAssembly ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
+                        {!lockedAssembly && (
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                                    Assembly *
+                                </label>
+                                <Select value={selectedAssembly} onValueChange={setSelectedAssembly}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select Assembly" />
+                                    </SelectTrigger>
+                                    <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
+                                        {assemblies.map(a => (
+                                            <SelectItem key={a} value={a}>{a}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                                 Month

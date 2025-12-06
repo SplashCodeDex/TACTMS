@@ -28,6 +28,10 @@ import StatDisplayCard from "../components/StatDisplayCard";
 import EmptyState from "../components/EmptyState";
 import DatePicker from "../components/DatePicker";
 import { useOutletContext } from "react-router-dom";
+import BatchImageProcessor from "@/components/BatchImageProcessor";
+import { useBatchProcessor } from "@/hooks/useBatchProcessor";
+import { useModal } from "@/hooks/useModal";
+import { useWorkspaceContext, useDatabaseContext } from "@/context";
 
 interface ListOverviewActionsSectionProps {
   currentAssembly: string | null;
@@ -142,6 +146,33 @@ const ListOverviewActionsSection = React.memo(
       onDateChange,
       onScanImage,
     } = useOutletContext<ListOverviewActionsSectionProps>();
+
+    // Context for batch processing
+    const { setTitheListData, setHasUnsavedChanges } = useWorkspaceContext();
+    const { memberDatabase } = useDatabaseContext();
+    const batchProcessorModal = useModal("batchProcessor");
+
+    // Batch Processor Hook
+    const { processBatch, isProcessing } = useBatchProcessor({
+      memberDatabase,
+      transactionLog
+    });
+
+    const handleBatchProcess = async (
+      files: File[],
+      assembly: string,
+      month: string,
+      week: string,
+      onProgress?: (completed: number, total: number) => void
+    ) => {
+      const results = await processBatch(files, assembly, month, week, onProgress);
+      if (results.length > 0) {
+        setTitheListData(prev => [...prev, ...results]);
+        setHasUnsavedChanges(true);
+        batchProcessorModal.close();
+      }
+      return results;
+    };
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -336,7 +367,7 @@ const ListOverviewActionsSection = React.memo(
               }}
             />
             <Button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => batchProcessorModal.open()}
               leftIcon={<ScanLine size={16} />}
               variant="primary"
             >
@@ -564,6 +595,17 @@ const ListOverviewActionsSection = React.memo(
             />
           </div>
         </div>
+
+
+        <BatchImageProcessor
+          isOpen={batchProcessorModal.isOpen}
+          onClose={batchProcessorModal.close}
+          onProcess={handleBatchProcess}
+          assemblies={currentAssembly ? [currentAssembly] : []}
+          defaultAssembly={currentAssembly || undefined}
+          lockedAssembly={!!currentAssembly}
+          isProcessing={isProcessing}
+        />
       </MotionSection >
     );
   }),
