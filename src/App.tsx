@@ -20,7 +20,7 @@ import Modal from "@/components/Modal";
 import {
   ITEMS_PER_FULL_PREVIEW_PAGE,
   DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
- } from "./constants";
+} from "./constants";
 import AmountEntryModal from "@/components/AmountEntryModal";
 import AssemblySelectionModal from "@/components/AssemblySelectionModal";
 import MembershipReconciliationModal from "@/components/MembershipReconciliationModal";
@@ -164,7 +164,7 @@ const App: React.FC = () => {
 
   // --- Context Hooks (shared state) ---
   const addToast = useToast();
-  const { assemblies, addAssembly } = useAppConfigContext();
+  const { assemblies, addAssembly, removeAssembly } = useAppConfigContext();
 
   // Workspace context - tithe processing state
   const {
@@ -536,6 +536,8 @@ const App: React.FC = () => {
           return newState;
         });
         addToast(`Data for ${assemblyName} has been deleted.`, "success");
+        // Also remove from global assembly list if it's a custom one
+        removeAssembly(assemblyName);
       }
     }
   };
