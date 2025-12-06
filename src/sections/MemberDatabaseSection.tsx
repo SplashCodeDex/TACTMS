@@ -278,23 +278,30 @@ const MemberDatabaseSection: React.FC = () => {
 
 
 
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={(e) => selectedAssembly && handleFileChange(e, selectedAssembly)}
-                  className="hidden"
-                  disabled={selectedAssembly === "ALL MEMBERS"}
-                />
-                <Button
-                  variant="primary"
-                  leftIcon={<Upload size={16} />}
-                  disabled={selectedAssembly === "ALL MEMBERS"}
-                  className="pointer-events-none" // Add this to ensure clicks pass through to label if needed, or just let it bubble
-                >
-                  Update Members List
-                </Button>
-              </label>
+              {(() => {
+                const inputId = `upload-${selectedAssembly?.replace(/\s+/g, "-") || "assembly"}`;
+                return (
+                  <>
+                    <input
+                      id={inputId}
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={(e) => selectedAssembly && handleFileChange(e, selectedAssembly)}
+                      className="hidden"
+                      disabled={selectedAssembly === "ALL MEMBERS"}
+                    />
+                    <label htmlFor={inputId} className="cursor-pointer">
+                      <Button
+                        variant="primary"
+                        leftIcon={<Upload size={16} />}
+                        disabled={selectedAssembly === "ALL MEMBERS"}
+                      >
+                        Update Members List
+                      </Button>
+                    </label>
+                  </>
+                );
+              })()}
             </div>
           </div>
           <div className="overflow-x-auto">

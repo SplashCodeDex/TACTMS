@@ -165,7 +165,7 @@ const App: React.FC = () => {
 
   // --- Context Hooks (shared state) ---
   const addToast = useToast();
-  const { assemblies } = useAppConfigContext();
+  const { assemblies, addAssembly } = useAppConfigContext();
 
   // Workspace context - tithe processing state
   const {
@@ -1531,6 +1531,7 @@ const App: React.FC = () => {
                       addToast(`Assembly "${assemblyName}" already exists.`, "warning");
                       return;
                     }
+                    // Add to memberDatabase
                     setMemberDatabase((prev) => ({
                       ...prev,
                       [assemblyName]: {
@@ -1539,6 +1540,8 @@ const App: React.FC = () => {
                         fileName: "",
                       },
                     }));
+                    // Also add to AppConfigContext so it appears in dropdowns
+                    addAssembly(assemblyName);
                     addToast(`Assembly "${assemblyName}" created. Upload a master list to populate it.`, "success");
                   },
                   // ListOverviewActions

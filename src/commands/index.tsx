@@ -1,6 +1,5 @@
 import React from "react";
 import { FavoriteConfig, ViewType } from "../types";
-import { ASSEMBLIES } from "../constants";
 import {
   LayoutDashboard,
   Cpu,
@@ -28,6 +27,7 @@ interface BuildParams {
   onStartNewWeek: (assemblyName: string) => void;
   favorites: FavoriteConfig[];
   theme: "dark" | "light";
+  assemblies: string[];
 }
 
 export function buildCommandActions({
@@ -36,6 +36,7 @@ export function buildCommandActions({
   onStartNewWeek,
   favorites,
   theme,
+  assemblies,
 }: BuildParams): CommandAction[] {
   const assembliesWithFavorites = new Set(favorites.map((f) => f.assemblyName));
 
@@ -93,23 +94,23 @@ export function buildCommandActions({
 
   const themeActions: CommandAction[] = theme === "dark"
     ? [
-        {
-          id: "theme_light",
-          title: "Switch to Light Theme",
-          icon: <Sun size={18} />,
-          onPerform: () => setTheme("light"),
-        },
-      ]
+      {
+        id: "theme_light",
+        title: "Switch to Light Theme",
+        icon: <Sun size={18} />,
+        onPerform: () => setTheme("light"),
+      },
+    ]
     : [
-        {
-          id: "theme_dark",
-          title: "Switch to Dark Theme",
-          icon: <Moon size={18} />,
-          onPerform: () => setTheme("dark"),
-        },
-      ];
+      {
+        id: "theme_dark",
+        title: "Switch to Dark Theme",
+        icon: <Moon size={18} />,
+        onPerform: () => setTheme("dark"),
+      },
+    ];
 
-  const dynamic: CommandAction[] = ASSEMBLIES.filter((name) =>
+  const dynamic: CommandAction[] = assemblies.filter((name) =>
     assembliesWithFavorites.has(name),
   ).map((name) => ({
     id: `start_week_${name}`,

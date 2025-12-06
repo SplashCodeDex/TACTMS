@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import Button from "../Button";
-import { ASSEMBLIES } from "../../constants";
+import { useAppConfigContext } from "../../context";
 
 interface QuickActionsGridProps {
     selectedAssembly: string;
@@ -40,6 +40,8 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     imageInputRef,
     onImageChange,
 }) => {
+    const { assemblies } = useAppConfigContext();
+
     return (
         <section className="lg:col-span-2 content-card flex flex-col h-full gap-6">
             <h2 className="section-heading mb-0 pb-3 border-b border-[var(--border-color)]">
@@ -79,7 +81,7 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
                                     <SelectValue placeholder="-- Select Assembly --" />
                                 </SelectTrigger>
                                 <SelectContent className="glassmorphism-bg border border-[var(--border-color)] rounded-xl">
-                                    {ASSEMBLIES.map((assembly) => (
+                                    {assemblies.map((assembly) => (
                                         <SelectItem
                                             key={assembly}
                                             value={assembly}

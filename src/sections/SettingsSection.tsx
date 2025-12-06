@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { MemberDatabase } from "../types";
-import { Trash2, AlertTriangle, Plus, Building2, X, Settings2 } from "lucide-react";
+import { Trash2, AlertTriangle, Building2, Settings2, Info } from "lucide-react";
 import Button from "../components/Button";
 import { useAppConfigContext, useToast } from "../context";
 
@@ -16,40 +16,12 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
     const addToast = useToast();
     const {
         assemblies,
-        addAssembly,
-        removeAssembly,
-        isCustomAssembly, // Use this to check if removable
+        isCustomAssembly,
         fuzzyMatchThreshold,
         setFuzzyMatchThreshold
     } = useAppConfigContext();
 
-    const [newAssemblyName, setNewAssemblyName] = useState("");
     const dataAssemblies = Object.keys(memberDatabase);
-
-    const handleAddAssembly = () => {
-        const trimmed = newAssemblyName.trim();
-        if (!trimmed) {
-            addToast("Please enter an assembly name", "warning");
-            return;
-        }
-        if (assemblies.some(a => a.toLowerCase() === trimmed.toLowerCase())) {
-            addToast(`"${trimmed}" already exists`, "warning");
-            return;
-        }
-        addAssembly(trimmed);
-        setNewAssemblyName("");
-        addToast(`Added "${trimmed}" to assemblies`, "success");
-    };
-
-    const handleRemoveAssembly = (name: string) => {
-        // isCustomAssembly returns true only for user-added assemblies
-        if (!isCustomAssembly(name)) {
-            addToast("Cannot remove default Jei-Krodua assemblies", "warning");
-            return;
-        }
-        removeAssembly(name);
-        addToast(`Removed "${name}" from assemblies`, "success");
-    };
 
     const handleThresholdChange = (value: number) => {
         setFuzzyMatchThreshold(value);
@@ -76,47 +48,28 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
                 </div>
 
                 <p className="text-sm text-[var(--text-secondary)] mb-4">
-                    Add or remove assemblies from your list. Default Jei-Krodua District assemblies cannot be removed.
+                    Your configured assemblies. Default Jei-Krodua District assemblies are highlighted.
                 </p>
 
-                {/* Add New Assembly */}
-                <div className="flex gap-2 mb-6">
-                    <input
-                        type="text"
-                        value={newAssemblyName}
-                        onChange={(e) => setNewAssemblyName(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddAssembly()}
-                        placeholder="Enter new assembly name..."
-                        className="flex-1 px-4 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]"
-                    />
-                    <Button
-                        onClick={handleAddAssembly}
-                        leftIcon={<Plus size={16} />}
-                    >
-                        Add
-                    </Button>
+                {/* Info Banner - Direct to Database for adding */}
+                <div className="flex items-start gap-2 p-3 mb-4 rounded-lg bg-[var(--info-bg)] border border-[var(--info-border)]">
+                    <Info size={16} className="text-[var(--info-text)] mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-[var(--info-text)]">
+                        To add a new assembly, go to the <strong>Database</strong> section and click the <strong>+</strong> button.
+                    </p>
                 </div>
 
-                {/* Assembly List */}
+                {/* Assembly List (Read-only display) */}
                 <div className="flex flex-wrap gap-2">
                     {assemblies.map((assembly) => (
                         <div
                             key={assembly}
                             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${!isCustomAssembly(assembly)
-                                    ? "bg-[var(--accent-color)]/10 border-[var(--accent-color)]/30 text-[var(--accent-color)]"
-                                    : "bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-primary)]"
+                                ? "bg-[var(--accent-color)]/10 border-[var(--accent-color)]/30 text-[var(--accent-color)]"
+                                : "bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-primary)]"
                                 }`}
                         >
                             <span className="text-sm">{assembly}</span>
-                            {isCustomAssembly(assembly) && (
-                                <button
-                                    onClick={() => handleRemoveAssembly(assembly)}
-                                    className="p-0.5 rounded-full hover:bg-[var(--danger-bg)] text-[var(--text-muted)] hover:text-[var(--danger-text)] transition-colors"
-                                    title="Remove assembly"
-                                >
-                                    <X size={14} />
-                                </button>
-                            )}
                         </div>
                     ))}
                 </div>

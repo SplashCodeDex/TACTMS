@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FavoriteConfig, ViewType } from "../types";
 import { Search, CornerDownLeft } from "lucide-react";
 import { buildCommandActions } from "../commands/index";
+import { useAppConfigContext } from "../context";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   favorites,
   theme,
 }) => {
+  const { assemblies } = useAppConfigContext();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +55,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
         onStartNewWeek,
         favorites,
         theme,
+        assemblies,
       }),
-    [setActiveView, setTheme, onStartNewWeek, favorites, theme],
+    [setActiveView, setTheme, onStartNewWeek, favorites, theme, assemblies],
   );
 
   const filteredActions = useMemo(() => {
