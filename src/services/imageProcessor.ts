@@ -596,6 +596,7 @@ export interface NameMatchResult {
     matchedMember: MemberRecordA | null;
     confidence: number;
     position: number;
+    alternatives: Array<{ member: MemberRecordA; score: number }>; // Top 3 alternative matches
 }
 
 export interface NameExtractionResult {
@@ -665,16 +666,101 @@ function calculateSimilarity(str1: string, str2: string): number {
 }
 
 /**
+ * Token-based similarity scoring
+ * Splits names into tokens and scores based on overlap
+ * Handles initials like "J." matching "John"
+ */
+function tokenSimilarity(str1: string, str2: string): number {
+    const tokens1 = str1.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    const tokens2 = str2.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+
+    if (tokens1.length === 0 || tokens2.length === 0) return 0;
+
+    let matches = 0;
+    const usedTokens = new Set<number>(); // Track which tokens2 have been matched
+
+    for (const t1 of tokens1) {
+        // Check if this is an initial (e.g., "J." or "J")
+        const isInitial = t1.length <= 2 && (t1.endsWith('.') || t1.length === 1);
+        const cleanT1 = t1.replace('.', '');
+
+        let bestTokenMatch = 0;
+        let bestTokenIndex = -1;
+
+        for (let i = 0; i < tokens2.length; i++) {
+            if (usedTokens.has(i)) continue;
+
+            const t2 = tokens2[i];
+
+            // Exact match
+            if (cleanT1 === t2.replace('.', '')) {
+                if (1.0 > bestTokenMatch) {
+                    bestTokenMatch = 1.0;
+                    bestTokenIndex = i;
+                }
+            }
+            // Initial matches start of token (J → John)
+            else if (isInitial && t2.startsWith(cleanT1)) {
+                if (0.7 > bestTokenMatch) {
+                    bestTokenMatch = 0.7;
+                    bestTokenIndex = i;
+                }
+            }
+            // Fuzzy match for similar tokens
+            else {
+                const sim = calculateSimilarity(cleanT1, t2);
+                if (sim > 0.75 && sim > bestTokenMatch) {
+                    bestTokenMatch = sim * 0.9; // Slightly penalize fuzzy matches
+                    bestTokenIndex = i;
+                }
+            }
+        }
+
+        if (bestTokenIndex >= 0) {
+            matches += bestTokenMatch;
+            usedTokens.add(bestTokenIndex);
+        }
+    }
+
+    return matches / Math.max(tokens1.length, tokens2.length);
+}
+
+/**
+ * Positional boost for members near the extracted position
+ * Members closer to the expected position get a score boost
+ */
+function getPositionBoost(
+    extractedPosition: number,
+    memberIndex: number | undefined
+): number {
+    if (!memberIndex || memberIndex <= 0) return 0;
+
+    const distance = Math.abs(extractedPosition - memberIndex);
+
+    if (distance === 0) return 0.15;  // Exact position match
+    if (distance <= 2) return 0.08;   // Very close (within 2 positions)
+    if (distance <= 5) return 0.03;   // Nearby (within 5 positions)
+    return 0;
+}
+
+/**
  * Find best matching member from database based on extracted name
+ * Enhanced with token-based matching, positional hints, and alternatives
  */
 function findBestMatch(
     extractedName: string,
-    members: MemberRecordA[]
-): { member: MemberRecordA | null; score: number } {
-    let bestMatch: MemberRecordA | null = null;
-    let bestScore = 0;
-
+    members: MemberRecordA[],
+    extractedPosition?: number,
+    memberOrderMap?: Map<string, number>
+): {
+    member: MemberRecordA | null;
+    score: number;
+    alternatives: Array<{ member: MemberRecordA; score: number }>;
+} {
     const cleanedExtracted = extractedName.toLowerCase().trim();
+
+    // Score all members
+    const scoredMembers: Array<{ member: MemberRecordA; score: number }> = [];
 
     for (const member of members) {
         // Build various name combinations to match against
@@ -685,30 +771,53 @@ function findBestMatch(
         ].filter(Boolean);
 
         const fullName = nameParts.join(" ").toLowerCase();
-        const reverseName = nameParts.reverse().join(" ").toLowerCase();
-        const surnameFirst = `${member.Surname} ${member["First Name"]}`.toLowerCase();
-        const firstSurname = `${member["First Name"]} ${member.Surname}`.toLowerCase();
+        const reverseName = [...nameParts].reverse().join(" ").toLowerCase();
+        const surnameFirst = `${member.Surname || ''} ${member["First Name"] || ''}`.toLowerCase().trim();
+        const firstSurname = `${member["First Name"] || ''} ${member.Surname || ''}`.toLowerCase().trim();
 
-        // Calculate similarity for each combination
-        const scores = [
+        // Calculate Levenshtein similarity for each combination
+        const levenshteinScores = [
             calculateSimilarity(cleanedExtracted, fullName),
             calculateSimilarity(cleanedExtracted, reverseName),
             calculateSimilarity(cleanedExtracted, surnameFirst),
             calculateSimilarity(cleanedExtracted, firstSurname),
         ];
+        const bestLevenshtein = Math.max(...levenshteinScores);
 
-        const maxScore = Math.max(...scores);
+        // Calculate token-based similarity
+        const tokenScores = [
+            tokenSimilarity(cleanedExtracted, fullName),
+            tokenSimilarity(cleanedExtracted, surnameFirst),
+            tokenSimilarity(cleanedExtracted, firstSurname),
+        ];
+        const bestToken = Math.max(...tokenScores);
 
-        if (maxScore > bestScore) {
-            bestScore = maxScore;
-            bestMatch = member;
+        // Get positional boost if available
+        let positionBoost = 0;
+        if (extractedPosition && memberOrderMap) {
+            const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
+            const memberPosition = memberOrderMap.get(memberId);
+            positionBoost = getPositionBoost(extractedPosition, memberPosition);
         }
+
+        // Weighted final score: 55% Levenshtein + 35% Token + 10% Position
+        const finalScore = (bestLevenshtein * 0.55) + (bestToken * 0.35) + positionBoost;
+
+        scoredMembers.push({ member, score: finalScore });
     }
 
-    // Threshold: only return match if score is decent
+    // Sort by score descending
+    scoredMembers.sort((a, b) => b.score - a.score);
+
+    // Get top match and alternatives
+    const bestMatch = scoredMembers[0];
+    const alternatives = scoredMembers.slice(1, 4); // Top 3 alternatives
+
+    // Threshold: only return match if score is decent (lowered slightly due to weighted scoring)
     return {
-        member: bestScore >= 0.6 ? bestMatch : null,
-        score: bestScore
+        member: bestMatch && bestMatch.score >= 0.5 ? bestMatch.member : null,
+        score: bestMatch?.score || 0,
+        alternatives: alternatives.filter(a => a.score >= 0.4) // Only decent alternatives
     };
 }
 
@@ -719,7 +828,8 @@ function findBestMatch(
 export const extractNamesFromTitheBook = async (
     imageFile: File,
     apiKey: string,
-    memberDatabase: MemberRecordA[]
+    memberDatabase: MemberRecordA[],
+    memberOrderMap?: Map<string, number> // Optional: for positional hints
 ): Promise<NameExtractionResult> => {
     if (!apiKey) throw new Error("API Key is missing");
 
@@ -754,18 +864,28 @@ export const extractNamesFromTitheBook = async (
         const jsonString = result.response.text().trim();
         const parsed: { names: Array<{ "No.": number; "Name": string }> } = JSON.parse(jsonString);
 
-        // Match each extracted name to database
+        // Match each extracted name to database with enhanced matching
         const matches: NameMatchResult[] = parsed.names.map((item, index) => {
             const cleanedName = cleanOCRName(item.Name);
-            const { member, score } = findBestMatch(cleanedName, memberDatabase);
+            const position = item["No."] || index + 1;
+
+            // Use enhanced findBestMatch with positional hints
+            const { member, score, alternatives } = findBestMatch(
+                cleanedName,
+                memberDatabase,
+                position,
+                memberOrderMap
+            );
 
             return {
                 extractedName: cleanedName,
                 matchedMember: member,
                 confidence: score,
-                position: item["No."] || index + 1
+                position,
+                alternatives
             };
         });
+
 
         // Sort by position
         matches.sort((a, b) => a.position - b.position);

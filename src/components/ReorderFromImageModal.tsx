@@ -13,6 +13,7 @@ interface ReorderFromImageModalProps {
     memberDatabase: MemberRecordA[];
     onSaveComplete: () => void;
     addToast: (message: string, type: "success" | "error" | "info" | "warning") => void;
+    memberOrderMap?: Map<string, number>; // For positional hints
 }
 
 type ModalStep = "upload" | "processing" | "preview" | "resolving";
@@ -23,6 +24,7 @@ interface ExtractedNameRow {
     matchedMember: MemberRecordA | null;
     matchScore: number;
     isManuallyResolved: boolean;
+    alternatives: Array<{ member: MemberRecordA; score: number }>; // Top suggestions
 }
 
 const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
@@ -32,6 +34,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     memberDatabase,
     onSaveComplete,
     addToast,
+    memberOrderMap,
 }) => {
     const [step, setStep] = useState<ModalStep>("upload");
     const [uploadedImages, setUploadedImages] = useState<File[]>([]);
@@ -118,7 +121,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
             // Process sequentially
             for (let i = 0; i < uploadedImages.length; i++) {
-                const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase);
+                // Pass memberOrderMap for positional hints
+                const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase, memberOrderMap);
 
                 const pageRows: ExtractedNameRow[] = result.matches.map((match) => ({
                     position: match.position,
@@ -126,6 +130,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                     matchedMember: match.matchedMember,
                     matchScore: match.confidence,
                     isManuallyResolved: false,
+                    alternatives: match.alternatives || [],
                 }));
 
                 allRows.push(...pageRows);
@@ -407,9 +412,27 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                                                         )}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-amber-400 flex items-center gap-1">
-                                                        <AlertTriangle size={14} /> No match found
-                                                    </span>
+                                                    <div className="space-y-1">
+                                                        <span className="text-amber-400 flex items-center gap-1">
+                                                            <AlertTriangle size={14} /> No match found
+                                                        </span>
+                                                        {/* Show alternatives as clickable suggestions */}
+                                                        {row.alternatives.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                <span className="text-xs text-[var(--text-muted)]">Suggestions:</span>
+                                                                {row.alternatives.map((alt, altIdx) => (
+                                                                    <button
+                                                                        key={altIdx}
+                                                                        className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/40 transition-colors"
+                                                                        onClick={() => handleResolveMember(index, alt.member)}
+                                                                        title={`Score: ${(alt.score * 100).toFixed(0)}%`}
+                                                                    >
+                                                                        {alt.member.Surname} {alt.member["First Name"]}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="p-3 text-center">

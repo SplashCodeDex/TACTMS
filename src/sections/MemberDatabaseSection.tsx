@@ -626,6 +626,7 @@ const MemberDatabaseSection: React.FC = () => {
         onClose={reorderFromImageModal.close}
         assemblyName={selectedAssembly || ""}
         memberDatabase={memberDatabase[selectedAssembly || ""]?.data || []}
+        memberOrderMap={memberOrderMap} // Pass for positional hints
         onSaveComplete={async () => {
           // Refresh the order map after save
           if (selectedAssembly) {
