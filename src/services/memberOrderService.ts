@@ -1116,7 +1116,7 @@ export const saveLearnedAlias = async (
         memberId: memberId.toLowerCase(),
         memberDisplayName: displayName || memberId,
         createdAt: existing?.createdAt || now,
-        usageCount: existing ? existing.usageCount + 1 : 0,
+        usageCount: existing ? existing.usageCount + 1 : 1,  // First use = 1, not 0
         lastUsed: now,
     };
 

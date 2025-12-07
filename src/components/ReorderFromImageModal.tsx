@@ -98,7 +98,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
         const moved = orderChanges.filter(c => c.changeType === 'moved').length;
         const unchanged = orderChanges.filter(c => c.changeType === 'unchanged').length;
         const newEntries = orderChanges.filter(c => c.changeType === 'new').length;
-        const selected = orderChanges.filter(c => c.included).length;
+        // 'selected' should only count actionable changes (not unchanged)
+        const selected = orderChanges.filter(c => c.included && c.changeType !== 'unchanged').length;
         return { moved, unchanged, new: newEntries, selected, total: orderChanges.length };
     }, [orderChanges]);
 
@@ -117,8 +118,6 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
     // Handle image upload
     const handleImageSelect = useCallback((files: File[]) => {
-        const newImages: File[] = [];
-
         // Calculate how many more we can add
         const remainingSlots = 5 - uploadedImages.length;
         if (remainingSlots <= 0) {
@@ -128,20 +127,32 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
         const filesToAdd = files.slice(0, remainingSlots);
 
+        // Filter valid image files
+        const validFiles: File[] = [];
         filesToAdd.forEach(file => {
             if (!file.type.startsWith("image/")) {
                 addToast(`Skipping non-image file: ${file.name}`, "warning");
                 return;
             }
-            newImages.push(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreviews(prev => [...prev, reader.result as string]);
-            };
-            reader.readAsDataURL(file);
+            validFiles.push(file);
         });
 
-        setUploadedImages(prev => [...prev, ...newImages]);
+        if (validFiles.length === 0) return;
+
+        // Load previews in order using Promise.all to avoid race condition
+        const loadPreview = (file: File): Promise<string> => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+            });
+        };
+
+        Promise.all(validFiles.map(loadPreview)).then((previews) => {
+            setImagePreviews(prev => [...prev, ...previews]);
+        });
+
+        setUploadedImages(prev => [...prev, ...validFiles]);
     }, [uploadedImages, addToast]);
 
     const handleDrop = useCallback((e: React.DragEvent) => {

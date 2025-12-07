@@ -165,6 +165,12 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
 
         const newIndex = targetPos - 1;
 
+        // Read swapped member BEFORE state update to avoid stale read
+        const swappedMember = members[newIndex];
+        const swappedMsg = swappedMember
+            ? `Swapped with "${swappedMember.displayName}" at #${targetPos}`
+            : `Moved to #${targetPos}`;
+
         // Perform SWAP instead of Shift/Insert to avoid disturbing other members
         setMembers((items) => {
             const newItems = [...items];
@@ -176,11 +182,6 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
         });
 
         setHasChanges(true);
-
-        const swappedMember = members[newIndex];
-        const swappedMsg = swappedMember
-            ? `Swapped with "${swappedMember.displayName}" at #${targetPos}`
-            : `Moved to #${targetPos}`;
 
         addToast(`Moved "${memberToMove.displayName}" to #${targetPos}. ${swappedMsg}`, "success");
 
