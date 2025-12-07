@@ -104,6 +104,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
   const columnButtonRef = useRef<HTMLButtonElement>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevListLengthRef = useRef(0);
+  const deletionHistoryRef = useRef(deletionHistory);  // Bug 14 fix: ref for latest history
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -289,10 +290,17 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     [],
   );
 
-  const handleUndoDelete = useCallback(() => {
-    if (deletionHistory.length === 0) return;
+  // Keep ref in sync with state (Bug 14 fix)
+  useEffect(() => {
+    deletionHistoryRef.current = deletionHistory;
+  }, [deletionHistory]);
 
-    const lastDeleted = deletionHistory[deletionHistory.length - 1];
+  const handleUndoDelete = useCallback(() => {
+    // Use ref to access latest history, avoiding stale closure (Bug 14 fix)
+    const currentHistory = deletionHistoryRef.current;
+    if (currentHistory.length === 0) return;
+
+    const lastDeleted = currentHistory[currentHistory.length - 1];
 
     setInternalList((list) => {
       const listCopy = [...list];
@@ -308,7 +316,7 @@ const FullTithePreviewModal: React.FC<FullTithePreviewModalProps> = (props) => {
     setDeletionHistory((prev) => prev.slice(0, -1));
     setMadeChanges(true);
     addToast(`${lastDeleted.items.length} record(s) restored.`, "success");
-  }, [deletionHistory, addToast]);
+  }, [addToast]);  // Removed deletionHistory from deps - using ref instead
 
   const handleDeleteTitheRecordInternal = useCallback(
     (recordNo: number | string) => {

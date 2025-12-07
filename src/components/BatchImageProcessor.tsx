@@ -65,14 +65,16 @@ const BatchImageProcessor: React.FC<BatchImageProcessorProps> = ({
     // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
+            // Revoke existing preview URLs before resetting (Bug 15 fix)
+            uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
             setUploadedImages([]);
             setResults([]);
             setError(null);
             setProcessingProgress(0);
-            setProcessingProgress(0);
             setSelectedAssembly(defaultAssembly || '');
         }
-    }, [isOpen]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, defaultAssembly]);  // Bug 13 fix: added defaultAssembly
 
     const handleFileSelect = useCallback((files: FileList | null) => {
         if (!files) return;
