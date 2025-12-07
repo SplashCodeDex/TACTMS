@@ -333,7 +333,8 @@ body {
 }
 .modal-content {
   width: 100%;
-  max-width: 640px;
+  max-width: 800px;
+
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 1rem;

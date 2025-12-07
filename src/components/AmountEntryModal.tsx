@@ -258,7 +258,7 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Amount Entry Mode"
-      size="xl"
+      size="xxl"
       closeOnOutsideClick={false}
       footerContent={
         <>
