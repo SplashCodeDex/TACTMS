@@ -138,13 +138,20 @@ export const calculateMemberPatterns = (
         if (weeksPaid <= 2) {
             trend = 'new';
         } else if (weeksPaid >= 3) {
-            const recentAvg = sortedTithes.slice(0, Math.ceil(weeksPaid / 2))
-                .reduce((sum, t) => sum + t.amount, 0) / Math.ceil(weeksPaid / 2);
-            const oldAvg = sortedTithes.slice(Math.ceil(weeksPaid / 2))
-                .reduce((sum, t) => sum + t.amount, 0) / Math.floor(weeksPaid / 2);
+            const halfCount = Math.ceil(weeksPaid / 2);
+            const recentSlice = sortedTithes.slice(0, halfCount);
+            const oldSlice = sortedTithes.slice(halfCount);
 
-            if (recentAvg > oldAvg * 1.2) trend = 'increasing';
-            else if (recentAvg < oldAvg * 0.8) trend = 'declining';
+            // Guard against division by zero
+            const recentAvg = recentSlice.length > 0
+                ? recentSlice.reduce((sum, t) => sum + t.amount, 0) / recentSlice.length
+                : 0;
+            const oldAvg = oldSlice.length > 0
+                ? oldSlice.reduce((sum, t) => sum + t.amount, 0) / oldSlice.length
+                : 0;
+
+            if (oldAvg > 0 && recentAvg > oldAvg * 1.2) trend = 'increasing';
+            else if (oldAvg > 0 && recentAvg < oldAvg * 0.8) trend = 'declining';
             else if (consistencyScore < 50) trend = 'irregular';
         }
 

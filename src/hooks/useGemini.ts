@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase } from '@/types';
 
@@ -122,6 +122,12 @@ export const useGeminiChat = (apiKey: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataContext, setDataContext] = useState<any>(null);
+  const dataContextRef = useRef(dataContext);  // Bug 17 fix: ref for latest dataContext
+
+  // Keep ref in sync with state (Bug 17 fix)
+  useEffect(() => {
+    dataContextRef.current = dataContext;
+  }, [dataContext]);
 
   // Initialize the chat with data context
   const initializeChat = useCallback((
@@ -148,7 +154,9 @@ export const useGeminiChat = (apiKey: string) => {
 
   const sendMessage = useCallback(
     async (message: string) => {
-      if (!dataContext) {
+      // Use ref to access latest dataContext (Bug 17 fix)
+      const currentDataContext = dataContextRef.current;
+      if (!currentDataContext) {
         setError("Chat not initialized with data.");
         return;
       }
@@ -246,7 +254,7 @@ export const useGeminiChat = (apiKey: string) => {
             let memberId = "";
 
             // Search logic
-            for (const [, list] of Object.entries(dataContext.memberDatabase as MemberDatabase)) {
+            for (const [, list] of Object.entries(currentDataContext.memberDatabase as MemberDatabase)) {
               const match = list.data.find((m: MemberRecordA) =>
                 String(m["Membership Number"]).toLowerCase().includes(searchTerm) ||
                 `${m["First Name"]} ${m.Surname}`.toLowerCase().includes(searchTerm)

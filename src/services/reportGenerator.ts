@@ -279,7 +279,7 @@ ${topTithers.map((t, i) =>
 ## Highlights
 - **Highest Month**: ${getBestMonth(monthlyData)}
 - **Total Transactions**: ${yearLogs.reduce((sum, l) => sum + l.recordCount, 0).toLocaleString()}
-- **Average Tithe**: GHS ${Math.round(totalAmount / yearLogs.reduce((sum, l) => sum + l.titherCount, 1))}
+- **Average Tithe**: GHS ${Math.round(totalAmount / Math.max(yearLogs.reduce((sum, l) => sum + l.titherCount, 0), 1))}
 
 ---
 
@@ -317,7 +317,7 @@ const generateCustomReport = async (
     if (apiKey) {
         try {
             const ai = new GoogleGenerativeAI(apiKey);
-            const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+            const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });  // Consistent with rest of codebase
 
             const summary = {
                 period: config.startDate && config.endDate
