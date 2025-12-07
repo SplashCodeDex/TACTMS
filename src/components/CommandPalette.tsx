@@ -90,6 +90,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Guard against empty actions (Bug 21 fix)
+      if (filteredActions.length === 0) return;
+
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setSelectedIndex((i) => (i + 1) % filteredActions.length);

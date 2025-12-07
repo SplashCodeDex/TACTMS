@@ -124,9 +124,8 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
 
   const handleAddExisting = (member: MemberRecordA) => {
     onAddExistingMember(member);
-    // After adding, immediately update search results to remove the added member
-    setSearchTerm((prev) => prev + " ");
-    setTimeout(() => setSearchTerm((prev) => prev.trim()), 0);
+    // Just close the modal after adding - cleaner than search hack (Bug 20 fix)
+    // User can reopen modal to add more members
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
