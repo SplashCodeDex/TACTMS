@@ -21,7 +21,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
 
     try {
       const ai = new GoogleGenerativeAI(apiKey);
-      const model = ai.getGenerativeModel({ model: "gemini-2.5-pro" });
+      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
       const sampleData = originalData.slice(0, 50); // Use a sample
       const prompt = `
       You are a data quality analyst reviewing a church membership list. Analyze the following JSON data sample for quality issues. Provide a concise summary in markdown format. Focus on:
@@ -169,7 +169,7 @@ export const useGeminiChat = (apiKey: string) => {
         const ai = new GoogleGenerativeAI(apiKey);
         // Use Gemini 2.5 Pro for better tool use capabilities
         const model = ai.getGenerativeModel({
-          model: "gemini-2.5-pro",
+          model: "gemini-2.5-flash",
           systemInstruction: `
             You are an intelligent data analyst for The Apostolic Church Tithe Management System (TACTMS).
             Your Goal: Answer the user's question based *strictly* on the provided data via tools.

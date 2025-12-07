@@ -246,7 +246,7 @@ const findMemberByAI = async (
 
   try {
     const ai = new GoogleGenerativeAI(apiKey);
-    const model = ai.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Prepare candidates list for prompt (limit to top 20 to save tokens if list is huge)
     // In practice, we might want to filter candidates first, but for now we send a subset
@@ -287,7 +287,7 @@ const findMemberByAI = async (
 
     if (response.matchFound && response.memberId && response.confidence > 0.6) {
       // Cache the positive result
-      semanticCache.set(rawName, response.memberId, response.confidence, "gemini-2.5-pro");
+      semanticCache.set(rawName, response.memberId, response.confidence, "gemini-2.5-flash");
 
       const member = candidates.find(m => String(m["Membership Number"]) === response.memberId);
       if (member) {
@@ -301,7 +301,7 @@ const findMemberByAI = async (
       }
     } else {
       // Cache the negative result to avoid re-querying
-      semanticCache.set(rawName, null, 0, "gemini-2.5-pro");
+      semanticCache.set(rawName, null, 0, "gemini-2.5-flash");
     }
 
   } catch (e) {

@@ -3,7 +3,7 @@ import { TitheRecordB, MemberRecordA } from "../types";
 import { cleanOCRName } from "./imageValidator";
 
 // UPGRADE: Using Gemini 2.5 Pro for "Retina-level" perception
-const MODEL_NAME = "gemini-2.5-pro";
+const MODEL_NAME = "gemini-2.5-flash";
 
 // Confidence threshold for flagging entries that need review
 export const LOW_CONFIDENCE_THRESHOLD = 0.8; // Increased threshold for higher quality
