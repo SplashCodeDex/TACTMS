@@ -3,7 +3,7 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw } from "lucide-react";
 import { MemberRecordA } from "@/types";
-import { updateMemberOrder, createSnapshot } from "@/services/memberOrderService";
+import { updateMemberOrder, createSnapshot, saveLearnedAlias, getAliasMap } from "@/services/memberOrderService";
 import { extractNamesFromTitheBook } from "@/services/imageProcessor";
 
 interface ReorderFromImageModalProps {
@@ -119,10 +119,16 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
             const allRows: ExtractedNameRow[] = [];
 
+            // Load learned aliases for this assembly
+            const aliasMap = await getAliasMap(assemblyName);
+            if (aliasMap.size > 0) {
+                console.log(`Loaded ${aliasMap.size} learned aliases for ${assemblyName}`);
+            }
+
             // Process sequentially
             for (let i = 0; i < uploadedImages.length; i++) {
-                // Pass memberOrderMap for positional hints
-                const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase, memberOrderMap);
+                // Pass memberOrderMap for positional hints and aliasMap for learned names
+                const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase, memberOrderMap, aliasMap);
 
                 const pageRows: ExtractedNameRow[] = result.matches.map((match) => ({
                     position: match.position,
@@ -159,13 +165,25 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     };
 
     // Handle manual member selection for unmatched names
-    const handleResolveMember = useCallback((rowIndex: number, member: MemberRecordA) => {
-        setExtractedRows(prev => prev.map((row, i) =>
-            i === rowIndex ? { ...row, matchedMember: member, matchScore: 1.0, isManuallyResolved: true } : row
+    const handleResolveMember = useCallback(async (rowIndex: number, member: MemberRecordA) => {
+        const row = extractedRows[rowIndex];
+
+        // Save the learned alias for future use
+        if (row && row.extractedName) {
+            try {
+                await saveLearnedAlias(assemblyName, row.extractedName, member);
+                console.log(`Learned alias: "${row.extractedName}" → "${member["First Name"]} ${member.Surname}"`);
+            } catch (error) {
+                console.warn("Failed to save alias:", error);
+            }
+        }
+
+        setExtractedRows(prev => prev.map((r, i) =>
+            i === rowIndex ? { ...r, matchedMember: member, matchScore: 1.0, isManuallyResolved: true } : r
         ));
         setResolvingIndex(null);
         setSearchTerm("");
-    }, []);
+    }, [assemblyName, extractedRows]);
 
     // Skip unmatched name
     const handleSkipName = useCallback((rowIndex: number) => {

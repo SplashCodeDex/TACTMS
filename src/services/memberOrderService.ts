@@ -39,6 +39,14 @@ interface MemberOrderDB extends DBSchema {
             'by-history': string;
         };
     };
+    learnedAliases: {
+        key: string;
+        value: LearnedAlias;
+        indexes: {
+            'by-assembly': string;
+            'by-extracted': [string, string];
+        };
+    };
 }
 
 export interface MemberOrderEntry {
@@ -127,8 +135,19 @@ export interface OrderSnapshot {
     }>;
 }
 
+export interface LearnedAlias {
+    id: string;                    // normalized extractedName + assemblyName
+    assemblyName: string;
+    extractedName: string;         // The OCR/handwritten name (normalized lowercase)
+    memberId: string;              // The member they matched to
+    memberDisplayName: string;     // For display purposes
+    createdAt: number;
+    usageCount: number;            // How many times this alias was applied
+    lastUsed: number;
+}
+
 const DB_NAME = 'tactms-member-order';
-const DB_VERSION = 3; // Bumped for orderSnapshots store
+const DB_VERSION = 4; // Bumped for learnedAliases store
 
 let dbPromise: Promise<IDBPDatabase<MemberOrderDB>> | null = null;
 
@@ -161,6 +180,13 @@ const getDB = async (): Promise<IDBPDatabase<MemberOrderDB>> => {
                     snapshotStore.createIndex('by-assembly', 'assemblyName');
                     snapshotStore.createIndex('by-timestamp', 'timestamp');
                     snapshotStore.createIndex('by-history', 'historyEntryId');
+                }
+
+                // Version 4: Learned aliases for name matching
+                if (oldVersion < 4) {
+                    const aliasStore = db.createObjectStore('learnedAliases', { keyPath: 'id' });
+                    aliasStore.createIndex('by-assembly', 'assemblyName');
+                    aliasStore.createIndex('by-extracted', ['assemblyName', 'extractedName']);
                 }
             },
         });
@@ -1036,4 +1062,120 @@ export const cleanupOldSnapshots = async (
     }
 
     return deletedCount;
+};
+
+// ============================================================================
+// LEARNED ALIASES (NAME LEARNING)
+// ============================================================================
+
+/**
+ * Generate ID for a learned alias
+ */
+const generateAliasId = (extractedName: string, assemblyName: string): string => {
+    const normalized = extractedName.toLowerCase().trim().replace(/\s+/g, '-');
+    return `alias-${assemblyName.toLowerCase()}-${normalized}`;
+};
+
+/**
+ * Save a learned alias when user manually resolves a name
+ */
+export const saveLearnedAlias = async (
+    assemblyName: string,
+    extractedName: string,
+    member: MemberRecordA
+): Promise<void> => {
+    const db = await getDB();
+    const now = Date.now();
+
+    const memberId = member["Membership Number"] || member["Old Membership Number"] || "";
+    const displayName = [
+        member.Title,
+        member["First Name"],
+        member.Surname,
+        member["Other Names"]
+    ].filter(Boolean).join(' ');
+
+    const id = generateAliasId(extractedName, assemblyName);
+
+    // Check if alias already exists
+    const existing = await db.get('learnedAliases', id);
+
+    const alias: LearnedAlias = {
+        id,
+        assemblyName,
+        extractedName: extractedName.toLowerCase().trim(),
+        memberId: memberId.toLowerCase(),
+        memberDisplayName: displayName || memberId,
+        createdAt: existing?.createdAt || now,
+        usageCount: existing ? existing.usageCount + 1 : 0,
+        lastUsed: now,
+    };
+
+    await db.put('learnedAliases', alias);
+    console.log(`Saved alias: "${extractedName}" → "${displayName}" for ${assemblyName}`);
+};
+
+/**
+ * Get all learned aliases for an assembly
+ */
+export const getLearnedAliases = async (
+    assemblyName: string
+): Promise<LearnedAlias[]> => {
+    const db = await getDB();
+    return db.getAllFromIndex('learnedAliases', 'by-assembly', assemblyName);
+};
+
+/**
+ * Find a learned alias match for an extracted name
+ */
+export const findAliasMatch = async (
+    assemblyName: string,
+    extractedName: string
+): Promise<LearnedAlias | null> => {
+    const db = await getDB();
+    const normalized = extractedName.toLowerCase().trim();
+
+    // Try exact match first
+    const id = generateAliasId(extractedName, assemblyName);
+    const exact = await db.get('learnedAliases', id);
+    if (exact) return exact;
+
+    // Fallback: get all and do manual check (for slightly different normalization)
+    const all = await db.getAllFromIndex('learnedAliases', 'by-assembly', assemblyName);
+    return all.find(a => a.extractedName === normalized) || null;
+};
+
+/**
+ * Increment usage count when an alias is auto-applied
+ */
+export const incrementAliasUsage = async (aliasId: string): Promise<void> => {
+    const db = await getDB();
+    const alias = await db.get('learnedAliases', aliasId);
+    if (alias) {
+        alias.usageCount++;
+        alias.lastUsed = Date.now();
+        await db.put('learnedAliases', alias);
+    }
+};
+
+/**
+ * Delete a learned alias
+ */
+export const deleteLearnedAlias = async (aliasId: string): Promise<void> => {
+    const db = await getDB();
+    await db.delete('learnedAliases', aliasId);
+};
+
+/**
+ * Get aliases as a Map for quick lookup (used in AI matching)
+ */
+export const getAliasMap = async (
+    assemblyName: string
+): Promise<Map<string, string>> => {
+    const aliases = await getLearnedAliases(assemblyName);
+    const map = new Map<string, string>();
+    for (const alias of aliases) {
+        map.set(alias.extractedName, alias.memberId);
+    }
+    return map;
 };

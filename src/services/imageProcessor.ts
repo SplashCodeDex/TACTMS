@@ -745,21 +745,41 @@ function getPositionBoost(
 
 /**
  * Find best matching member from database based on extracted name
- * Enhanced with token-based matching, positional hints, and alternatives
+ * Enhanced with token-based matching, positional hints, aliases, and alternatives
  */
 function findBestMatch(
     extractedName: string,
     members: MemberRecordA[],
     extractedPosition?: number,
-    memberOrderMap?: Map<string, number>
+    memberOrderMap?: Map<string, number>,
+    aliasMap?: Map<string, string>  // NEW: normalized extractedName → memberId
 ): {
     member: MemberRecordA | null;
     score: number;
     alternatives: Array<{ member: MemberRecordA; score: number }>;
+    isFromAlias?: boolean;
 } {
     const cleanedExtracted = extractedName.toLowerCase().trim();
 
-    // Score all members
+    // Check learned aliases FIRST - if we have a known mapping, use it
+    if (aliasMap && aliasMap.has(cleanedExtracted)) {
+        const aliasedMemberId = aliasMap.get(cleanedExtracted)!;
+        const member = members.find(m => {
+            const memberId = (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase();
+            return memberId === aliasedMemberId;
+        });
+        if (member) {
+            console.log(`Alias match: "${extractedName}" → "${member["First Name"]} ${member.Surname}"`);
+            return {
+                member,
+                score: 0.98, // High confidence for alias match
+                alternatives: [],
+                isFromAlias: true
+            };
+        }
+    }
+
+    // Score all members (fuzzy matching)
     const scoredMembers: Array<{ member: MemberRecordA; score: number }> = [];
 
     for (const member of members) {
@@ -829,7 +849,8 @@ export const extractNamesFromTitheBook = async (
     imageFile: File,
     apiKey: string,
     memberDatabase: MemberRecordA[],
-    memberOrderMap?: Map<string, number> // Optional: for positional hints
+    memberOrderMap?: Map<string, number>, // Optional: for positional hints
+    aliasMap?: Map<string, string>        // Optional: learned name mappings
 ): Promise<NameExtractionResult> => {
     if (!apiKey) throw new Error("API Key is missing");
 
@@ -869,12 +890,13 @@ export const extractNamesFromTitheBook = async (
             const cleanedName = cleanOCRName(item.Name);
             const position = item["No."] || index + 1;
 
-            // Use enhanced findBestMatch with positional hints
+            // Use enhanced findBestMatch with positional hints and aliases
             const { member, score, alternatives } = findBestMatch(
                 cleanedName,
                 memberDatabase,
                 position,
-                memberOrderMap
+                memberOrderMap,
+                aliasMap  // Pass learned aliases
             );
 
             return {
