@@ -15,6 +15,7 @@ const RepairOrderController: React.FC<{ memberDatabase: MemberDatabase }> = ({ m
     const addToast = useToast();
     const [selectedAssembly, setSelectedAssembly] = useState<string>("");
     const [isRepairing, setIsRepairing] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const assemblies = Object.keys(memberDatabase);
 
     const handleRepair = async () => {
@@ -32,12 +33,13 @@ const RepairOrderController: React.FC<{ memberDatabase: MemberDatabase }> = ({ m
             addToast("Failed to repair order", "error");
         } finally {
             setIsRepairing(false);
+            setShowConfirm(false);
         }
     };
 
     return (
         <div className="space-y-3">
-            <Select value={selectedAssembly} onValueChange={setSelectedAssembly}>
+            <Select value={selectedAssembly} onValueChange={(v) => { setSelectedAssembly(v); setShowConfirm(false); }}>
                 <SelectTrigger className="w-full border-[var(--border-color)] bg-[var(--bg-elevated)]">
                     <SelectValue placeholder="Select assembly to repair..." />
                 </SelectTrigger>
@@ -47,16 +49,44 @@ const RepairOrderController: React.FC<{ memberDatabase: MemberDatabase }> = ({ m
                     ))}
                 </SelectContent>
             </Select>
-            <Button
-                variant="primary"
-                disabled={!selectedAssembly || isRepairing}
-                isLoading={isRepairing}
-                onClick={handleRepair}
-                leftIcon={<Settings2 size={16} />}
-                className="w-full"
-            >
-                Repair Order
-            </Button>
+
+            {!showConfirm ? (
+                <Button
+                    variant="primary"
+                    disabled={!selectedAssembly || isRepairing}
+                    onClick={() => setShowConfirm(true)}
+                    leftIcon={<Settings2 size={16} />}
+                    className="w-full"
+                >
+                    Repair Order
+                </Button>
+            ) : (
+                <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 space-y-3">
+                    <p className="text-sm text-[var(--text-primary)]">
+                        This will fix duplicate index numbers for <strong>{selectedAssembly}</strong> by moving conflicting members to the end of the list.
+                    </p>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowConfirm(false)}
+                            className="flex-1"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            isLoading={isRepairing}
+                            onClick={handleRepair}
+                            leftIcon={<Settings2 size={14} />}
+                            className="flex-1"
+                        >
+                            Confirm Repair
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -259,79 +289,81 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
                     </div>
                 )}
 
-                {/* Reset Member Order */}
+                {/* Member Order Tools - Side by Side */}
                 {dataAssemblies.length > 0 && (
                     <div className="mt-8 pt-6 border-t border-[var(--border-color)]">
-                        <div className="flex items-center gap-2 mb-4">
-                            <RotateCcw size={20} className="text-amber-500" />
-                            <h4 className="font-medium text-[var(--text-primary)]">
-                                Reset Member Order
-                            </h4>
-                        </div>
-                        <p className="text-sm text-[var(--text-secondary)] mb-4">
-                            Reset member order to match the current master list sequence.
-                            This will overwrite any custom ordering you've set.
-                        </p>
-                        <div className="space-y-3">
-                            <Select
-                                value={resetAssembly}
-                                onValueChange={(value) => {
-                                    setResetAssembly(value);
-                                    setResetConfirmText("");
-                                }}
-                            >
-                                <SelectTrigger className="w-full border-[var(--border-color)] bg-[var(--bg-elevated)]">
-                                    <SelectValue placeholder="Select assembly..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[var(--bg-elevated)] border-[var(--border-color)]">
-                                    {dataAssemblies.map((a) => (
-                                        <SelectItem key={a} value={a}>{a}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {resetAssembly && (
-                                <>
-                                    <p className="text-xs text-amber-500">
-                                        Type <strong>"{resetAssembly}"</strong> to confirm:
-                                    </p>
-                                    <input
-                                        type="text"
-                                        placeholder={`Type ${resetAssembly} to confirm`}
-                                        value={resetConfirmText}
-                                        onChange={(e) => setResetConfirmText(e.target.value)}
-                                        className="w-full px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)]"
-                                    />
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="danger"
-                                            disabled={!canReset || isResetting}
-                                            isLoading={isResetting}
-                                            onClick={handleResetOrder}
-                                            leftIcon={<RotateCcw size={16} />}
-                                            className="flex-1"
-                                        >
-                                            Reset Order
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Reset Member Order */}
+                            <div className="p-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <RotateCcw size={20} className="text-amber-500" />
+                                    <h4 className="font-medium text-[var(--text-primary)]">
+                                        Reset Member Order
+                                    </h4>
+                                </div>
+                                <p className="text-sm text-[var(--text-secondary)] mb-4">
+                                    Reset order to match the master list sequence.
+                                    <span className="text-amber-500 font-medium"> Destructive.</span>
+                                </p>
+                                <div className="space-y-3">
+                                    <Select
+                                        value={resetAssembly}
+                                        onValueChange={(value) => {
+                                            setResetAssembly(value);
+                                            setResetConfirmText("");
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-full border-[var(--border-color)] bg-[var(--bg-elevated)]">
+                                            <SelectValue placeholder="Select assembly..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-[var(--bg-elevated)] border-[var(--border-color)]">
+                                            {dataAssemblies.map((a) => (
+                                                <SelectItem key={a} value={a}>{a}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {resetAssembly && (
+                                        <>
+                                            <p className="text-xs text-amber-500">
+                                                Type <strong>"{resetAssembly}"</strong> to confirm:
+                                            </p>
+                                            <input
+                                                type="text"
+                                                placeholder={`Type ${resetAssembly} to confirm`}
+                                                value={resetConfirmText}
+                                                onChange={(e) => setResetConfirmText(e.target.value)}
+                                                className="w-full px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)]"
+                                            />
+                                            <Button
+                                                variant="danger"
+                                                disabled={!canReset || isResetting}
+                                                isLoading={isResetting}
+                                                onClick={handleResetOrder}
+                                                leftIcon={<RotateCcw size={16} />}
+                                                className="w-full"
+                                            >
+                                                Reset Order
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
 
-                {/* Repair Member Order */}
-                {dataAssemblies.length > 0 && (
-                    <div className="mt-8 pt-6 border-t border-[var(--border-color)]">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Settings2 size={20} className="text-blue-500" />
-                            <h4 className="font-medium text-[var(--text-primary)]">
-                                Repair Order Duplicates
-                            </h4>
+                            {/* Repair Member Order */}
+                            <div className="p-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Settings2 size={20} className="text-blue-500" />
+                                    <h4 className="font-medium text-[var(--text-primary)]">
+                                        Repair Order Duplicates
+                                    </h4>
+                                </div>
+                                <p className="text-sm text-[var(--text-secondary)] mb-4">
+                                    Fix duplicate index numbers.
+                                    <span className="text-blue-500 font-medium"> Safe to run.</span>
+                                </p>
+                                <RepairOrderController memberDatabase={memberDatabase} />
+                            </div>
                         </div>
-                        <p className="text-sm text-[var(--text-secondary)] mb-4">
-                            Fix duplicate index numbers by moving conflicting members to the end of the list.
-                        </p>
-                        <RepairOrderController memberDatabase={memberDatabase} />
                     </div>
                 )}
             </div>
