@@ -3,7 +3,7 @@ import { MemberRecordA, MemberDatabase } from "../types";
 import Button from "../components/Button";
 import Checkbox from "../components/Checkbox";
 import AddAssemblyModal from "../components/AddAssemblyModal";
-import { Upload, PlusCircle, Edit, Search, ArrowUp, ArrowDown, Filter, Hash, GripVertical, Image, Download, History } from "lucide-react";
+import { PlusCircle, Edit, Search, ArrowUp, ArrowDown, Filter, Hash, GripVertical, Image, Download, History, FileUp } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { filterMembersByAge } from "../services/excelProcessor";
 import { useModal } from "../hooks/useModal";
@@ -11,13 +11,12 @@ import {
   getOrderedMembers,
   MemberOrderEntry,
   initializeOrder,
-  exportOrderForAssembly,
-  importOrderForAssembly,
-  OrderExport
 } from "../services/memberOrderService";
 import MemberReorderModal from "../components/MemberReorderModal";
 import ReorderFromImageModal from "../components/ReorderFromImageModal";
 import OrderHistoryModal from "../components/OrderHistoryModal";
+import * as XLSX from "xlsx";
+import { computeColumnWidths } from "@/lib/exportUtils";
 
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
@@ -90,9 +89,6 @@ const MemberDatabaseSection: React.FC = () => {
   const orderHistoryModal = useModal("orderHistory");
   const [orderedMembersForModal, setOrderedMembersForModal] = useState<MemberOrderEntry[]>([]);
 
-  // Import file ref for order JSON
-  const orderImportRef = useRef<HTMLInputElement>(null);
-
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
     assemblyName: string,
@@ -100,6 +96,59 @@ const MemberDatabaseSection: React.FC = () => {
     const file = event.target.files?.[0];
     if (file) {
       onUploadMasterList(file, assemblyName);
+    }
+    // Reset input to allow re-uploading the same file
+    event.target.value = "";
+  };
+
+  // Export member database as Excel
+  const handleExportExcel = () => {
+    if (!selectedAssembly || selectedAssembly === "ALL MEMBERS") {
+      addToast("Please select a specific assembly to export", "warning");
+      return;
+    }
+    const members = memberDatabase[selectedAssembly]?.data || [];
+    if (members.length === 0) {
+      addToast("No members to export", "warning");
+      return;
+    }
+
+    try {
+      // Build data for export: match A.xlsx format
+      const exportData = members.map((m, index) => {
+        const memberId = (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase();
+        const order = memberOrderMap.get(memberId) || index + 1;
+        return {
+          "No.": order,
+          "Membership Number": m["Membership Number"] || "",
+          "Old Membership Number": m["Old Membership Number"] || "",
+          "Title": m.Title || "",
+          "First Name": m["First Name"] || "",
+          "Surname": m.Surname || "",
+          "Other Names": m["Other Names"] || "",
+          "Sex": m.Sex || "",
+          "Date of Birth": m["Date of Birth"] || "",
+          "Phone Number": m["Phone Number"] || "",
+          "Residential Address": m["Residential Address"] || "",
+          "Hometown/Region": m["Hometown/Region"] || "",
+          "Marital Status": m["Marital Status"] || "",
+          "Employment Status": m["Employment Status"] || "",
+          "Occupation": m.Occupation || "",
+        };
+      });
+
+      // Sort by order before exporting
+      exportData.sort((a, b) => a["No."] - b["No."]);
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      worksheet["!cols"] = computeColumnWidths(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, selectedAssembly);
+      XLSX.writeFile(workbook, `${selectedAssembly.replace(/\s+/g, "_")}_Members_${new Date().toISOString().split("T")[0]}.xlsx`);
+      addToast("Member list exported successfully", "success");
+    } catch (error) {
+      console.error("Export failed:", error);
+      addToast("Failed to export member list", "error");
     }
   };
 
@@ -341,13 +390,6 @@ const MemberDatabaseSection: React.FC = () => {
               {selectedAssembly !== "ALL MEMBERS" && (
                 <>
                   <Button
-                    variant="primary"
-                    leftIcon={<Upload size={16} />}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Update Members List
-                  </Button>
-                  <Button
                     variant="secondary"
                     leftIcon={<GripVertical size={16} />}
                     onClick={async () => {
@@ -388,57 +430,14 @@ const MemberDatabaseSection: React.FC = () => {
                   <Button
                     variant="ghost"
                     leftIcon={<Download size={16} />}
-                    onClick={async () => {
-                      if (!selectedAssembly) return;
-                      try {
-                        const exported = await exportOrderForAssembly(selectedAssembly);
-                        const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `${selectedAssembly.replace(/\s+/g, "_")}_order_${new Date().toISOString().split("T")[0]}.json`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        addToast("Order exported successfully", "success");
-                      } catch (error) {
-                        addToast("Failed to export order", "error");
-                      }
-                    }}
+                    onClick={handleExportExcel}
                   >
                     Export
                   </Button>
-                  <input
-                    ref={orderImportRef}
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !selectedAssembly) return;
-                      try {
-                        const text = await file.text();
-                        const data: OrderExport = JSON.parse(text);
-                        const result = await importOrderForAssembly(data, selectedAssembly);
-                        if (result.success) {
-                          addToast(`Imported ${result.imported} member orders`, "success");
-                          // Refresh order map
-                          const ordered = await getOrderedMembers(selectedAssembly);
-                          const map = new Map<string, number>();
-                          ordered.forEach((o) => map.set(o.memberId.toLowerCase(), o.titheBookIndex));
-                          setMemberOrderMap(map);
-                        } else {
-                          addToast(result.errors.join(", "), "error");
-                        }
-                      } catch (error) {
-                        addToast("Failed to import order file", "error");
-                      }
-                      e.target.value = "";
-                    }}
-                  />
                   <Button
                     variant="ghost"
-                    leftIcon={<Upload size={16} />}
-                    onClick={() => orderImportRef.current?.click()}
+                    leftIcon={<FileUp size={16} />}
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     Import
                   </Button>
@@ -657,7 +656,8 @@ const MemberDatabaseSection: React.FC = () => {
             Upload a master list for an assembly to get started.
           </p>
         </div>
-      )}
+      )
+      }
 
       {/* Add Assembly Modal */}
       <AddAssemblyModal
