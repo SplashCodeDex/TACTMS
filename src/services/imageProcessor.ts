@@ -485,8 +485,8 @@ export const processTitheImageWithValidation = async (
     Your task is to digitize a page from the "TITHES REGISTER" book.
 
     CONTEXT - THE BLUEPRINT:
-    The physical book in the image corresponds EXACTLY to this HTML structure. Use this as your map to locate columns, rows and cells:
-    \`\`\`html
+    The structure of the physical book in the image corresponds EXACTLY to this HTML structure. Use this as your map to locate columns, rows and cells:
+\`\`\`html
     ${TITHE_BOOK_HTML_TEMPLATE}
     \`\`\`
 
@@ -498,17 +498,22 @@ export const processTitheImageWithValidation = async (
     1. **Map the Grid**: Overlay the HTML blueprint onto the image. Identify the "JANUARY", "FEBRUARY", etc. headers.
     2. **Locate the Target**: Find the specific vertical column for ${targetMonth} -> ${targetWeek}.
        - Note: The "TOTAL" column is always after the "5th" week. Do not confuse them.
-    3. **Handwriting Expert Mode**:
-       - You are reading financial records.
-       - If a character in the Amount column looks like 'S', it is '5'.
-       - If it looks like 'O', it is '0'.
-       - If it looks like 'l', it is '1'.
-       - If it looks like 'w' it is '00'.
-       - dashes (-) or empty spaces mean 0.
+    3.
     4. **Extract Rows**:
        - **No.**: Read the printed row number.
        - **Name**: Read the handwritten names.
+            Example corrections:
+            - "DNESS AKOSUA" → "DEACONESS AKOSUA"
+            - "EIDER KWAME" → "ELDER KWAME"
+            - Titles: "ELD"→ "ELDER", DCNS" → "DEACONESS" "PS"/"PST" → "PASTOR", "BRO"→ "BROTHER"
        - **Amount**: Extract the value strictly from the ${targetWeek} column.
+            **Corrections When Reading from the Amount cells from  ${targetWeek} Column**:
+            - You are reading financial records so the Amount must always be a digit.
+            - If a character in the Amount column looks like 'S', it is '5'.
+            - If it looks like 'O', it is '0'.
+            - If it looks like 'l', it is '1'.
+            - If it looks like 'w' it is '00'.
+            - dashes (-) or empty spaces mean 0.
 
     OUTPUT:
     Return a JSON object matching the schema.
