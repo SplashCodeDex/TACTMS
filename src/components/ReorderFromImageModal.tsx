@@ -97,8 +97,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
             const result = await extractNamesFromTitheBook(uploadedImage, apiKey, memberDatabase);
 
-            const rows: ExtractedNameRow[] = result.matches.map((match, index) => ({
-                position: index + 1,
+            const rows: ExtractedNameRow[] = result.matches.map((match) => ({
+                position: match.position,
                 extractedName: match.extractedName,
                 matchedMember: match.matchedMember,
                 matchScore: match.confidence,
@@ -150,9 +150,9 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
         setIsSaving(true);
         try {
-            const updates = validRows.map((row, index) => ({
+            const updates = validRows.map((row) => ({
                 memberId: row.matchedMember!["Membership Number"] || row.matchedMember!["Old Membership Number"] || "",
-                newIndex: index + 1,
+                newIndex: row.position,
             })).filter(u => u.memberId);
 
             await updateMemberOrder(updates, assemblyName);

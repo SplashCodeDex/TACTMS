@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
-import { GripVertical, Save, RotateCcw, Search, MoveVertical, X, ArrowRightToLine } from "lucide-react";
+import { GripVertical, Save, RotateCcw, Search, MoveVertical, X, ArrowRightToLine, FileDown, FileUp, History, RefreshCw } from "lucide-react";
 import {
     DndContext,
     closestCenter,
@@ -19,7 +19,8 @@ import {
     useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MemberOrderEntry, updateMemberOrder } from "@/services/memberOrderService";
+import { MemberOrderEntry, updateMemberOrder, exportOrderForAssembly, importOrderForAssembly, OrderExport } from "@/services/memberOrderService";
+import { MemberRecordA } from "@/types";
 
 interface MemberReorderModalProps {
     isOpen: boolean;
@@ -27,7 +28,10 @@ interface MemberReorderModalProps {
     assemblyName: string;
     orderedMembers: MemberOrderEntry[];
     onSaveComplete: () => void;
+
     addToast: (message: string, type: "success" | "error" | "info" | "warning") => void;
+    masterList: MemberRecordA[];
+    onOpenHistory: () => void;
 }
 
 interface SortableMemberRowProps {
@@ -106,6 +110,8 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
     orderedMembers,
     onSaveComplete,
     addToast,
+    masterList,
+    onOpenHistory
 }) => {
     const [members, setMembers] = useState<MemberOrderEntry[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -113,6 +119,7 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
     const [hasChanges, setHasChanges] = useState(false);
     const [targetPosition, setTargetPosition] = useState("1");
     const [selectedMember, setSelectedMember] = useState<MemberOrderEntry | null>(null);
+    const importInputRef = React.useRef<HTMLInputElement>(null);
 
     // Initialize members when modal opens
     useEffect(() => {
@@ -198,6 +205,72 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
         setHasChanges(false);
     }, [orderedMembers]);
 
+    const handleHardReset = useCallback(() => {
+        if (!masterList || masterList.length === 0) {
+            addToast("Master list not available for reset", "error");
+            return;
+        }
+
+        if (confirm("This will revert the order to match the original Master List order. Proceed?")) {
+            // Create a map of member ID -> original index in Master List
+            const masterOrderMap = new Map<string, number>();
+            masterList.forEach((m, index) => {
+                const id = (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase();
+                masterOrderMap.set(id, index);
+            });
+
+            const newMembers = [...members].sort((a, b) => {
+                const indexA = masterOrderMap.get(a.memberId.toLowerCase()) ?? 9999;
+                const indexB = masterOrderMap.get(b.memberId.toLowerCase()) ?? 9999;
+                return indexA - indexB;
+            });
+
+            setMembers(newMembers);
+            setHasChanges(true);
+            addToast("Order reset to match Master List. Click Save to apply.", "info");
+        }
+    }, [members, masterList, addToast]);
+
+    const handleExport = async () => {
+        try {
+            const exported = await exportOrderForAssembly(assemblyName);
+            const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${assemblyName.replace(/\s+/g, "_")}_order_${new Date().toISOString().split("T")[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            addToast("Order exported successfully", "success");
+        } catch (error) {
+            console.error(error);
+            addToast("Failed to export order", "error");
+        }
+    };
+
+    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const data: OrderExport = JSON.parse(text);
+            const result = await importOrderForAssembly(data, assemblyName);
+
+            if (result.success) {
+                addToast(`Imported ${result.imported} member orders. Modal will close to refresh.`, "success");
+                onSaveComplete(); // Trigger parent refresh
+                onClose(); // Close modal to ensure full state reload
+            } else {
+                addToast(result.errors.join(", "), "error");
+            }
+        } catch (error) {
+            console.error(error);
+            addToast("Failed to import order file", "error");
+        }
+        e.target.value = ""; // Reset
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         try {
@@ -230,6 +303,60 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
             size="lg"
             footerContent={
                 <>
+                    <div className="flex-1 flex gap-2">
+                        <div className="relative group">
+                            <Button variant="ghost" size="sm" onClick={() => { /* Toggle dropdown? or just show toolbar inside body */ }}>
+                                Actions
+                            </Button>
+                            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded shadow-lg p-2 min-w-[150px]">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs"
+                                    onClick={handleExport}
+                                    leftIcon={<FileDown size={14} />}
+                                >
+                                    Export Order
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs"
+                                    onClick={() => importInputRef.current?.click()}
+                                    leftIcon={<FileUp size={14} />}
+                                >
+                                    Import Order
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs"
+                                    onClick={onOpenHistory}
+                                    leftIcon={<History size={14} />}
+                                >
+                                    View History
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs text-orange-500 hover:text-orange-600"
+                                    onClick={handleHardReset}
+                                    leftIcon={<RefreshCw size={14} />}
+                                >
+                                    Reset to Master List
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input
+                        ref={importInputRef}
+                        type="file"
+                        accept=".json"
+                        className="hidden"
+                        onChange={handleImport}
+                    />
+
                     <Button variant="ghost" onClick={onClose} disabled={isSaving}>
                         Cancel
                     </Button>
@@ -238,8 +365,9 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
                         onClick={handleReset}
                         disabled={!hasChanges || isSaving}
                         leftIcon={<RotateCcw size={16} />}
+                        title="Undo changes made in this session"
                     >
-                        Reset
+                        Undo
                     </Button>
                     <Button
                         variant="primary"

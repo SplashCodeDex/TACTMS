@@ -690,6 +690,8 @@ const MemberDatabaseSection: React.FC = () => {
           }
         }}
         addToast={addToast}
+        masterList={memberDatabase[selectedAssembly || ""]?.data || []}
+        onOpenHistory={() => orderHistoryModal.open()}
       />
 
       {/* Reorder from Image Modal */}
