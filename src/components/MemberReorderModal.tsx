@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
-import { GripVertical, Save, RotateCcw, Search } from "lucide-react";
+import { GripVertical, Save, RotateCcw, Search, MoveVertical, X, ArrowRightToLine } from "lucide-react";
 import {
     DndContext,
     closestCenter,
@@ -33,10 +33,10 @@ interface MemberReorderModalProps {
 interface SortableMemberRowProps {
     member: MemberOrderEntry;
     index: number;
-    searchTerm: string;
+    onMoveClick: (member: MemberOrderEntry) => void;
 }
 
-const SortableMemberRow: React.FC<SortableMemberRowProps> = ({ member, index, searchTerm }) => {
+const SortableMemberRow: React.FC<SortableMemberRowProps> = ({ member, index, onMoveClick }) => {
     const {
         attributes,
         listeners,
@@ -53,27 +53,11 @@ const SortableMemberRow: React.FC<SortableMemberRowProps> = ({ member, index, se
         zIndex: isDragging ? 1000 : "auto",
     };
 
-    // Highlight matching text
-    const highlightMatch = (text: string) => {
-        if (!searchTerm) return text;
-        const regex = new RegExp(`(${searchTerm})`, "gi");
-        const parts = text.split(regex);
-        return parts.map((part, i) =>
-            regex.test(part) ? (
-                <span key={i} className="bg-yellow-300 dark:bg-yellow-600 rounded px-0.5">
-                    {part}
-                </span>
-            ) : (
-                part
-            )
-        );
-    };
-
     return (
         <div
             ref={setNodeRef}
             style={style}
-            className={`flex items-center gap-3 p-3 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg mb-2 ${isDragging ? "shadow-lg ring-2 ring-[var(--primary-accent-start)]" : ""
+            className={`group flex items-center gap-3 p-3 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg mb-2 ${isDragging ? "shadow-lg ring-2 ring-[var(--primary-accent-start)]" : ""
                 } hover:bg-[var(--bg-elevated)] transition-colors`}
         >
             <div
@@ -88,10 +72,10 @@ const SortableMemberRow: React.FC<SortableMemberRowProps> = ({ member, index, se
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[var(--text-primary)] truncate">
-                    {highlightMatch(member.displayName)}
+                    {member.displayName}
                 </p>
                 <p className="text-xs text-[var(--text-muted)] truncate">
-                    {highlightMatch(member.memberId)}
+                    {member.memberId}
                 </p>
             </div>
             {member.titheBookIndex !== index + 1 && (
@@ -99,6 +83,18 @@ const SortableMemberRow: React.FC<SortableMemberRowProps> = ({ member, index, se
                     was #{member.titheBookIndex}
                 </div>
             )}
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveClick(member);
+                }}
+                title="Move to Target Position"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+                <ArrowRightToLine size={16} className="text-[var(--primary-accent-start)]" />
+            </Button>
         </div>
     );
 };
@@ -115,6 +111,8 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
     const [searchTerm, setSearchTerm] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
+    const [targetPosition, setTargetPosition] = useState("1");
+    const [selectedMember, setSelectedMember] = useState<MemberOrderEntry | null>(null);
 
     // Initialize members when modal opens
     useEffect(() => {
@@ -122,8 +120,55 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
             setMembers([...orderedMembers]);
             setHasChanges(false);
             setSearchTerm("");
+            setSelectedMember(null);
+            setTargetPosition("1");
         }
     }, [isOpen, orderedMembers]);
+
+    // Filter members by search term (moved up for access in effect)
+    const filteredMembers = searchTerm
+        ? members.filter(
+            (m) =>
+                m.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                m.memberId.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        : members;
+
+    // Auto-select first result when searching
+    useEffect(() => {
+        if (searchTerm && filteredMembers.length > 0) {
+            setSelectedMember(filteredMembers[0]);
+        } else if (searchTerm && filteredMembers.length === 0) {
+            setSelectedMember(null);
+        }
+    }, [searchTerm, members]); // depend on members to re-select if list changes (e.g. after move)
+
+    // Handle move to target position (Quick Move)
+    const handleMoveToPosition = useCallback((memberToMove: MemberOrderEntry | null = selectedMember) => {
+        if (!memberToMove) return;
+
+        const targetPos = parseInt(targetPosition, 10);
+        if (isNaN(targetPos) || targetPos < 1 || targetPos > members.length) {
+            addToast(`Invalid position. Enter 1-${members.length}`, "error");
+            return;
+        }
+
+        const oldIndex = members.findIndex((m) => m.id === memberToMove.id);
+        if (oldIndex === -1) return;
+
+        const newIndex = targetPos - 1;
+        setMembers((items) => arrayMove(items, oldIndex, newIndex));
+        setHasChanges(true);
+
+        addToast(`Moved "${memberToMove.displayName}" to #${targetPos}`, "success");
+        setTargetPosition(String(Math.min(targetPos + 1, members.length)));
+
+        // Reset selection if it was a search-based move
+        if (selectedMember && selectedMember.id === memberToMove.id) {
+            setSearchTerm("");
+            setSelectedMember(null);
+        }
+    }, [selectedMember, targetPosition, members, addToast]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -174,15 +219,6 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
         }
     };
 
-    // Filter members by search term
-    const filteredMembers = searchTerm
-        ? members.filter(
-            (m) =>
-                m.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                m.memberId.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        : members;
-
     // Check if we can reorder (not filtered)
     const canReorder = !searchTerm;
 
@@ -220,28 +256,80 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
             <div className="space-y-4">
                 {/* Instructions */}
                 <p className="text-sm text-[var(--text-secondary)]">
-                    Drag and drop members to reorder them to match your physical tithe book.
-                    The order will be saved and used across the application.
+                    Drag and drop to reorder.
+                    Or use <b>Target Pos</b> to quickly move members: set the position number, then click the <ArrowRightToLine size={14} className="inline text-[var(--primary-accent-start)]" /> icon on a row.
                 </p>
 
-                {/* Search */}
-                <div className="relative">
-                    <Search
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-                        size={18}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Search members..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-[var(--primary-accent-start)] focus:border-transparent"
-                    />
+                {/* Search and Target Position */}
+                <div className="flex gap-2 items-center">
+                    <div className="relative flex-1">
+                        <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                            size={18}
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search members..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && selectedMember) {
+                                    e.preventDefault();
+                                    handleMoveToPosition();
+                                } else if (e.key === "Escape") {
+                                    setSelectedMember(null);
+                                    setSearchTerm("");
+                                }
+                            }}
+                            className="w-full pl-10 pr-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-[var(--primary-accent-start)] focus:border-transparent"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">
+                            Target Pos:
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            max={members.length || 1}
+                            value={targetPosition}
+                            onChange={(e) => setTargetPosition(e.target.value)}
+                            className="w-16 px-2 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg text-center focus:ring-2 focus:ring-[var(--primary-accent-start)]"
+                        />
+                    </div>
                 </div>
 
-                {searchTerm && (
+                {/* Selected member info (for search-based selection) */}
+                {selectedMember && (
+                    <div className="p-2.5 bg-[var(--primary-accent-start)]/10 border border-[var(--primary-accent-start)]/30 rounded-lg text-sm flex items-center justify-between">
+                        <span>
+                            Move <strong className="text-[var(--text-primary)]">{selectedMember.displayName}</strong> to position{" "}
+                            <strong className="text-[var(--text-primary)]">{targetPosition}</strong>? Press Enter or click Move.
+                        </span>
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setSelectedMember(null)}
+                                leftIcon={<X size={14} />}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => handleMoveToPosition()}
+                                leftIcon={<MoveVertical size={14} />}
+                            >
+                                Move
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {searchTerm && !selectedMember && (
                     <p className="text-xs text-amber-500">
-                        ⚠️ Drag to reorder is disabled while searching. Clear search to reorder.
+                        ⚠️ Drag disabled while searching. Use Target Pos & clicking to move.
                     </p>
                 )}
 
@@ -272,24 +360,30 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
                                         key={member.id}
                                         member={member}
                                         index={index}
-                                        searchTerm=""
+                                        onMoveClick={handleMoveToPosition}
                                     />
                                 ))}
                             </SortableContext>
                         </DndContext>
                     ) : (
-                        // When searching, show filtered results without drag
+                        // When searching, show filtered results
                         filteredMembers.map((member) => {
                             const originalIndex = members.findIndex((m) => m.id === member.id);
+                            const isSelected = selectedMember?.id === member.id;
                             return (
                                 <div
                                     key={member.id}
-                                    className="flex items-center gap-3 p-3 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg mb-2"
+                                    onClick={() => setSelectedMember(member)}
+                                    className={`group flex items-center gap-3 p-3 bg-[var(--bg-card)] border rounded-lg mb-2 cursor-pointer transition-all ${isSelected
+                                        ? "border-[var(--primary-accent-start)] ring-2 ring-[var(--primary-accent-start)]/30 bg-[var(--primary-accent-start)]/5"
+                                        : "border-[var(--border-color)] hover:bg-[var(--bg-elevated)]"
+                                        }`}
                                 >
                                     <div className="p-1 opacity-30">
                                         <GripVertical size={18} className="text-[var(--text-muted)]" />
                                     </div>
-                                    <div className="w-10 h-10 flex items-center justify-center bg-[var(--primary-accent-start)] text-white rounded-full font-bold text-sm">
+                                    <div className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-sm ${isSelected ? "bg-[var(--primary-accent-start)] text-white" : "bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                                        }`}>
                                         {originalIndex + 1}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -313,6 +407,23 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
                                             {member.memberId}
                                         </p>
                                     </div>
+                                    {isSelected && (
+                                        <div className="text-xs text-[var(--primary-accent-start)] font-medium">
+                                            Selected
+                                        </div>
+                                    )}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleMoveToPosition(member);
+                                        }}
+                                        title="Move to Target Position"
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <ArrowRightToLine size={16} className="text-[var(--primary-accent-start)]" />
+                                    </Button>
                                 </div>
                             );
                         })
