@@ -30,6 +30,15 @@ interface MemberOrderDB extends DBSchema {
             'by-timestamp': number;
         };
     };
+    orderSnapshots: {
+        key: string;
+        value: OrderSnapshot;
+        indexes: {
+            'by-assembly': string;
+            'by-timestamp': number;
+            'by-history': string;
+        };
+    };
 }
 
 export interface MemberOrderEntry {
@@ -105,8 +114,21 @@ export interface IntegrityReport {
     timestamp: number;
 }
 
+export interface OrderSnapshot {
+    id: string;                    // UUID
+    assemblyName: string;
+    historyEntryId: string;        // Links to OrderHistoryEntry that triggered this
+    timestamp: number;
+    memberCount: number;
+    entries: Array<{
+        memberId: string;
+        displayName: string;
+        titheBookIndex: number;
+    }>;
+}
+
 const DB_NAME = 'tactms-member-order';
-const DB_VERSION = 2; // Bumped for orderHistory store
+const DB_VERSION = 3; // Bumped for orderSnapshots store
 
 let dbPromise: Promise<IDBPDatabase<MemberOrderDB>> | null = null;
 
@@ -131,6 +153,14 @@ const getDB = async (): Promise<IDBPDatabase<MemberOrderDB>> => {
                     const historyStore = db.createObjectStore('orderHistory', { keyPath: 'id' });
                     historyStore.createIndex('by-assembly', 'assemblyName');
                     historyStore.createIndex('by-timestamp', 'timestamp');
+                }
+
+                // Version 3: Order snapshots for undo/restore
+                if (oldVersion < 3) {
+                    const snapshotStore = db.createObjectStore('orderSnapshots', { keyPath: 'id' });
+                    snapshotStore.createIndex('by-assembly', 'assemblyName');
+                    snapshotStore.createIndex('by-timestamp', 'timestamp');
+                    snapshotStore.createIndex('by-history', 'historyEntryId');
                 }
             },
         });
@@ -855,4 +885,155 @@ export const validateAndRepairOrder = async (
     }
 
     return report;
+};
+
+// ============================================================================
+// ORDER SNAPSHOTS (UNDO/RESTORE)
+// ============================================================================
+
+/**
+ * Create a snapshot of the current order before a major operation
+ * This allows users to restore to this point later
+ */
+export const createSnapshot = async (
+    assemblyName: string,
+    historyEntryId: string
+): Promise<string> => {
+    const db = await getDB();
+    const now = Date.now();
+
+    // Get current order
+    const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
+    const activeEntries = entries.filter(e => e.isActive);
+
+    const snapshotId = `snapshot-${now}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const snapshot: OrderSnapshot = {
+        id: snapshotId,
+        assemblyName,
+        historyEntryId,
+        timestamp: now,
+        memberCount: activeEntries.length,
+        entries: activeEntries.map(e => ({
+            memberId: e.memberId,
+            displayName: e.displayName,
+            titheBookIndex: e.titheBookIndex,
+        })),
+    };
+
+    await db.put('orderSnapshots', snapshot);
+
+    // Cleanup old snapshots (keep only last 5)
+    await cleanupOldSnapshots(assemblyName, 5);
+
+    console.log(`Created snapshot ${snapshotId} for ${assemblyName} with ${activeEntries.length} members`);
+
+    return snapshotId;
+};
+
+/**
+ * Get recent snapshots for an assembly
+ */
+export const getSnapshots = async (
+    assemblyName: string,
+    limit = 10
+): Promise<OrderSnapshot[]> => {
+    const db = await getDB();
+    const snapshots = await db.getAllFromIndex('orderSnapshots', 'by-assembly', assemblyName);
+
+    // Sort by timestamp descending (newest first)
+    snapshots.sort((a, b) => b.timestamp - a.timestamp);
+
+    return snapshots.slice(0, limit);
+};
+
+/**
+ * Get snapshot linked to a specific history entry
+ */
+export const getSnapshotForHistory = async (
+    historyEntryId: string
+): Promise<OrderSnapshot | null> => {
+    const db = await getDB();
+    const snapshot = await db.getFromIndex('orderSnapshots', 'by-history', historyEntryId);
+    return snapshot || null;
+};
+
+/**
+ * Restore order from a snapshot
+ */
+export const restoreSnapshot = async (
+    snapshotId: string
+): Promise<{ success: boolean; restoredCount: number; error?: string }> => {
+    const db = await getDB();
+
+    const snapshot = await db.get('orderSnapshots', snapshotId);
+    if (!snapshot) {
+        return { success: false, restoredCount: 0, error: 'Snapshot not found' };
+    }
+
+    const now = Date.now();
+    const tx = db.transaction('memberOrders', 'readwrite');
+    const store = tx.objectStore('memberOrders');
+
+    let restoredCount = 0;
+
+    // Apply snapshot order to current entries
+    for (const snapshotEntry of snapshot.entries) {
+        const id = generateId(snapshotEntry.memberId, snapshot.assemblyName);
+        const existing = await store.get(id);
+
+        if (existing) {
+            existing.titheBookIndex = snapshotEntry.titheBookIndex;
+            existing.lastUpdated = now;
+            await store.put(existing);
+            restoredCount++;
+        }
+    }
+
+    await tx.done;
+
+    // Log the restore action
+    await logOrderChange({
+        assemblyName: snapshot.assemblyName,
+        action: 'reset',
+        timestamp: now,
+        description: `Restored order from snapshot (${new Date(snapshot.timestamp).toLocaleDateString()})`,
+        affectedCount: restoredCount,
+    });
+
+    // Run integrity check after restore
+    await validateAndRepairOrder(snapshot.assemblyName, true);
+
+    console.log(`Restored snapshot ${snapshotId}: ${restoredCount} members updated`);
+
+    return { success: true, restoredCount };
+};
+
+/**
+ * Cleanup old snapshots, keeping only the most recent ones
+ */
+export const cleanupOldSnapshots = async (
+    assemblyName: string,
+    keep = 5
+): Promise<number> => {
+    const db = await getDB();
+    const snapshots = await db.getAllFromIndex('orderSnapshots', 'by-assembly', assemblyName);
+
+    // Sort by timestamp descending
+    snapshots.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Delete all beyond the keep limit
+    const toDelete = snapshots.slice(keep);
+    let deletedCount = 0;
+
+    for (const snapshot of toDelete) {
+        await db.delete('orderSnapshots', snapshot.id);
+        deletedCount++;
+    }
+
+    if (deletedCount > 0) {
+        console.log(`Cleaned up ${deletedCount} old snapshots for ${assemblyName}`);
+    }
+
+    return deletedCount;
 };

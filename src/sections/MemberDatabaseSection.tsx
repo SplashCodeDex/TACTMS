@@ -644,6 +644,16 @@ const MemberDatabaseSection: React.FC = () => {
         isOpen={orderHistoryModal.isOpen}
         onClose={orderHistoryModal.close}
         assemblyName={selectedAssembly || ""}
+        addToast={addToast}
+        onRestore={async () => {
+          // Refresh the order map after restore
+          if (selectedAssembly) {
+            const ordered = await getOrderedMembers(selectedAssembly);
+            const map = new Map<string, number>();
+            ordered.forEach((o) => map.set(o.memberId.toLowerCase(), o.titheBookIndex));
+            setMemberOrderMap(map);
+          }
+        }}
       />
     </div >
   );

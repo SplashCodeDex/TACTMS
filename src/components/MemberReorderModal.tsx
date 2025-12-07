@@ -19,7 +19,7 @@ import {
     useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MemberOrderEntry, updateMemberOrder, exportOrderForAssembly, importOrderForAssembly, OrderExport } from "@/services/memberOrderService";
+import { MemberOrderEntry, updateMemberOrder, exportOrderForAssembly, importOrderForAssembly, OrderExport, createSnapshot } from "@/services/memberOrderService";
 import { MemberRecordA } from "@/types";
 
 interface MemberReorderModalProps {
@@ -295,6 +295,10 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
                 memberId: member.memberId,
                 newIndex: index + 1,
             }));
+
+            // Create snapshot before reorder (for undo)
+            const historyId = `manual-reorder-${Date.now()}`;
+            await createSnapshot(assemblyName, historyId);
 
             await updateMemberOrder(updates, assemblyName);
             addToast(`Member order saved for ${assemblyName}`, "success");

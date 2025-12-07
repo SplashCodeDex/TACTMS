@@ -3,7 +3,7 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw } from "lucide-react";
 import { MemberRecordA } from "@/types";
-import { updateMemberOrder } from "@/services/memberOrderService";
+import { updateMemberOrder, createSnapshot } from "@/services/memberOrderService";
 import { extractNamesFromTitheBook } from "@/services/imageProcessor";
 
 interface ReorderFromImageModalProps {
@@ -187,6 +187,10 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                 memberId: row.matchedMember!["Membership Number"] || row.matchedMember!["Old Membership Number"] || "",
                 newIndex: row.position,
             })).filter(u => u.memberId);
+
+            // Create snapshot before reorder (for undo)
+            const historyId = `ai-reorder-${Date.now()}`;
+            await createSnapshot(assemblyName, historyId);
 
             await updateMemberOrder(updates, assemblyName);
             addToast(`Reordered ${updates.length} members to match tithe book`, "success");
