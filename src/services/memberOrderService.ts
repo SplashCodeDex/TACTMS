@@ -329,12 +329,46 @@ export const updateMemberPosition = async (
     const db = await getDB();
     const id = generateId(memberId, assemblyName);
 
-    const entry = await db.get('memberOrders', id);
-    if (entry) {
-        entry.titheBookIndex = newIndex;
-        entry.lastUpdated = Date.now();
-        await db.put('memberOrders', entry);
+    const tx = db.transaction('memberOrders', 'readwrite');
+    const store = tx.objectStore('memberOrders');
+    const index = store.index('by-tithe-index');
+
+    // 1. Get the member moving
+    const entry = await store.get(id);
+    if (!entry) {
+        await tx.done;
+        return;
     }
+    const oldIndex = entry.titheBookIndex;
+
+    // 2. Check for collision at newIndex
+    // key range matching [assemblyName, newIndex]
+    const collisionEntry = await index.get(IDBKeyRange.only([assemblyName, newIndex]));
+
+    if (collisionEntry) {
+        // SWAP: Move collision member to oldIndex
+        collisionEntry.titheBookIndex = oldIndex;
+        collisionEntry.lastUpdated = Date.now();
+        await store.put(collisionEntry);
+    }
+
+    // 3. Move target member to newIndex
+    entry.titheBookIndex = newIndex;
+    entry.lastUpdated = Date.now();
+    await store.put(entry);
+
+    await tx.done;
+
+    // Log the change
+    await logOrderChange({
+        assemblyName,
+        action: 'manual',
+        timestamp: Date.now(),
+        description: collisionEntry
+            ? `Swapped #${oldIndex} (${entry.displayName}) with #${newIndex} (${collisionEntry.displayName})`
+            : `Moved ${entry.displayName} to #${newIndex} (was #${oldIndex})`,
+        affectedCount: collisionEntry ? 2 : 1
+    });
 };
 
 /**
