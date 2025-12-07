@@ -164,11 +164,28 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
         if (oldIndex === -1) return;
 
         const newIndex = targetPos - 1;
-        setMembers((items) => arrayMove(items, oldIndex, newIndex));
+
+        // Perform SWAP instead of Shift/Insert to avoid disturbing other members
+        setMembers((items) => {
+            const newItems = [...items];
+            // Swap valid elements
+            const temp = newItems[newIndex];
+            newItems[newIndex] = newItems[oldIndex];
+            newItems[oldIndex] = temp;
+            return newItems;
+        });
+
         setHasChanges(true);
 
-        addToast(`Moved "${memberToMove.displayName}" to #${targetPos}`, "success");
-        setTargetPosition(String(Math.min(targetPos + 1, members.length)));
+        const swappedMember = members[newIndex];
+        const swappedMsg = swappedMember
+            ? `Swapped with "${swappedMember.displayName}" at #${targetPos}`
+            : `Moved to #${targetPos}`;
+
+        addToast(`Moved "${memberToMove.displayName}" to #${targetPos}. ${swappedMsg}`, "success");
+
+        // Don't auto-increment target pos for Swap, as we usually just want to make a specific correction
+        // setTargetPosition(String(Math.min(targetPos + 1, members.length)));
 
         // Reset selection if it was a search-based move
         if (selectedMember && selectedMember.id === memberToMove.id) {
