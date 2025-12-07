@@ -654,3 +654,64 @@ export const resetOrderFromMasterList = async (
         affectedCount: members.length
     });
 };
+
+/**
+ * Repair member order (Fix duplicates)
+ */
+export const repairMemberOrder = async (
+    assemblyName: string
+): Promise<{ fixedCount: number }> => {
+    const db = await getDB();
+    const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
+
+    // Group by titheBookIndex
+    const indexMap = new Map<number, MemberOrderEntry[]>();
+    entries.forEach(e => {
+        const list = indexMap.get(e.titheBookIndex) || [];
+        list.push(e);
+        indexMap.set(e.titheBookIndex, list);
+    });
+
+    let maxIndex = 0;
+    entries.forEach(e => {
+        if (e.titheBookIndex > maxIndex) maxIndex = e.titheBookIndex;
+    });
+
+    const tx = db.transaction('memberOrders', 'readwrite');
+    let fixedCount = 0;
+
+    for (const [index, duplicates] of indexMap.entries()) {
+        if (duplicates.length > 1) {
+            // Sort by lastUpdated (keep the most recently updated one at the position?)
+            // OR keep the one with the smallest ID?
+            // Better: Keep the one that was updated MOST RECENTLY as the "true" owner?
+            // User feedback suggests the "Newer" move is the intended one.
+            // Let's sort descending by lastUpdated.
+            duplicates.sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+            // Keep duplicates[0] (most recent). Move the rest.
+            for (let i = 1; i < duplicates.length; i++) {
+                maxIndex++;
+                const memberToMove = duplicates[i];
+                memberToMove.titheBookIndex = maxIndex;
+                memberToMove.lastUpdated = Date.now();
+                await tx.store.put(memberToMove);
+                fixedCount++;
+            }
+        }
+    }
+
+    await tx.done;
+
+    if (fixedCount > 0) {
+        await logOrderChange({
+            assemblyName,
+            action: 'manual', // or 'repair'? reusing manual for now or add new type
+            timestamp: Date.now(),
+            description: `Repaired ${fixedCount} duplicate positions`,
+            affectedCount: fixedCount
+        });
+    }
+
+    return { fixedCount };
+};

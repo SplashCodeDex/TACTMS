@@ -199,7 +199,7 @@ const MemberDatabaseSection: React.FC = () => {
           const valA = orderA !== undefined ? orderA : (a.customOrder || 99999);
           const valB = orderB !== undefined ? orderB : (b.customOrder || 99999);
 
-          return valA - valB;
+          return sortConfig.direction === "asc" ? valA - valB : valB - valA;
         }
         const aValue = String(a[sortConfig.key!]).toLowerCase();
         const bValue = String(b[sortConfig.key!]).toLowerCase();
