@@ -19,7 +19,7 @@ import {
     useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MemberOrderEntry, updateMemberOrder, exportOrderForAssembly, importOrderForAssembly, OrderExport, createSnapshot } from "@/services/memberOrderService";
+import { MemberOrderEntry, updateMemberOrder, exportOrderForAssembly, importOrderForAssembly, OrderExport, createSnapshot, logOrderChange } from "@/services/memberOrderService";
 import { MemberRecordA } from "@/types";
 
 interface MemberReorderModalProps {
@@ -296,11 +296,23 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
                 newIndex: index + 1,
             }));
 
+            // Generate a unique history ID to link snapshot and history entry
+            const historyId = `manual-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
             // Create snapshot before reorder (for undo)
-            const historyId = `manual-reorder-${Date.now()}`;
             await createSnapshot(assemblyName, historyId);
 
             await updateMemberOrder(updates, assemblyName);
+
+            // Log history entry with SAME ID so snapshot can be linked
+            await logOrderChange({
+                assemblyName,
+                action: 'manual',
+                timestamp: Date.now(),
+                description: `Manually reordered ${updates.length} members`,
+                affectedCount: updates.length,
+            }, historyId);
+
             addToast(`Member order saved for ${assemblyName}`, "success");
             setHasChanges(false);
             onSaveComplete();

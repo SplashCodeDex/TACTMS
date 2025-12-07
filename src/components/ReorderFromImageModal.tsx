@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
-import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw } from "lucide-react";
+import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw, ArrowRight, Eye } from "lucide-react";
 import { MemberRecordA } from "@/types";
-import { updateMemberOrder, createSnapshot, saveLearnedAlias, getAliasMap } from "@/services/memberOrderService";
+import { updateMemberOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange } from "@/services/memberOrderService";
 import { extractNamesFromTitheBook } from "@/services/imageProcessor";
 
 interface ReorderFromImageModalProps {
@@ -16,7 +16,7 @@ interface ReorderFromImageModalProps {
     memberOrderMap?: Map<string, number>; // For positional hints
 }
 
-type ModalStep = "upload" | "processing" | "preview" | "resolving";
+type ModalStep = "upload" | "processing" | "preview" | "resolving" | "diff";
 
 interface ExtractedNameRow {
     position: number;
@@ -25,6 +25,15 @@ interface ExtractedNameRow {
     matchScore: number;
     isManuallyResolved: boolean;
     alternatives: Array<{ member: MemberRecordA; score: number }>; // Top suggestions
+}
+
+interface OrderChange {
+    memberId: string;
+    memberName: string;
+    currentPosition: number | null;  // null if not in current order
+    newPosition: number;
+    changeType: 'moved' | 'unchanged' | 'new';
+    included: boolean;  // Whether to apply this change
 }
 
 const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
@@ -44,8 +53,54 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [orderChanges, setOrderChanges] = useState<OrderChange[]>([]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Compute order changes for diff view
+    const computeOrderChanges = useCallback(() => {
+        const validRows = extractedRows.filter(r => r.matchedMember);
+        const changes: OrderChange[] = [];
+
+        for (const row of validRows) {
+            const member = row.matchedMember!;
+            const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
+            const memberName = `${member.Surname || ""} ${member["First Name"] || ""}`.trim();
+            const currentPos = memberOrderMap?.get(memberId) ?? null;
+            const newPos = row.position;
+
+            let changeType: 'moved' | 'unchanged' | 'new';
+            if (currentPos === null) {
+                changeType = 'new';
+            } else if (currentPos === newPos) {
+                changeType = 'unchanged';
+            } else {
+                changeType = 'moved';
+            }
+
+            changes.push({
+                memberId,
+                memberName,
+                currentPosition: currentPos,
+                newPosition: newPos,
+                changeType,
+                included: true, // Default to include all
+            });
+        }
+
+        // Sort by new position
+        changes.sort((a, b) => a.newPosition - b.newPosition);
+        return changes;
+    }, [extractedRows, memberOrderMap]);
+
+    // Stats for diff view
+    const diffStats = useMemo(() => {
+        const moved = orderChanges.filter(c => c.changeType === 'moved').length;
+        const unchanged = orderChanges.filter(c => c.changeType === 'unchanged').length;
+        const newEntries = orderChanges.filter(c => c.changeType === 'new').length;
+        const selected = orderChanges.filter(c => c.included).length;
+        return { moved, unchanged, new: newEntries, selected, total: orderChanges.length };
+    }, [orderChanges]);
 
     // Reset state when modal opens/closes
     const handleClose = useCallback(() => {
@@ -56,6 +111,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
         setIsProcessing(false);
         setResolvingIndex(null);
         setSearchTerm("");
+        setOrderChanges([]);  // Reset diff state
         onClose();
     }, [onClose]);
 
@@ -206,17 +262,92 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                 newIndex: row.position,
             })).filter(u => u.memberId);
 
+            // Generate a unique history ID to link snapshot and history entry
+            const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
             // Create snapshot before reorder (for undo)
-            const historyId = `ai-reorder-${Date.now()}`;
             await createSnapshot(assemblyName, historyId);
 
             await updateMemberOrder(updates, assemblyName);
+
+            // Log history entry with SAME ID so snapshot can be linked
+            await logOrderChange({
+                assemblyName,
+                action: 'ai_reorder',
+                timestamp: Date.now(),
+                description: `AI reordered ${updates.length} members from tithe book image`,
+                affectedCount: updates.length,
+            }, historyId);
+
             addToast(`Reordered ${updates.length} members to match tithe book`, "success");
             onSaveComplete();
             handleClose();
         } catch (error) {
             console.error("Failed to apply order:", error);
             addToast("Failed to save new order", "error");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Open diff view
+    const handleReviewChanges = useCallback(() => {
+        const changes = computeOrderChanges();
+        setOrderChanges(changes);
+        setStep("diff");
+    }, [computeOrderChanges]);
+
+    // Toggle change inclusion by index (not memberId, to handle duplicates)
+    const toggleChangeInclusion = useCallback((index: number) => {
+        setOrderChanges(prev => prev.map((c, i) =>
+            i === index ? { ...c, included: !c.included } : c
+        ));
+    }, []);
+
+    // Toggle all changes
+    const toggleAllChanges = useCallback((included: boolean) => {
+        setOrderChanges(prev => prev.map(c => ({ ...c, included })));
+    }, []);
+
+    // Apply only selected changes
+    const handleApplySelected = async () => {
+        const selectedChanges = orderChanges.filter(c => c.included && c.changeType !== 'unchanged');
+
+        if (selectedChanges.length === 0) {
+            addToast("No changes selected to apply", "warning");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const updates = selectedChanges.map(c => ({
+                memberId: c.memberId,
+                newIndex: c.newPosition,
+            }));
+
+            // Generate a unique history ID to link snapshot and history entry
+            const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
+            // Create snapshot before reorder (for undo)
+            await createSnapshot(assemblyName, historyId);
+
+            await updateMemberOrder(updates, assemblyName);
+
+            // Log history entry with SAME ID so snapshot can be linked
+            await logOrderChange({
+                assemblyName,
+                action: 'ai_reorder',
+                timestamp: Date.now(),
+                description: `AI reordered ${updates.length} members (selected from diff view)`,
+                affectedCount: updates.length,
+            }, historyId);
+
+            addToast(`Applied ${updates.length} order changes`, "success");
+            onSaveComplete();
+            handleClose();
+        } catch (error) {
+            console.error("Failed to apply changes:", error);
+            addToast("Failed to apply changes", "error");
         } finally {
             setIsSaving(false);
         }
@@ -255,15 +386,45 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                         </Button>
                     )}
                     {step === "preview" && (
-                        <Button
-                            variant="primary"
-                            onClick={handleApplyOrder}
-                            disabled={unmatchedCount > 0 || isSaving}
-                            isLoading={isSaving}
-                            leftIcon={<Check size={16} />}
-                        >
-                            Apply Order ({extractedRows.filter(r => r.matchedMember).length})
-                        </Button>
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={handleReviewChanges}
+                                disabled={unmatchedCount > 0 || isSaving}
+                                leftIcon={<Eye size={16} />}
+                            >
+                                Review Changes
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleApplyOrder}
+                                disabled={unmatchedCount > 0 || isSaving}
+                                isLoading={isSaving}
+                                leftIcon={<Check size={16} />}
+                            >
+                                Apply All ({extractedRows.filter(r => r.matchedMember).length})
+                            </Button>
+                        </>
+                    )}
+                    {step === "diff" && (
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setStep("preview")}
+                                disabled={isSaving}
+                            >
+                                Back
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleApplySelected}
+                                disabled={diffStats.selected === 0 || isSaving}
+                                isLoading={isSaving}
+                                leftIcon={<Check size={16} />}
+                            >
+                                Apply Selected ({diffStats.selected})
+                            </Button>
+                        </>
                     )}
                 </>
             }
@@ -489,6 +650,114 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                                                     >
                                                         <X size={14} />
                                                     </Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+
+                {/* Diff View Step */}
+                {step === "diff" && (
+                    <>
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm text-[var(--text-secondary)]">
+                                Review changes before applying. Uncheck changes you want to skip.
+                            </p>
+                            <div className="flex gap-2 text-xs">
+                                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">
+                                    {diffStats.moved} moved
+                                </span>
+                                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded">
+                                    {diffStats.unchanged} same
+                                </span>
+                                {diffStats.new > 0 && (
+                                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                                        {diffStats.new} new
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Select/Deselect All */}
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => toggleAllChanges(true)}
+                            >
+                                Select All
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => toggleAllChanges(false)}
+                            >
+                                Deselect All
+                            </Button>
+                        </div>
+
+                        <div className="max-h-[50vh] overflow-y-auto border border-[var(--border-color)] rounded-lg">
+                            <table className="w-full text-sm">
+                                <thead className="bg-[var(--bg-elevated)] sticky top-0">
+                                    <tr>
+                                        <th className="p-3 text-center font-medium w-10">✓</th>
+                                        <th className="p-3 text-left font-medium">Member</th>
+                                        <th className="p-3 text-center font-medium w-20">Current</th>
+                                        <th className="p-3 text-center font-medium w-8"><ArrowRight size={14} /></th>
+                                        <th className="p-3 text-center font-medium w-20">New</th>
+                                        <th className="p-3 text-center font-medium w-24">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[var(--border-color)]">
+                                    {orderChanges.map((change, idx) => (
+                                        <tr
+                                            key={`${change.memberId}-${change.newPosition}-${idx}`}
+                                            className={`${change.included ? "" : "opacity-50"} ${change.changeType === 'moved'
+                                                ? "bg-yellow-500/5"
+                                                : change.changeType === 'new'
+                                                    ? "bg-blue-500/5"
+                                                    : ""
+                                                }`}
+                                        >
+                                            <td className="p-3 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={change.included}
+                                                    onChange={() => toggleChangeInclusion(idx)}
+                                                    className="w-4 h-4 rounded border-[var(--border-color)] accent-[var(--primary-accent-start)]"
+                                                />
+                                            </td>
+                                            <td className="p-3 text-[var(--text-primary)]">
+                                                {change.memberName}
+                                            </td>
+                                            <td className="p-3 text-center font-mono text-[var(--text-muted)]">
+                                                {change.currentPosition ?? "—"}
+                                            </td>
+                                            <td className="p-3 text-center text-[var(--text-muted)]">
+                                                <ArrowRight size={14} className="inline" />
+                                            </td>
+                                            <td className="p-3 text-center font-mono font-bold text-[var(--primary-accent-start)]">
+                                                {change.newPosition}
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                {change.changeType === 'moved' && (
+                                                    <span className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">
+                                                        Moved
+                                                    </span>
+                                                )}
+                                                {change.changeType === 'unchanged' && (
+                                                    <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">
+                                                        Same
+                                                    </span>
+                                                )}
+                                                {change.changeType === 'new' && (
+                                                    <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-400">
+                                                        New
+                                                    </span>
                                                 )}
                                             </td>
                                         </tr>

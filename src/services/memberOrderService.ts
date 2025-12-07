@@ -644,14 +644,17 @@ export const importOrderForAssembly = async (
 
 /**
  * Log an order change event
+ * @returns The history entry ID (useful for linking to snapshots)
  */
 export const logOrderChange = async (
-    entry: Omit<OrderHistoryEntry, 'id'>
-): Promise<void> => {
+    entry: Omit<OrderHistoryEntry, 'id'>,
+    preGeneratedId?: string  // Optional: use this ID instead of generating one
+): Promise<string> => {
     const db = await getDB();
-    const id = `${entry.assemblyName}-${entry.timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = preGeneratedId || `${entry.assemblyName}-${entry.timestamp}-${Math.random().toString(36).substr(2, 9)}`;
 
     await db.put('orderHistory', { ...entry, id });
+    return id;
 };
 
 /**
@@ -1084,6 +1087,12 @@ export const saveLearnedAlias = async (
     extractedName: string,
     member: MemberRecordA
 ): Promise<void> => {
+    // Guard: don't save empty aliases
+    if (!extractedName || !extractedName.trim()) {
+        console.warn('saveLearnedAlias: extractedName is empty, skipping');
+        return;
+    }
+
     const db = await getDB();
     const now = Date.now();
 

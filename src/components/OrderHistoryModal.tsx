@@ -50,6 +50,7 @@ const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
     useEffect(() => {
         if (isOpen && assemblyName) {
             setIsLoading(true);
+            setConfirmRestoreId(null);  // Reset confirm state when opening
             Promise.all([
                 getOrderHistory(assemblyName),
                 getSnapshots(assemblyName)
