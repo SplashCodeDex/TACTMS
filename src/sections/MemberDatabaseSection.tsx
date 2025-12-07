@@ -16,7 +16,9 @@ import MemberReorderModal from "../components/MemberReorderModal";
 import ReorderFromImageModal from "../components/ReorderFromImageModal";
 import OrderHistoryModal from "../components/OrderHistoryModal";
 import * as XLSX from "xlsx";
+
 import { computeColumnWidths } from "@/lib/exportUtils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
@@ -72,9 +74,7 @@ const MemberDatabaseSection: React.FC = () => {
     }
   }, [selectedAssembly, memberDatabase[selectedAssembly || ""]?.lastUpdated]);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [membersPerPage] = useState(10); // You can make this configurable if needed
+
 
   // Age Filter state
   const [ageRangeMin, setAgeRangeMin] = useState<string>("");
@@ -233,15 +233,7 @@ const MemberDatabaseSection: React.FC = () => {
 
 
 
-  // Get current members for pagination
-  const indexOfLastMember = currentPage * membersPerPage;
-  const indexOfFirstMember = indexOfLastMember - membersPerPage;
-  const currentMembers = sortedAndFilteredMembers.slice(indexOfFirstMember, indexOfLastMember);
 
-  // Change page
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-
-  const totalPages = Math.ceil(sortedAndFilteredMembers.length / membersPerPage);
 
   const handleSelectMember = (member: MemberRecordA) => {
     setSelectedMembers((prev) =>
@@ -452,201 +444,135 @@ const MemberDatabaseSection: React.FC = () => {
               )}
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="modern-table min-w-full divide-y divide-[var(--border-color)]">
-              <thead className="bg-[var(--bg-elevated)]">
-                <tr>
-                  <th scope="col" className="p-4">
-                    <Checkbox
-                      checked={
-                        selectedMembers.length === sortedAndFilteredMembers.length &&
-                        sortedAndFilteredMembers.length > 0
-                      }
-                      onChange={() => handleSelectAll()}
-                    />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                    onClick={() => handleSort("customOrder")}
-                    title="Tithe Book Order - Position in physical tithe book"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <Hash size={14} />
-                      {sortConfig.key === "customOrder" && (
-                        sortConfig.direction === "asc" ? (
-                          <ArrowUp size={14} />
-                        ) : (
-                          <ArrowDown size={14} />
-                        )
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                    onClick={() => handleSort("First Name")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Name
-                      {sortConfig.key === "First Name" && (
-                        sortConfig.direction === "asc" ? (
-                          <ArrowUp size={14} />
-                        ) : (
-                          <ArrowDown size={14} />
-                        )
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                    onClick={() => handleSort("Membership Number")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Membership No.
-                      {sortConfig.key === "Membership Number" && (
-                        sortConfig.direction === "asc" ? (
-                          <ArrowUp size={14} />
-                        ) : (
-                          <ArrowDown size={14} />
-                        )
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                    onClick={() => handleSort("Phone Number")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Phone Number
-                      {sortConfig.key === "Phone Number" && (
-                        sortConfig.direction === "asc" ? (
-                          <ArrowUp size={14} />
-                        ) : (
-                          <ArrowDown size={14} />
-                        )
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-color)]">
-                {currentMembers.map((member, index) => (
-                  <tr key={member["Membership Number"] || `${member["No."]}-${index}`}>
-                    <td className="p-4">
+          <div className="border rounded-md border-[var(--border-color)] bg-[var(--bg-elevated)]">
+            <ScrollArea className="h-[calc(100vh-280px)]" type="always">
+              <table className="modern-table min-w-full divide-y divide-[var(--border-color)]">
+                <thead className="bg-[var(--bg-elevated)] sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th scope="col" className="p-4">
                       <Checkbox
-                        checked={selectedMembers.some(
-                          (m) => m["No."] === member["No."],
-                        )}
-                        onChange={() => handleSelectMember(member)}
+                        checked={
+                          selectedMembers.length === sortedAndFilteredMembers.length &&
+                          sortedAndFilteredMembers.length > 0
+                        }
+                        onChange={() => handleSelectAll()}
                       />
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-[var(--primary-accent-start)] font-semibold">
-                      {(() => {
-                        const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
-                        return memberOrderMap.get(memberId) || "-";
-                      })()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">
-                      {member["First Name"]} {member.Surname}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {member["Membership Number"]}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {member["Phone Number"]}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEditMember(member, selectedAssembly)}
-                      >
-                        <Edit size={16} />
-                      </Button>
-                    </td>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                      onClick={() => handleSort("customOrder")}
+                      title="Tithe Book Order - Position in physical tithe book"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <Hash size={14} />
+                        {sortConfig.key === "customOrder" && (
+                          sortConfig.direction === "asc" ? (
+                            <ArrowUp size={14} />
+                          ) : (
+                            <ArrowDown size={14} />
+                          )
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                      onClick={() => handleSort("First Name")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Name
+                        {sortConfig.key === "First Name" && (
+                          sortConfig.direction === "asc" ? (
+                            <ArrowUp size={14} />
+                          ) : (
+                            <ArrowDown size={14} />
+                          )
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                      onClick={() => handleSort("Membership Number")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Membership No.
+                        {sortConfig.key === "Membership Number" && (
+                          sortConfig.direction === "asc" ? (
+                            <ArrowUp size={14} />
+                          ) : (
+                            <ArrowDown size={14} />
+                          )
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                      onClick={() => handleSort("Phone Number")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Phone Number
+                        {sortConfig.key === "Phone Number" && (
+                          sortConfig.direction === "asc" ? (
+                            <ArrowUp size={14} />
+                          ) : (
+                            <ArrowDown size={14} />
+                          )
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-color)]">
+                  {sortedAndFilteredMembers.map((member, index) => (
+                    <tr key={member["Membership Number"] || `${member["No."]}-${index}`}>
+                      <td className="p-4">
+                        <Checkbox
+                          checked={selectedMembers.some(
+                            (m) => m["No."] === member["No."],
+                          )}
+                          onChange={() => handleSelectMember(member)}
+                        />
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-[var(--primary-accent-start)] font-semibold">
+                        {(() => {
+                          const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
+                          return memberOrderMap.get(memberId) || "-";
+                        })()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">
+                        {member["First Name"]} {member.Surname}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {member["Membership Number"]}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {member["Phone Number"]}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEditMember(member, selectedAssembly)}
+                        >
+                          <Edit size={16} />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollArea>
           </div>
-          {
-            sortedAndFilteredMembers.length > membersPerPage && (
-              <div className="flex justify-center mt-4 items-center gap-2">
-                <div className="text-sm text-gray-500 dark:text-gray-400 mr-4">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button
-                    onClick={() => paginate(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-
-                  {/* First Page */}
-                  {currentPage > 3 && (
-                    <>
-                      <button
-                        onClick={() => paginate(1)}
-                        className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
-                      >
-                        1
-                      </button>
-                      {currentPage > 4 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
-                    </>
-                  )}
-
-                  {/* Page Numbers Window */}
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(page => page >= Number(currentPage) - 2 && page <= Number(currentPage) + 2)
-                    .map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => paginate(page)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
-                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-300"
-                          : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
-                          }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-
-                  {/* Last Page */}
-                  {currentPage < totalPages - 2 && (
-                    <>
-                      {currentPage < totalPages - 3 && <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">...</span>}
-                      <button
-                        onClick={() => paginate(totalPages)}
-                        className={`relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700`}
-                      >
-                        {totalPages}
-                      </button>
-                    </>
-                  )}
-
-                  <button
-                    onClick={() => paginate(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            )
-          }
-        </div >
+        </div>
       ) : (
         <div className="text-center py-12 content-card">
           <p className="text-gray-500 dark:text-gray-400">
