@@ -90,6 +90,21 @@ export interface ImportResult {
     errors: string[];
 }
 
+export interface DuplicateIndexInfo {
+    index: number;
+    memberIds: string[];
+}
+
+export interface IntegrityReport {
+    isHealthy: boolean;
+    assemblyName: string;
+    duplicateIndices: DuplicateIndexInfo[];
+    orphanedMembers: string[];  // memberIds with null/undefined/invalid index
+    totalMembers: number;
+    autoRepaired: number;
+    timestamp: number;
+}
+
 const DB_NAME = 'tactms-member-order';
 const DB_VERSION = 2; // Bumped for orderHistory store
 
@@ -300,6 +315,9 @@ export const syncWithMasterList = async (
 
     await tx.done;
 
+    // Run integrity check after sync
+    await validateAndRepairOrder(assemblyName, true);
+
     return result;
 };
 
@@ -393,6 +411,9 @@ export const updateMemberOrder = async (
     }
 
     await tx.done;
+
+    // Run integrity check after batch reorder
+    await validateAndRepairOrder(assemblyName, true);
 };
 
 /**
@@ -653,6 +674,9 @@ export const resetOrderFromMasterList = async (
         description: 'Reset order to match master list',
         affectedCount: members.length
     });
+
+    // Run integrity check after reset
+    await validateAndRepairOrder(assemblyName, true);
 };
 
 /**
@@ -680,7 +704,7 @@ export const repairMemberOrder = async (
     const tx = db.transaction('memberOrders', 'readwrite');
     let fixedCount = 0;
 
-    for (const [index, duplicates] of indexMap.entries()) {
+    for (const [_index, duplicates] of indexMap.entries()) {
         if (duplicates.length > 1) {
             // Sort by lastUpdated (keep the most recently updated one at the position?)
             // OR keep the one with the smallest ID?
@@ -714,4 +738,121 @@ export const repairMemberOrder = async (
     }
 
     return { fixedCount };
+};
+
+// ============================================================================
+// INDEX INTEGRITY VALIDATION
+// ============================================================================
+
+/**
+ * Validate and optionally repair member order integrity
+ * Checks for duplicate indices and orphaned members (invalid index)
+ */
+export const validateAndRepairOrder = async (
+    assemblyName: string,
+    autoRepair: boolean = true
+): Promise<IntegrityReport> => {
+    const db = await getDB();
+    const now = Date.now();
+
+    const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
+    const activeEntries = entries.filter(e => e.isActive);
+
+    const report: IntegrityReport = {
+        isHealthy: true,
+        assemblyName,
+        duplicateIndices: [],
+        orphanedMembers: [],
+        totalMembers: activeEntries.length,
+        autoRepaired: 0,
+        timestamp: now,
+    };
+
+    // 1. Group by titheBookIndex to find duplicates
+    const indexMap = new Map<number, MemberOrderEntry[]>();
+    const orphans: MemberOrderEntry[] = [];
+
+    for (const entry of activeEntries) {
+        // Check for invalid index
+        if (
+            entry.titheBookIndex === null ||
+            entry.titheBookIndex === undefined ||
+            entry.titheBookIndex < 0 ||
+            !Number.isFinite(entry.titheBookIndex)
+        ) {
+            orphans.push(entry);
+            report.orphanedMembers.push(entry.memberId);
+            continue;
+        }
+
+        const list = indexMap.get(entry.titheBookIndex) || [];
+        list.push(entry);
+        indexMap.set(entry.titheBookIndex, list);
+    }
+
+    // 2. Find duplicates
+    for (const [index, members] of indexMap.entries()) {
+        if (members.length > 1) {
+            report.duplicateIndices.push({
+                index,
+                memberIds: members.map(m => m.memberId),
+            });
+        }
+    }
+
+    // 3. Set health status
+    report.isHealthy = report.duplicateIndices.length === 0 && report.orphanedMembers.length === 0;
+
+    // 4. Auto-repair if requested
+    if (!report.isHealthy && autoRepair) {
+        const tx = db.transaction('memberOrders', 'readwrite');
+        const store = tx.objectStore('memberOrders');
+
+        // Find max index for assigning new positions
+        let maxIndex = 0;
+        for (const [idx] of indexMap.entries()) {
+            if (idx > maxIndex) maxIndex = idx;
+        }
+
+        // Fix duplicates: keep most recently updated, move others to end
+        for (const dup of report.duplicateIndices) {
+            const members = indexMap.get(dup.index) || [];
+            // Sort by lastUpdated descending (keep most recent at position)
+            members.sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+            // Move all but the first to end
+            for (let i = 1; i < members.length; i++) {
+                maxIndex++;
+                const entry = members[i];
+                entry.titheBookIndex = maxIndex;
+                entry.lastUpdated = now;
+                await store.put(entry);
+                report.autoRepaired++;
+            }
+        }
+
+        // Fix orphans: assign to end
+        for (const orphan of orphans) {
+            maxIndex++;
+            orphan.titheBookIndex = maxIndex;
+            orphan.lastUpdated = now;
+            await store.put(orphan);
+            report.autoRepaired++;
+        }
+
+        await tx.done;
+
+        // Log the repair
+        if (report.autoRepaired > 0) {
+            await logOrderChange({
+                assemblyName,
+                action: 'manual',
+                timestamp: now,
+                description: `Integrity check: repaired ${report.autoRepaired} issues (${report.duplicateIndices.length} duplicates, ${orphans.length} orphans)`,
+                affectedCount: report.autoRepaired,
+            });
+        }
+    }
+
+    return report;
 };
