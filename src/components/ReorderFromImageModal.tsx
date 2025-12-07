@@ -34,8 +34,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     addToast,
 }) => {
     const [step, setStep] = useState<ModalStep>("upload");
-    const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploadedImages, setUploadedImages] = useState<File[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [extractedRows, setExtractedRows] = useState<ExtractedNameRow[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -47,8 +47,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     // Reset state when modal opens/closes
     const handleClose = useCallback(() => {
         setStep("upload");
-        setUploadedImage(null);
-        setImagePreview(null);
+        setUploadedImages([]);
+        setImagePreviews([]);
         setExtractedRows([]);
         setIsProcessing(false);
         setResolvingIndex(null);
@@ -57,34 +57,53 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     }, [onClose]);
 
     // Handle image upload
-    const handleImageSelect = useCallback((file: File) => {
-        if (!file.type.startsWith("image/")) {
-            addToast("Please upload an image file", "error");
+    const handleImageSelect = useCallback((files: File[]) => {
+        const newImages: File[] = [];
+
+        // Calculate how many more we can add
+        const remainingSlots = 5 - uploadedImages.length;
+        if (remainingSlots <= 0) {
+            addToast("Maximum 5 images allowed", "warning");
             return;
         }
 
-        setUploadedImage(file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setImagePreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-    }, [addToast]);
+        const filesToAdd = files.slice(0, remainingSlots);
+
+        filesToAdd.forEach(file => {
+            if (!file.type.startsWith("image/")) {
+                addToast(`Skipping non-image file: ${file.name}`, "warning");
+                return;
+            }
+            newImages.push(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreviews(prev => [...prev, reader.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        setUploadedImages(prev => [...prev, ...newImages]);
+    }, [uploadedImages, addToast]);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
-        const file = e.dataTransfer.files?.[0];
-        if (file) handleImageSelect(file);
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) handleImageSelect(files);
     }, [handleImageSelect]);
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) handleImageSelect(file);
+        const files = e.target.files ? Array.from(e.target.files) : [];
+        if (files.length > 0) handleImageSelect(files);
     }, [handleImageSelect]);
 
-    // Process image with AI
+    const removeImage = (index: number) => {
+        setUploadedImages(prev => prev.filter((_, i) => i !== index));
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Process images with AI
     const handleProcess = async () => {
-        if (!uploadedImage) return;
+        if (uploadedImages.length === 0) return;
 
         setStep("processing");
         setIsProcessing(true);
@@ -95,26 +114,35 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                 throw new Error("Gemini API key not configured");
             }
 
-            const result = await extractNamesFromTitheBook(uploadedImage, apiKey, memberDatabase);
+            const allRows: ExtractedNameRow[] = [];
 
-            const rows: ExtractedNameRow[] = result.matches.map((match) => ({
-                position: match.position,
-                extractedName: match.extractedName,
-                matchedMember: match.matchedMember,
-                matchScore: match.confidence,
-                isManuallyResolved: false,
-            }));
+            // Process sequentially
+            for (let i = 0; i < uploadedImages.length; i++) {
+                const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase);
 
-            setExtractedRows(rows);
+                const pageRows: ExtractedNameRow[] = result.matches.map((match) => ({
+                    position: match.position,
+                    extractedName: match.extractedName,
+                    matchedMember: match.matchedMember,
+                    matchScore: match.confidence,
+                    isManuallyResolved: false,
+                }));
 
-            const unmatchedCount = rows.filter(r => !r.matchedMember).length;
+                allRows.push(...pageRows);
+            }
+
+            // Sort by extracted position to keep order
+            allRows.sort((a, b) => a.position - b.position);
+
+            setExtractedRows(allRows);
+            const unmatchedCount = allRows.filter(r => !r.matchedMember).length;
 
             if (unmatchedCount > 0) {
                 setStep("preview");
                 addToast(`${unmatchedCount} names need manual resolution`, "warning");
             } else {
                 setStep("preview");
-                addToast(`All ${rows.length} names matched successfully!`, "success");
+                addToast(`All ${allRows.length} names matched successfully!`, "success");
             }
         } catch (error) {
             console.error("Failed to extract names:", error);
@@ -193,7 +221,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                         <Button
                             variant="primary"
                             onClick={handleProcess}
-                            disabled={!uploadedImage || isProcessing}
+                            disabled={uploadedImages.length === 0 || isProcessing}
                             leftIcon={<Wand2 size={16} />}
                         >
                             Extract Names
@@ -223,48 +251,75 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                         </p>
 
                         <div
-                            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${uploadedImage
+                            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${uploadedImages.length > 0
                                 ? "border-green-500 bg-green-500/10"
                                 : "border-[var(--border-color)] hover:border-[var(--primary-accent-start)] hover:bg-[var(--bg-elevated)]"
                                 }`}
                             onDrop={handleDrop}
                             onDragOver={(e) => e.preventDefault()}
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => {
+                                if (uploadedImages.length < 5) fileInputRef.current?.click();
+                            }}
                         >
                             <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*"
+                                multiple
                                 onChange={handleFileChange}
                                 className="hidden"
                             />
 
-                            {imagePreview ? (
-                                <div className="space-y-4">
-                                    <img
-                                        src={imagePreview}
-                                        alt="Uploaded tithe book"
-                                        className="max-h-48 mx-auto rounded-lg shadow-lg"
-                                    />
-                                    <p className="text-sm text-green-500 font-medium">
-                                        ✓ {uploadedImage?.name}
-                                    </p>
-                                    <p className="text-xs text-[var(--text-muted)]">
-                                        Click to change image
-                                    </p>
+                            {imagePreviews.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {imagePreviews.map((preview, idx) => (
+                                        <div key={idx} className="relative group">
+                                            <img
+                                                src={preview}
+                                                alt={`Upload ${idx + 1}`}
+                                                className="h-24 w-full object-cover rounded-lg shadow-sm"
+                                            />
+                                            <button
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeImage(idx);
+                                                }}
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                            <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1 rounded">
+                                                {idx + 1}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {uploadedImages.length < 5 && (
+                                        <div className="h-24 flex items-center justify-center border-2 border-dashed border-[var(--border-color)] rounded-lg text-[var(--text-muted)] hover:text-[var(--primary-accent-start)] hover:border-[var(--primary-accent-start)] transition-colors">
+                                            <div className="text-center">
+                                                <Upload size={20} className="mx-auto mb-1" />
+                                                <span className="text-xs">Add</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <>
                                     <Upload size={48} className="mx-auto text-[var(--text-muted)] mb-3" />
                                     <p className="text-lg font-medium text-[var(--text-primary)]">
-                                        Drop image here or click to browse
+                                        Drop images here or click to browse
                                     </p>
                                     <p className="text-sm text-[var(--text-muted)] mt-2">
-                                        Supported: JPG, PNG, WEBP
+                                        Support for up to 5 images (JPG, PNG)
                                     </p>
                                 </>
                             )}
                         </div>
+
+                        {uploadedImages.length > 0 && (
+                            <p className="text-sm text-center text-green-500 font-medium mt-2">
+                                ✓ {uploadedImages.length} images selected
+                            </p>
+                        )}
 
                         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-sm text-amber-200">
                             <strong>Tip:</strong> For best results, capture a clear photo with both the NO. and NAME columns visible.
