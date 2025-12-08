@@ -50,7 +50,7 @@ import { useModal } from "@/hooks/useModal";
 // Context hooks - shared state across app
 import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext } from "@/context";
 import { useFavorites } from "./hooks/useFavorites";
-// import { useTitheProcessor } from "./hooks/useTitheProcessor"; // Commented pending component migration
+
 import {
   createTitheList,
   reconcileMembers,
@@ -142,7 +142,6 @@ const App: React.FC = () => {
   const { theme, setTheme, accentColor, setAccentColor } = useThemePreferences();
 
   // saveFavorite handled via useModalsPhase2()
-  // const [isSaveFavoriteModalOpen, setIsSaveFavoriteModalOpen] = useState(false);
   const [favoriteNameInput, setFavoriteNameInput] = useState("");
   const saveFavorite = useModal("saveFavorite");
   const deleteFavoriteModal = useModal("deleteFavorite");
@@ -213,8 +212,6 @@ const App: React.FC = () => {
     memberDatabase,
     setMemberDatabase,
     updateMember,
-    // deleteMember, deleteAssembly, resetAllData, resolveConflicts,
-    // getAssemblyMembers, assembliesWithData - available when needed
   } = useDatabaseContext();
 
   const [isParsing, setIsParsing] = useState(false);
@@ -238,37 +235,7 @@ const App: React.FC = () => {
   // Favorites hook - provides saveFavorite, deleteFavorite, updateFavoriteName, etc.
   const favoritesHook = useFavorites(addToast);
 
-  // Tithe Processor hook - commented out pending component migration
-  // Will be re-enabled when ListOverviewActions uses context directly
-  /*
-  const titheProcessor = useTitheProcessor(
-    {
-      originalData,
-      processedDataA,
-      titheListData,
-      concatenationConfig,
-      selectedDate,
-      descriptionText,
-      amountMappingColumn,
-      ageRangeMin,
-      ageRangeMax,
-      fileNameToSave,
-    },
-    {
-      setProcessedDataA,
-      setTitheListData,
-      setConcatenationConfig,
-      setSelectedDate,
-      setDescriptionText,
-      setAgeRangeMin,
-      setAgeRangeMax,
-      setIsAgeFilterActive,
-      setHasUnsavedChanges,
-      setInputErrors,
-    },
-    addToast
-  );
-  */
+
 
   const { analyzeImage } = useGemini(
     import.meta.env.VITE_GEMINI_API_KEY,
