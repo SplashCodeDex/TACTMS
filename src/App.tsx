@@ -9,17 +9,14 @@ import { Outlet, useNavigate } from "react-router-dom";
 import {
   MemberRecordA,
   TitheRecordB,
-  ConcatenationConfig,
   FavoriteConfig,
   MembershipReconciliationReport,
-  TransactionLogEntry,
 } from "./types";
 import Button from "@/components/Button";
 import { Toaster } from "@/components/ui/sonner";
 import Modal from "@/components/Modal";
 import {
   ITEMS_PER_FULL_PREVIEW_PAGE,
-  DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
 } from "./constants";
 import AmountEntryModal from "@/components/AmountEntryModal";
 import AssemblySelectionModal from "@/components/AssemblySelectionModal";
@@ -50,15 +47,16 @@ import { useModal } from "@/hooks/useModal";
 // Context hooks - shared state across app
 import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext } from "@/context";
 import { useFavorites } from "./hooks/useFavorites";
+import { useAppActions } from "./hooks/useAppActions";
 
 import {
   createTitheList,
   reconcileMembers,
   filterMembersByAge,
 } from "@/services/excelProcessor";
-import { exportToExcel } from "@/lib/excelUtils";
+
 import { formatDateDDMMMYYYY, calculateSundayDate, getMostRecentSunday } from "@/lib/dataTransforms";
-import { analyticsService } from "@/services/AnalyticsService";
+
 import {
   initializeOrder,
   getOrderedMembers,
@@ -90,9 +88,7 @@ export interface Notification {
 
 const MotionDiv = motion.div;
 
-const pushAnalyticsEvent = (event: { type: string; payload: any }) => {
-  analyticsService.trackEvent(event.type, event.payload);
-};
+
 
 const App: React.FC = () => {
   const [globalNotifications, setGlobalNotifications] = useState<Notification[]>([]);
@@ -169,7 +165,7 @@ const App: React.FC = () => {
 
   // --- Context Hooks (shared state) ---
   const addToast = useToast();
-  const { assemblies, addAssembly, removeAssembly } = useAppConfigContext();
+  const { assemblies, addAssembly, removeAssembly: _removeAssembly } = useAppConfigContext();
 
   // Workspace context - tithe processing state
   const {
@@ -200,7 +196,7 @@ const App: React.FC = () => {
     soulsWonCount,
     setSoulsWonCount,
     concatenationConfig,
-    setConcatenationConfig,
+    setConcatenationConfig: _setConcatenationConfig,
     amountMappingColumn,
     setAmountMappingColumn,
     clearWorkspace,
@@ -319,6 +315,16 @@ const App: React.FC = () => {
     signOut: driveSignOut,
     isConfigured: isDriveConfigured,
   } = useGoogleDriveSync(addToast);
+
+  // App Actions hook - centralized handlers extracted from App.tsx
+  const appActions = useAppActions({
+    setInputErrors,
+    setHasUnsavedChanges,
+    setFavorites,
+    setTransactionLog,
+    favorites,
+    clearAutoSaveDraft,
+  });
 
   useEffect(() => {
     document.body.classList.remove("light-theme", "dark-theme");
@@ -487,33 +493,7 @@ const App: React.FC = () => {
 
 
 
-  const handleDeleteAssembly = (assemblyName: string) => {
-    if (assemblyName === "ALL MEMBERS") {
-      if (
-        window.confirm(
-          "Are you sure you want to reset the entire database? This action cannot be undone.",
-        )
-      ) {
-        setMemberDatabase({});
-        addToast("All member data has been reset.", "success");
-      }
-    } else {
-      if (
-        window.confirm(
-          `Are you sure you want to delete the data for ${assemblyName}?`,
-        )
-      ) {
-        setMemberDatabase((prev) => {
-          const newState = { ...prev };
-          delete newState[assemblyName];
-          return newState;
-        });
-        addToast(`Data for ${assemblyName} has been deleted.`, "success");
-        // Also remove from global assembly list if it's a custom one
-        removeAssembly(assemblyName);
-      }
-    }
-  };
+  // handleDeleteAssembly moved to useAppActions hook
 
   const navigate = useNavigate();
   const processData = (
@@ -701,121 +681,10 @@ const App: React.FC = () => {
 
 
 
-  const handleApplyAgeFilter = useCallback(() => {
-    const min = Number(ageRangeMin) || 0;
-    const max = Number(ageRangeMax) || Infinity;
+  // handleApplyAgeFilter moved to useAppActions hook
 
-    if (min > max && ageRangeMax) {
-      setInputErrors({ age: "Min age cannot be greater than max age." });
-      return;
-    }
-
-    setInputErrors({});
-    const filtered = filterMembersByAge(originalData, min, max);
-    setProcessedDataA(filtered);
-    setIsAgeFilterActive(true);
-    setTitheListData(
-      createTitheList(
-        filtered,
-        concatenationConfig,
-        selectedDate,
-        descriptionText,
-        amountMappingColumn,
-      ),
-    );
-    addToast(`Age filter applied. ${filtered.length} records match.`, "info");
-    setHasUnsavedChanges(true);
-  }, [
-    ageRangeMin,
-    ageRangeMax,
-    originalData,
-    concatenationConfig,
-    selectedDate,
-    descriptionText,
-    amountMappingColumn,
-    addToast,
-  ]);
-
-  const handleRemoveAgeFilter = useCallback(() => {
-    setAgeRangeMin("");
-    setAgeRangeMax("");
-    setInputErrors({});
-    setProcessedDataA(originalData);
-    setIsAgeFilterActive(false);
-    setTitheListData(
-      createTitheList(
-        originalData,
-        concatenationConfig,
-        selectedDate,
-        descriptionText,
-        amountMappingColumn,
-      ),
-    );
-    addToast("Age filter removed.", "info");
-    setHasUnsavedChanges(true);
-  }, [
-    originalData,
-    concatenationConfig,
-    selectedDate,
-    descriptionText,
-    amountMappingColumn,
-    addToast,
-  ]);
-
-  const handleDescriptionChange = (newDescription: string) => {
-    setDescriptionText(newDescription);
-    if (originalData.length > 0) {
-      setTitheListData(
-        createTitheList(
-          processedDataA,
-          concatenationConfig,
-          selectedDate,
-          newDescription,
-          amountMappingColumn,
-        ),
-      );
-      setHasUnsavedChanges(true);
-    }
-  };
-
-  const handleDateChange = (newDate: Date) => {
-    setSelectedDate(newDate);
-    if (originalData.length > 0) {
-      setTitheListData(
-        createTitheList(
-          processedDataA,
-          concatenationConfig,
-          newDate,
-          descriptionText,
-          amountMappingColumn,
-        ),
-      );
-      setHasUnsavedChanges(true);
-    }
-  };
-
-  const handleConcatenationConfigChange = useCallback((key: keyof ConcatenationConfig) => {
-    setConcatenationConfig((prev) => {
-      const newConfig = { ...prev, [key]: !prev[key] };
-      localStorage.setItem(
-        DEFAULT_CONCAT_CONFIG_STORAGE_KEY,
-        JSON.stringify(newConfig),
-      );
-      if (originalData.length > 0) {
-        setTitheListData(
-          createTitheList(
-            processedDataA,
-            newConfig,
-            selectedDate,
-            descriptionText,
-            amountMappingColumn,
-          ),
-        );
-        setHasUnsavedChanges(true);
-      }
-      return newConfig;
-    });
-  }, [originalData.length, processedDataA, selectedDate, descriptionText, amountMappingColumn]);
+  // handleRemoveAgeFilter, handleDescriptionChange, handleDateChange,
+  // handleConcatenationConfigChange moved to useAppActions hook
 
   const handleSaveFromPreview = (updatedList: TitheRecordB[]) => {
     setTitheListData(updatedList);
@@ -895,119 +764,7 @@ const App: React.FC = () => {
     };
   }, [titheListData]);
 
-  const handleDownloadExcel = useCallback(() => {
-    if (!fileNameToSave.trim()) {
-      setInputErrors((prev) => ({
-        ...prev,
-        fileName: "File name is required.",
-      }));
-      return;
-    }
-    setInputErrors((prev) => ({ ...prev, fileName: "" }));
-
-    const dataToExport = titheListData
-      .filter((record) => {
-        const amount = Number(record["Transaction Amount"]);
-        return !isNaN(amount) && amount > 0;
-      })
-      .map((record, index) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { Confidence, memberDetails, ...rest } = record;
-
-        let membershipNumber = record["Membership Number"];
-        if (memberDetails) {
-          let name = `${memberDetails.Title || ""} ${memberDetails["First Name"] || ""} ${memberDetails.Surname || ""} ${memberDetails["Other Names"] || ""}`.replace(/\s+/g, " ").trim();
-          let id = memberDetails["Membership Number"];
-          let oldId = memberDetails["Old Membership Number"];
-
-          // Clean ID: Strip outer parentheses if present (e.g., "(TAC...)")
-          if (id && id.trim().startsWith("(") && id.trim().endsWith(")")) {
-            id = id.trim().slice(1, -1);
-          }
-
-          // Clean ID: Extract Name and ID if combined (e.g., "Name (ID)")
-          if (id && id.includes("(") && id.endsWith(")")) {
-            const match = id.match(/^(.*)\s*\(([^)]+)\)$/);
-            if (match) {
-              const extractedName = match[1].trim();
-              const extractedId = match[2].trim();
-              id = extractedId;
-              // Only use extracted name if the main name fields were empty
-              if (!name && extractedName) {
-                name = extractedName;
-              }
-            }
-          }
-
-          // Clean Old ID: Strip outer parentheses if present
-          if (oldId && oldId.trim().startsWith("(") && oldId.trim().endsWith(")")) {
-            oldId = oldId.trim().slice(1, -1);
-          }
-
-          const idPart = id && oldId ? `(${id}|${oldId})` : id ? `(${id})` : oldId ? `(${oldId})` : "";
-          membershipNumber = `${name} ${idPart}`.trim();
-        }
-
-        return {
-          ...rest,
-          "No.": index + 1,
-          "Transaction Date ('DD-MMM-YYYY')": formatDateDDMMMYYYY(selectedDate),
-          "Membership Number": membershipNumber,
-        };
-      });
-
-    exportToExcel(dataToExport, fileNameToSave);
-    pushAnalyticsEvent({
-      type: "download_excel",
-      payload: { fileName: fileNameToSave, records: dataToExport.length },
-    });
-
-    // Log the transaction
-    if (currentAssembly && titheListData.length > 0) {
-      const newLogEntry: TransactionLogEntry = {
-        id: `${currentAssembly}-${formatDateDDMMMYYYY(selectedDate)}`, // Use formatted date for ID
-        assemblyName: currentAssembly,
-        timestamp: Date.now(),
-        selectedDate: formatDateDDMMMYYYY(selectedDate), // Use formatted date for selectedDate
-        totalTitheAmount: totalTitheAmount,
-        soulsWonCount: soulsWonCount ?? 0,
-        titherCount: tithersCount,
-        recordCount: titheListData.length,
-        // Snapshot data
-        titheListData: titheListData,
-        concatenationConfig: concatenationConfig,
-        descriptionText: descriptionText,
-        amountMappingColumn: amountMappingColumn,
-      };
-      setTransactionLog((prevLog) => {
-        const existingIndex = prevLog.findIndex(
-          (log) => log.id === newLogEntry.id,
-        );
-        if (existingIndex > -1) {
-          const updatedLog = [...prevLog];
-          updatedLog[existingIndex] = newLogEntry;
-          return updatedLog;
-        }
-        return [...prevLog, newLogEntry];
-      });
-      addToast("Transaction has been logged for reporting.", "info");
-    }
-  }, [
-    fileNameToSave,
-    titheListData,
-    currentAssembly,
-    selectedDate,
-    totalTitheAmount,
-    soulsWonCount,
-    tithersCount,
-    setTransactionLog,
-    addToast,
-    concatenationConfig,
-    descriptionText,
-    amountMappingColumn,
-    exportToExcel,
-    pushAnalyticsEvent,
-  ]);
+  // handleDownloadExcel moved to useAppActions hook
 
 
   const handleSaveFavorite = () => {
@@ -1049,48 +806,7 @@ const App: React.FC = () => {
     saveFavorite.close();
   };
 
-  const loadFavorite = useCallback(
-    (favId: string) => {
-      const fav = favorites.find((f) => f.id === favId);
-      if (!fav) {
-        addToast(`Favorite not found.`, "error");
-        return;
-      }
-
-      clearWorkspace();
-
-      // Restore state from favorite
-      setUploadedFile(
-        fav.originalFileName
-          ? new File([], fav.originalFileName, { type: "text/plain" })
-          : null,
-      );
-      setOriginalData(fav.originalData || []);
-      setProcessedDataA(fav.processedDataA || []);
-      setTitheListData(fav.titheListData || []);
-
-      setAgeRangeMin(String(fav.ageRangeMin || ""));
-      setAgeRangeMax(String(fav.ageRangeMax || ""));
-      setIsAgeFilterActive(!!(fav.ageRangeMin || fav.ageRangeMax));
-
-      setConcatenationConfig(fav.concatenationConfig);
-      setSelectedDate(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
-      setDescriptionText(fav.descriptionText);
-      setAmountMappingColumn(fav.amountMappingColumn || null);
-
-      const formattedDate = formatDateDDMMMYYYY(getMostRecentSunday(new Date(fav.selectedDate))); // Adjust to most recent Sunday
-      setFileNameToSave(`${fav.assemblyName}-TitheList-${formattedDate}`);
-      setCurrentAssembly(fav.assemblyName);
-      setSoulsWonCount(fav.soulsWonCount ?? 0);
-
-      setHasUnsavedChanges(false);
-      clearAutoSaveDraft();
-
-      addToast(`Loaded favorite: "${fav.name}"`, "success");
-      navigate("/processor");
-    },
-    [favorites, addToast, clearWorkspace, clearAutoSaveDraft, navigate],
-  );
+  // loadFavorite moved to useAppActions hook
 
 
 
@@ -1502,7 +1218,7 @@ const App: React.FC = () => {
                   transactionLog,
                   memberDatabase,
                   favorites,
-                  onStartNewWeek: startNewWeek,
+                  onStartNewWeek: appActions.members.startNewWeek,
                   userProfile: driveUserProfile,
                   onUploadFile: handleFileAccepted,
                   onScanImage: async (file: File, assemblyName?: string, month?: string, week?: string) => {
@@ -1563,7 +1279,7 @@ const App: React.FC = () => {
                   setProcessedDataA,
                   favoritesSearchTerm,
                   setFavoritesSearchTerm,
-                  loadFavorite,
+                  loadFavorite: appActions.favorites.loadFavorite,
                   deleteFavorite: handleDeleteFavorite,
                   viewFavoriteDetails,
                   updateFavoriteName,
@@ -1588,7 +1304,7 @@ const App: React.FC = () => {
                     setMemberToEdit({ member, assemblyName });
                     editMember.open({ target: memberToEdit! });
                   },
-                  onDeleteAssembly: handleDeleteAssembly,
+                  onDeleteAssembly: appActions.members.handleDeleteAssembly,
                   onAddAssembly: (assemblyName: string) => {
                     if (memberDatabase[assemblyName]) {
                       addToast(`Assembly "${assemblyName}" already exists.`, "warning");
@@ -1622,7 +1338,7 @@ const App: React.FC = () => {
                   setFileNameToSave,
                   inputErrors,
                   setInputErrors,
-                  handleDownloadExcel,
+                  handleDownloadExcel: appActions.download.handleDownloadExcel,
                   openSaveFavoriteModal: () => saveFavorite.open(),
                   onClearWorkspace: () => clearWorkspaceModal.open(),
                   soulsWonCount,
@@ -1637,12 +1353,12 @@ const App: React.FC = () => {
                   ageRangeMax,
                   setAgeRangeMax,
                   isAgeFilterActive,
-                  handleApplyAgeFilter,
-                  handleRemoveAgeFilter,
+                  handleApplyAgeFilter: appActions.titheProcessing.handleApplyAgeFilter,
+                  handleRemoveAgeFilter: appActions.titheProcessing.handleRemoveAgeFilter,
                   concatenationConfig,
-                  handleConcatenationConfigChange,
+                  handleConcatenationConfigChange: appActions.titheProcessing.handleConcatenationConfigChange,
                   descriptionText,
-                  handleDescriptionChange,
+                  handleDescriptionChange: appActions.titheProcessing.handleDescriptionChange,
                   amountMappingColumn,
                   setAmountMappingColumn,
                   theme,
@@ -1651,7 +1367,7 @@ const App: React.FC = () => {
                   setAccentColor,
                   isSubscribed,
                   requestNotificationPermission,
-                  onDateChange: handleDateChange, // Add this line
+                  onDateChange: appActions.titheProcessing.handleDateChange,
                 }}
               />
             </MotionDiv>
