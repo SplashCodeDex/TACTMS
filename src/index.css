@@ -211,6 +211,94 @@ body {
   .sidebar.collapsed ~ .main-content {
     margin-left: 0;
     padding-top: 5rem; /* Adjust for mobile header */
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Touch-friendly minimum sizes (44x44px per Apple/Google guidelines) */
+  button,
+  .btn,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger form inputs on mobile */
+  .form-input-light,
+  .form-checkbox,
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    padding: 0.875rem 1rem;
+    min-height: 48px;
+  }
+
+  /* Stack buttons on mobile */
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
+
+  /* Full-width modals on mobile (drawer pattern) */
+  .modal-content {
+    max-width: 100%;
+    max-height: 95vh;
+    margin: 0;
+    border-radius: 1rem 1rem 0 0;
+    align-self: flex-end;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  /* Responsive tables - horizontal scroll */
+  .modern-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modern-table th,
+  .modern-table td {
+    white-space: nowrap;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* Command palette adjustments */
+  .command-palette-container {
+    max-width: 100%;
+    margin: 0 0.5rem;
+    border-radius: 1rem;
+  }
+
+  /* Section headings */
+  .section-heading {
+    font-size: 1.1rem;
+    flex-wrap: wrap;
+  }
+
+  /* Content cards - less padding on mobile */
+  .content-card {
+    padding: 1rem;
+  }
+
+  /* Grid adjustments */
+  .grid-cols-1.md\\:grid-cols-2,
+  .grid-cols-1.md\\:grid-cols-3 {
+    grid-template-columns: 1fr;
   }
 }
 
