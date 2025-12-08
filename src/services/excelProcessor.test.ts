@@ -310,7 +310,9 @@ describe("parseExcelFile", () => {
 
     expect(vi.mocked(XLSX.read)).toHaveBeenCalledOnce();
     expect(vi.mocked(XLSX.utils.sheet_to_json)).toHaveBeenCalledOnce();
-    expect(result).toEqual(mockJsonData);
+    // Now expects sanitized output (no stray '0' values in text fields)
+    expect(result).toEqual(mockJsonData.map(r => ({ ...r, Title: "" })));
+
   });
 
   it("should throw an error if file parsing fails", async () => {

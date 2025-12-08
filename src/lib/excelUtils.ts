@@ -25,9 +25,15 @@ export const parseExcelFile = (file: File): Promise<MemberRecordA[]> => {
         });
 
         // Smart Parsing: Handle "Tithe List" exports where Name is combined with ID
-        const processedData = smartParseMembers(jsonData);
+        const processedData = smartParseMembers(jsonData).map(sanitizeRecord);
 
-        resolve(processedData);
+       // Normalize Title to avoid artifacts like 0
+       const normalized = processedData.map((r) => ({
+         ...r,
+         Title: sanitizeTitle((r as any).Title),
+       }));
+
+        resolve(normalized);
       } catch (e: any) {
         reject(e);
       }
@@ -154,6 +160,46 @@ export const guessAssemblyFromMembers = (members: MemberRecordA[]): string | nul
 
 
 
+const sanitizeText = (t: any): string => {
+  if (t === undefined || t === null) return "";
+  if (typeof t === "number") return t === 0 ? "" : String(t);
+  const s = String(t).trim();
+  if (s === "0" || s === "-" || s.toUpperCase() === "N/A" || s.toUpperCase() === "NA" || s.toLowerCase() === "null") return "";
+  return s;
+};
+
+const sanitizeTitle = sanitizeText;
+
+// Only sanitize known text fields and only if they already exist on the record
+const TEXT_FIELDS: string[] = [
+  "Title",
+  "First Name",
+  "Surname",
+  "Other Names",
+  "Sex",
+  "Gender",
+  "Phone Number",
+  "Residential Address",
+  "Hometown/Region",
+  "Marital Status",
+  "Employment Status",
+  "Occupation",
+  "Place of Birth",
+  "Hometown",
+  "Place of Work",
+  "Date of Birth"
+];
+
+const sanitizeRecord = (rec: MemberRecordA): MemberRecordA => {
+  const out: MemberRecordA = { ...rec };
+  for (const key of TEXT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(out, key)) {
+      out[key] = sanitizeText(out[key]);
+    }
+  }
+  return out;
+};
+
 export const smartParseMembers = (members: MemberRecordA[]): MemberRecordA[] => {
   return members.map((record) => {
     // Check if Name fields are empty but Membership Number looks like "Name (ID)"
@@ -215,7 +261,7 @@ export const smartParseMembers = (members: MemberRecordA[]): MemberRecordA[] => 
           ...record,
           "Membership Number": newId,
           "Old Membership Number": oldId || record["Old Membership Number"],
-          "Title": title || record.Title,
+          "Title": sanitizeTitle(title || record.Title),
           "First Name": firstName,
           "Surname": surname,
           "Other Names": otherNames
