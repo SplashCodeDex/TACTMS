@@ -185,8 +185,8 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
 
         addToast(`Moved "${memberToMove.displayName}" to #${targetPos}. ${swappedMsg}`, "success");
 
-        // Don't auto-increment target pos for Swap, as we usually just want to make a specific correction
-        // setTargetPosition(String(Math.min(targetPos + 1, members.length)));
+        // Auto-increment target pos after successful move (for efficient sequential reordering)
+        setTargetPosition(String(Math.min(targetPos + 1, members.length)));
 
         // Reset selection if it was a search-based move
         if (selectedMember && selectedMember.id === memberToMove.id) {
