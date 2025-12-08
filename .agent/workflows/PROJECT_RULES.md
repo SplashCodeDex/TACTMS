@@ -24,130 +24,6 @@ description: Strict project rules for TACTMS contributors - reusable components,
 ---
 
 ## 🏗️ Project Architecture Overview
-
-```
-src/
-├── components/          # All UI components (66+ components)
-│   ├── ui/              # shadcn/ui primitives (DO NOT MODIFY)
-│   └── dashboard/       # Dashboard-specific components
-├── hooks/               # Custom React hooks (14 hooks)
-├── context/             # React Context providers (7 providers)
-├── lib/                 # Utility libraries (11+ utilities)
-├── services/            # Business logic services (17 services)
-├── sections/            # Page-level view components (14 sections)
-├── types/               # Additional type modules
-├── utils/               # String/data utilities
-└── types.ts             # Core type definitions
-```
-
----
-
-## 🎨 Reusable UI Components
-
-> [!CAUTION]
-> **NEVER create new UI primitives when existing ones cover your use case!**
-> Always check this list FIRST before creating any new component.
-
-### Shadcn/UI Primitives (DO NOT RECREATE)
-
-Located in `src/components/ui/` - Use these AS-IS:
-
-| Component | Import Path | Usage |
-|-----------|-------------|-------|
-| `Alert` | `@/components/ui/alert` | System messages, warnings |
-| `Avatar` | `@/components/ui/avatar` | User profile images |
-| `Badge` | `@/components/ui/badge` | Status indicators, tags |
-| `Button` | `@/components/ui/button` | All button interactions |
-| `Calendar` | `@/components/ui/calendar` | Date picking UI |
-| `Popover` | `@/components/ui/popover` | Floating content panels |
-| `ScrollArea` | `@/components/ui/scroll-area` | Custom scrollable areas |
-| `Select` | `@/components/ui/select` | Dropdown selections |
-| `Separator` | `@/components/ui/separator` | Visual dividers |
-| `Sonner` | `@/components/ui/sonner` | Toast notifications |
-| `Spinner` | `@/components/ui/spinner` | Loading states |
-| `Toggle` | `@/components/ui/toggle` | Toggle buttons |
-
-### Application Components (REUSE THESE)
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| `Modal` | `Modal.tsx` | **Base modal wrapper - USE FOR ALL MODALS** |
-| `Button` | `Button.tsx` | Extended button with variants |
-| `LiquidButton` | `LiquidButton.tsx` | Animated premium button |
-| `MagicCard` | `MagicCard.tsx` | Interactive card with effects |
-| `LoadingSpinner` | `LoadingSpinner.tsx` | App-wide loading indicator |
-| `SkeletonLoader` | `SkeletonLoader.tsx` | Content placeholder |
-| `EmptyState` | `EmptyState.tsx` | Empty data displays |
-| `ErrorElement` | `ErrorElement.tsx` | Error boundary fallback |
-| `DatePicker` | `DatePicker.tsx` | **Standard date picker** |
-| `FileUploader` | `FileUploader.tsx` | **Standard file upload** |
-| `Checkbox` | `Checkbox.tsx` | Custom checkbox |
-| `CheckboxButton` | `CheckboxButton.tsx` | Button-style checkbox |
-| `InfoTooltip` | `InfoTooltip.tsx` | Hover information tips |
-| `CopyButton` | `CopyButton.tsx` | Copy-to-clipboard button |
-| `AnimatedNumber` | `AnimatedNumber.tsx` | Number animations |
-| `HighlightMatches` | `HighlightMatches.tsx` | Search result highlighting |
-| `StatDisplayCard` | `StatDisplayCard.tsx` | Statistics display cards |
-| `BarChart` | `BarChart.tsx` | Bar chart visualization |
-| `DonutChart` | `DonutChart.tsx` | Donut chart visualization |
-| `DistrictTrendChart` | `DistrictTrendChart.tsx` | Trend line charts |
-| `ParsingIndicator` | `ParsingIndicator.tsx` | Processing status |
-| `SyncStatusIndicator` | `SyncStatusIndicator.tsx` | Sync status display |
-| `CommandPalette` | `CommandPalette.tsx` | Quick action palette |
-| `Sidebar` | `Sidebar.tsx` | App navigation sidebar |
-| `MobileHeader` | `MobileHeader.tsx` | Mobile navigation header |
-| `NotificationsPopover` | `NotificationsPopover.tsx` | Notification dropdown |
-| `PopoverProfile` | `PopoverProfile.tsx` | User profile popover |
-| `ChatInterface` | `ChatInterface.tsx` | AI chat interface |
-| `ReportGenerator` | `ReportGenerator.tsx` | Report generation UI |
-| `MemberSelect` | `MemberSelect.tsx` | Member selection dropdown |
-
-### Modal Components (Extend `Modal.tsx`)
-
-| Modal Component | Purpose |
-|-----------------|---------|
-| `AddAssemblyModal` | Add new assembly |
-| `AddNewMemberModal` | Add new member |
-| `AmountEntryModal` | Tithe amount entry |
-| `AssemblySelectionModal` | Assembly picker |
-| `ClearWorkspaceModal` | Workspace reset confirm |
-| `CreateTitheListModal` | New tithe list |
-| `EditMemberModal` | Edit member details |
-| `FullTithePreviewModal` | Tithe list preview |
-| `ImageVerificationModal` | Image verification |
-| `MembershipReconciliationModal` | Data reconciliation |
-| `UpdateMasterListConfirmModal` | Master list update |
-| `ValidationReportModal` | Validation results |
-
----
-
-## 🪝 Custom Hooks
-
-> [!IMPORTANT]
-> **ALWAYS check if a hook exists before implementing similar logic!**
-> These hooks encapsulate complex reusable logic.
-
-| Hook | File | Purpose | When to Use |
-|------|------|---------|-------------|
-| `useDebounce` | `useDebounce.ts` | Debounce any value | Search inputs, form validation |
-| `useModal` | `useModal.ts` | Simple modal state | Single modal control |
-| `useModals` | `useModals.ts` | Multiple modal state | Complex modal flows |
-| `useOnlineStatus` | `useOnlineStatus.ts` | Network status | Offline-first features |
-| `usePWAFeatures` | `usePWAFeatures.ts` | PWA capabilities | Install prompts, updates |
-| `useThemePreferences` | `useThemePreferences.ts` | Theme management | Dark/light mode |
-| `useFavorites` | `useFavorites.ts` | Favorites CRUD | Workspace snapshots |
-| `useGemini` | `useGemini.ts` | Gemini AI integration | AI features |
-| `useGoogleDriveQuery` | `useGoogleDriveQuery.ts` | Drive data queries | Read Drive data |
-| `useGoogleDriveSync` | `useGoogleDriveSync.ts` | Drive sync operations | Sync to Drive |
-| `useMemberDatabase` | `useMemberDatabase.ts` | Member data CRUD | Member operations |
-| `useTitheProcessor` | `useTitheProcessor.ts` | Tithe processing | Tithe workflows |
-| `useWorkspace` | `useWorkspace.ts` | Workspace state | Main app state |
-| `useCommandPaletteHotkeys` | `useCommandPaletteHotkeys.ts` | Keyboard shortcuts | Global hotkeys |
-
----
-
-## 🎭 Context Providers
-
 > [!WARNING]
 > **NEVER duplicate context logic! Use the centralized exports from `src/context/index.ts`**
 
@@ -212,7 +88,7 @@ import { AppProviders } from '@/context';
 | `SyncManager.ts` | Sync orchestration |
 | `analyticsCalculator.ts` | Statistics calculations |
 | `excelProcessor.ts` | Excel file processing |
-| `imageProcessor.ts` | Image OCR processing |
+| `imageProcessor/` | Image OCR processing (modular) |
 | `imageValidator.ts` | Image validation |
 | `handwritingLearning.ts` | Handwriting recognition |
 | `memberOrderService.ts` | Member ordering logic |
@@ -222,6 +98,7 @@ import { AppProviders } from '@/context';
 | `offline-analytics.ts` | Offline analytics |
 
 ### Service Subdirectories
+- `services/imageProcessor/` - AI image processing modules (8 files)
 - `services/ingestion/` - Data ingestion services
 - `services/member/` - Member-specific services
 
