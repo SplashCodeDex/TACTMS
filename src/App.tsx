@@ -150,6 +150,7 @@ const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     window.innerWidth < 768,
   );
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
 
   const assemblySelectionModal = useModal("assemblySelection");
@@ -1176,7 +1177,8 @@ const App: React.FC = () => {
 
 
   return (
-    <div className={`app-container ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={`app-container ${isSidebarCollapsed ? "sidebar-collapsed" : ""}${isMobileSidebarOpen ? " sidebar-open" : ""}`}>
+      <div className="app-container-overlay" onClick={() => setIsMobileSidebarOpen(false)} />
       <Sidebar
         theme={theme}
         setTheme={setTheme}
@@ -1196,7 +1198,7 @@ const App: React.FC = () => {
 
       <div className="main-content">
         <MobileHeader
-          onMenuClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onMenuClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           title={currentAssembly ? `${currentAssembly} Assembly` : "TACTMS"}
           globalNotifications={globalNotifications}
           accentColor={accentColor}

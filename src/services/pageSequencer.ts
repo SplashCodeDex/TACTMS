@@ -1,10 +1,51 @@
 /**
  * Page Sequencer Service
  * Intelligently sequences and merges multi-page tithe book scans
+ *
+ * Per WhyThisApp.md lines 16-21:
+ * - Each SET contains 31 members (rows 1-31, 32-62, etc.)
+ * - Page numbering continues sequentially
+ * - The NO column continues from where the previous SET ended
  */
 
 import { TitheRecordB } from "../types";
 import { getOCRAwareSimilarity } from "../utils/stringUtils";
+
+// ============================================================================
+// SET CONSTANTS AND DETECTION (Per WhyThisApp.md lines 16-21)
+// ============================================================================
+
+/** Per WhyThisApp.md: Each SET contains exactly 31 members */
+export const SET_SIZE = 31;
+
+/**
+ * Determine which SET a member belongs to based on their number.
+ * SET1: 1-31, SET2: 32-62, SET3: 63-93, etc.
+ *
+ * @param memberNo - The member's row number from the tithe book
+ * @returns The SET number (1, 2, 3, ...)
+ */
+export const getSetNumber = (memberNo: number): number => {
+    if (memberNo <= 0) return 0;
+    return Math.ceil(memberNo / SET_SIZE);
+};
+
+/**
+ * Get the member number range for a given SET.
+ *
+ * @param setNumber - The SET number (1, 2, 3, ...)
+ * @returns Object with start and end member numbers
+ */
+export const getSetRange = (setNumber: number): { start: number; end: number } => {
+    if (setNumber <= 0) return { start: 0, end: 0 };
+    const start = (setNumber - 1) * SET_SIZE + 1;
+    const end = setNumber * SET_SIZE;
+    return { start, end };
+};
+
+// ============================================================================
+// PAGE INFO INTERFACES
+// ============================================================================
 
 export interface PageInfo {
     pageNumber: number | null;
@@ -12,6 +53,10 @@ export interface PageInfo {
     endingNo: number;
     entryCount: number;
     entries: TitheRecordB[];
+    /** Which SET this page belongs to (1, 2, 3...) */
+    setNumber: number;
+    /** Percentage of SET covered (0-100) */
+    setCoverage: number;
 }
 
 export interface SequenceResult {
@@ -23,11 +68,19 @@ export interface SequenceResult {
 }
 
 /**
- * Analyze a single extraction to determine page info
+ * Analyze a single extraction to determine page info including SET data
  */
 export const analyzePageInfo = (entries: TitheRecordB[]): PageInfo => {
     if (entries.length === 0) {
-        return { pageNumber: null, startingNo: 0, endingNo: 0, entryCount: 0, entries };
+        return {
+            pageNumber: null,
+            startingNo: 0,
+            endingNo: 0,
+            entryCount: 0,
+            entries,
+            setNumber: 0,
+            setCoverage: 0
+        };
     }
 
     // Get row numbers
@@ -39,14 +92,31 @@ export const analyzePageInfo = (entries: TitheRecordB[]): PageInfo => {
         .filter(n => n > 0)
         .sort((a, b) => a - b);
 
+    const startingNo = rowNumbers[0] || 0;
+    const endingNo = rowNumbers[rowNumbers.length - 1] || 0;
+
+    // Determine SET from starting number
+    const setNumber = getSetNumber(startingNo);
+
+    // Calculate SET coverage (what % of the 31 members are present)
+    let setCoverage = 0;
+    if (setNumber > 0) {
+        const setRange = getSetRange(setNumber);
+        const membersInSet = rowNumbers.filter(n => n >= setRange.start && n <= setRange.end);
+        setCoverage = Math.round((membersInSet.length / SET_SIZE) * 100);
+    }
+
     return {
         pageNumber: null, // Will try to detect from extraction metadata
-        startingNo: rowNumbers[0] || 0,
-        endingNo: rowNumbers[rowNumbers.length - 1] || 0,
+        startingNo,
+        endingNo,
         entryCount: entries.length,
-        entries
+        entries,
+        setNumber,
+        setCoverage
     };
 };
+
 
 /**
  * Sequence multiple page extractions into correct order
@@ -273,4 +343,123 @@ export const mergeDuplicateExtractions = (
 
         return { ...entry, Confidence: avgConfidence };
     });
+};
+
+// ============================================================================
+// CROSS-VALIDATION: AMOUNT DISCREPANCY DETECTION (Per WhyThisApp.md line 79)
+// ============================================================================
+
+/**
+ * Report of amount discrepancies found across duplicate images.
+ * Per WhyThisApp.md: "The AI will cross-validate the data to boost accuracy
+ * if multiple images of the same page is provided"
+ */
+export interface DiscrepancyReport {
+    /** Member's row number in the tithe book */
+    memberNo: number;
+    /** Member's name/ID */
+    memberName: string;
+    /** Different amounts found across images */
+    amounts: number[];
+    /** Suggested correct amount (most common or averaged) */
+    suggestedAmount: number;
+    /** Confidence in the suggestion (0-1) */
+    confidence: number;
+    /** Human-readable description of the discrepancy */
+    message: string;
+}
+
+/**
+ * Detect amount discrepancies across duplicate page extractions.
+ * When multiple images of the same page are uploaded, compare amounts
+ * and flag when they differ beyond a threshold.
+ *
+ * @param extractions - All page extractions
+ * @param duplicateGroup - Indices of pages that are duplicates of each other
+ * @returns Array of discrepancy reports for manual review
+ */
+export const detectAmountDiscrepancies = (
+    extractions: TitheRecordB[][],
+    duplicateGroup: number[]
+): DiscrepancyReport[] => {
+    if (duplicateGroup.length < 2) return [];
+
+    const discrepancies: DiscrepancyReport[] = [];
+    const baseExtraction = extractions[duplicateGroup[0]];
+
+    // For each entry in the base extraction
+    for (const baseEntry of baseExtraction) {
+        const memberNo = typeof baseEntry["No."] === 'number'
+            ? baseEntry["No."]
+            : parseInt(String(baseEntry["No."])) || 0;
+        const memberName = String(baseEntry["Membership Number"]);
+        const baseAmount = typeof baseEntry["Transaction Amount"] === 'number'
+            ? baseEntry["Transaction Amount"]
+            : parseFloat(String(baseEntry["Transaction Amount"])) || 0;
+
+        // Collect amounts from all duplicate pages
+        const amounts: number[] = [baseAmount];
+
+        for (let i = 1; i < duplicateGroup.length; i++) {
+            const otherExtraction = extractions[duplicateGroup[i]];
+            const matchingEntry = otherExtraction.find(e => {
+                const otherNo = typeof e["No."] === 'number'
+                    ? e["No."]
+                    : parseInt(String(e["No."])) || 0;
+                return otherNo === memberNo;
+            });
+
+            if (matchingEntry) {
+                const otherAmount = typeof matchingEntry["Transaction Amount"] === 'number'
+                    ? matchingEntry["Transaction Amount"]
+                    : parseFloat(String(matchingEntry["Transaction Amount"])) || 0;
+                amounts.push(otherAmount);
+            }
+        }
+
+        // Check for discrepancies (amounts differ by more than 10%)
+        const uniqueAmounts = [...new Set(amounts)];
+        if (uniqueAmounts.length > 1 && amounts.filter(a => a > 0).length > 0) {
+            // Calculate suggested amount (most common, or average if no majority)
+            const amountCounts = new Map<number, number>();
+            for (const amount of amounts) {
+                amountCounts.set(amount, (amountCounts.get(amount) || 0) + 1);
+            }
+
+            // Find the most common amount
+            let suggestedAmount = amounts[0];
+            let maxCount = 0;
+            for (const [amount, count] of amountCounts) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    suggestedAmount = amount;
+                }
+            }
+
+            // If no clear winner, use average of non-zero amounts
+            if (maxCount === 1) {
+                const nonZeroAmounts = amounts.filter(a => a > 0);
+                if (nonZeroAmounts.length > 0) {
+                    suggestedAmount = Math.round(
+                        nonZeroAmounts.reduce((a, b) => a + b, 0) / nonZeroAmounts.length
+                    );
+                }
+            }
+
+            // Calculate confidence based on agreement
+            const agreementRatio = maxCount / amounts.length;
+            const confidence = agreementRatio;
+
+            discrepancies.push({
+                memberNo,
+                memberName,
+                amounts: uniqueAmounts,
+                suggestedAmount,
+                confidence,
+                message: `Member #${memberNo}: Found different amounts (${uniqueAmounts.join(', ')}). Suggested: ${suggestedAmount}`
+            });
+        }
+    }
+
+    return discrepancies;
 };

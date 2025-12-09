@@ -134,8 +134,17 @@ export interface TitheBookValidationResult {
     hasNameColumn: boolean;
     hasAmountData: boolean;
     confidenceScore: number;
+    /** True if NAME column is missing but amounts are present (partial capture) */
+    isPartialCapture: boolean;
+    /** User-facing warning when partial capture detected */
+    partialCaptureWarning?: string;
 }
 
+/**
+ * Validates extracted tithe data and detects partial captures.
+ * Per WhyThisApp.md line 97-98: When NAME column is missing,
+ * the system should use persisted member order from database.
+ */
 export const validateExtractedTitheData = (
     extractedData: any[]
 ): TitheBookValidationResult => {
@@ -147,6 +156,7 @@ export const validateExtractedTitheData = (
         hasNameColumn: false,
         hasAmountData: false,
         confidenceScore: 0,
+        isPartialCapture: false,
     };
 
     if (!Array.isArray(extractedData) || extractedData.length === 0) {
@@ -156,10 +166,11 @@ export const validateExtractedTitheData = (
     // Check for expected fields
     let totalConfidence = 0;
     let hasAmount = false;
+    let nameCount = 0;
 
     extractedData.forEach((row) => {
         if (row.Name && typeof row.Name === "string" && row.Name.trim()) {
-            result.hasNameColumn = true;
+            nameCount++;
         }
         if (
             row.Amount !== undefined &&
@@ -172,13 +183,26 @@ export const validateExtractedTitheData = (
         }
     });
 
+    // Determine if NAME column is present (at least 50% of rows have names)
+    result.hasNameColumn = nameCount >= extractedData.length * 0.5;
     result.hasAmountData = hasAmount;
     result.confidenceScore =
         extractedData.length > 0 ? totalConfidence / extractedData.length : 0;
+
+    // Per WhyThisApp.md line 97-98: Detect partial captures
+    // Partial capture = has amount data but missing names
+    if (result.hasAmountData && !result.hasNameColumn) {
+        result.isPartialCapture = true;
+        result.partialCaptureWarning =
+            "Partial capture detected: NAME column is missing or incomplete. " +
+            "The system will use the persisted member order from the database to match amounts.";
+    }
+
     result.isValidFormat = result.hasNameColumn && result.rowCount > 0;
 
     return result;
 };
+
 
 /**
  * Title normalization aliases for fuzzy matching

@@ -57,6 +57,94 @@ const OCR_CHAR_MAP: Record<string, string> = {
 };
 
 /**
+ * OCR character substitutions for AMOUNTS (letter misreads → numbers)
+ * These are typical errors when reading handwritten numerals.
+ * Per WhyThisApp.md: l→1, o→0, s→5
+ */
+const OCR_AMOUNT_CHAR_MAP: Record<string, string> = {
+    'l': '1', 'L': '1', 'I': '1', 'i': '1', '|': '1',
+    'o': '0', 'O': '0', 'Q': '0',
+    's': '5', 'S': '5',
+    'z': '2', 'Z': '2',
+    'b': '6', 'B': '8',
+    'g': '9', 'G': '6',
+    't': '7', 'T': '7',
+    'e': '3', 'E': '3',
+    'a': '4', 'A': '4',
+};
+
+/**
+ * Cleans an OCR-extracted amount string by:
+ * 1. Handling dashes "-" and empty cells as 0 (per WhyThisApp.md)
+ * 2. Handling crossed-out amounts as 0 (per WhyThisApp.md)
+ * 3. Converting common letter misreads to numbers (l→1, o→0, s→5, etc.)
+ * 4. Removing non-numeric characters (except decimal point)
+ * 5. Parsing to a valid number
+ *
+ * @param rawAmount - The raw OCR-extracted amount string or number
+ * @returns The cleaned numeric amount, or 0 if unparseable
+ *
+ * @example
+ * cleanOCRAmount("1oo") // Returns 100
+ * cleanOCRAmount("5l") // Returns 51
+ * cleanOCRAmount("-") // Returns 0 (dash means no payment)
+ * cleanOCRAmount("XX") // Returns 0 (crossed out)
+ */
+export const cleanOCRAmount = (rawAmount: string | number | null | undefined): number => {
+    // Handle null/undefined explicitly
+    if (rawAmount === null || rawAmount === undefined) {
+        return 0;
+    }
+
+    // If already a valid number, return it
+    if (typeof rawAmount === 'number' && !isNaN(rawAmount)) {
+        return rawAmount;
+    }
+
+    if (typeof rawAmount !== 'string') {
+        return 0;
+    }
+
+    let cleaned = rawAmount.trim();
+
+    // Per WhyThisApp.md line 86: Empty cells mean 0
+    if (cleaned === '') {
+        return 0;
+    }
+
+    // Per WhyThisApp.md line 86: Dashes "-", "–", "—" mean 0 (no payment)
+    if (/^[-–—]+$/.test(cleaned)) {
+        return 0;
+    }
+
+    // Per WhyThisApp.md line 87: Crossed-out amounts should be deemed 0
+    // Handle X patterns, strikethrough markers, or similar indicators
+    if (/^[xX]+$/.test(cleaned) || /^crossed$/i.test(cleaned) || /^n\/?a$/i.test(cleaned)) {
+        return 0;
+    }
+
+    // Replace common OCR letter-to-number errors
+    for (const [letter, number] of Object.entries(OCR_AMOUNT_CHAR_MAP)) {
+        cleaned = cleaned.split(letter).join(number);
+    }
+
+    // Remove any remaining non-numeric characters except decimal point
+    cleaned = cleaned.replace(/[^0-9.]/g, '');
+
+    // Handle multiple decimal points (keep only first)
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+        cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // Parse to number
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+};
+
+
+
+/**
  * Normalizes text for OCR comparison by:
  * 1. Converting to uppercase
  * 2. Replacing common OCR misreadings (0->O, 5->S, etc.)

@@ -5,6 +5,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { TitheRecordB } from "../../types";
 import { cleanOCRName } from "../imageValidator";
+import { cleanOCRAmount } from "../../utils/stringUtils";
 import { MODEL_NAME, fileToGenerativePart } from "./core";
 import { TITHE_EXTRACTION_SCHEMA } from "./schemas";
 import { TITHE_BOOK_HTML_TEMPLATE } from "./templates";
@@ -97,7 +98,7 @@ export const processTitheImageWithValidation = async (
                 "Currency": "GHS",
                 "Exchange Rate": 1,
                 "Payment Method": "Cash",
-                "Transaction Amount": item.Amount || 0,
+                "Transaction Amount": cleanOCRAmount(item.Amount),
                 "Narration/Description": `Tithe for ${targetDateString}`,
                 "Confidence": 0.5 // Default confidence - matching was already removed per user feedback
             };
