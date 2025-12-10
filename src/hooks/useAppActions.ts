@@ -183,13 +183,21 @@ export function useAppActions(props: UseAppActionsProps): AppActions {
 
     const handleDateChange = useCallback((newDate: Date) => {
         setSelectedDate(newDate);
+        const formattedDate = formatDateDDMMMYYYY(newDate);
+        const newDescription = `Tithe for ${formattedDate}`;
+        setDescriptionText(newDescription);
+
+        if (currentAssembly) {
+            setFileNameToSave(`${currentAssembly}-TitheList-${formattedDate}`);
+        }
+
         if (originalData.length > 0) {
             setTitheListData(
-                createTitheList(processedDataA, concatenationConfig, newDate, descriptionText, amountMappingColumn)
+                createTitheList(processedDataA, concatenationConfig, newDate, newDescription, amountMappingColumn)
             );
             setHasUnsavedChanges(true);
         }
-    }, [originalData.length, processedDataA, concatenationConfig, descriptionText, amountMappingColumn, setSelectedDate, setTitheListData, setHasUnsavedChanges]);
+    }, [currentAssembly, originalData.length, processedDataA, concatenationConfig, amountMappingColumn, setSelectedDate, setDescriptionText, setFileNameToSave, setTitheListData, setHasUnsavedChanges]);
 
     const handleConcatenationConfigChange = useCallback((key: keyof ConcatenationConfig) => {
         setConcatenationConfig((prev) => {

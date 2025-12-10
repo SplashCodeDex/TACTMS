@@ -1277,7 +1277,8 @@ const App: React.FC = () => {
                   setSelectedDate(targetDateObj);
                   setFileNameToSave(`${targetAssembly.toUpperCase()}-${dateString}-TITHERS`);
                 } else {
-                  dateString = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/ /g, '-');
+                  targetDateObj = selectedDate;
+                  dateString = formatDateDDMMMYYYY(selectedDate);
                 }
 
                 try {

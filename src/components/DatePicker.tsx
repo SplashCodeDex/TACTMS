@@ -53,6 +53,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onDateChange }) =
               mode="single"
               selected={selectedDate}
               onSelect={(date) => handleDateSelect(date)}
+              defaultMonth={selectedDate}
               initialFocus
             />
           </motion.div>
