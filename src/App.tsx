@@ -62,7 +62,7 @@ import { formatDateDDMMMYYYY, calculateSundayDate, getMostRecentSunday } from "@
 import {
   initializeOrder,
   getOrderedMembers,
-  updateMemberOrder,
+  applyNewOrder,
   syncWithMasterList,
 } from "@/services/memberOrderService";
 
@@ -120,6 +120,7 @@ const App: React.FC = () => {
   // Favorites adapters (Phase 2 temporary)
 
   const [isAddNewMemberModalOpen, setIsAddNewMemberModalOpen] = useState(false);
+  const [isCrossAssemblySearch, setIsCrossAssemblySearch] = useState(false);
   const [isCreateTitheListModalOpen, setIsCreateTitheListModalOpen] =
     useState(false);
   const [pendingTitheListMembers, setPendingTitheListMembers] = useState<
@@ -751,22 +752,17 @@ const App: React.FC = () => {
     );
     fullPreview.close()
 
-    // Persist to IndexedDB
+    // Persist to IndexedDB using atomic sequential reorder
     if (currentAssembly) {
-      const updates = updatedList
-        .map((record, index) => {
-          const rawId =
-            record.memberDetails?.["Membership Number"] ||
-            record.memberDetails?.["Old Membership Number"];
-          if (rawId) {
-            return { memberId: rawId, newIndex: index + 1 };
-          }
-          return null;
-        })
-        .filter((u): u is { memberId: string; newIndex: number } => u !== null);
+      const orderedMemberIds = updatedList
+        .map((record) =>
+          record.memberDetails?.["Membership Number"] ||
+          record.memberDetails?.["Old Membership Number"]
+        )
+        .filter((id): id is string => !!id);
 
-      if (updates.length > 0) {
-        updateMemberOrder(updates, currentAssembly).catch((err) =>
+      if (orderedMemberIds.length > 0) {
+        applyNewOrder(orderedMemberIds, currentAssembly).catch((err) =>
           console.error("Failed to persist member order:", err),
         );
       }
@@ -1013,15 +1009,14 @@ const App: React.FC = () => {
   };
 
   const handleAddExistingMemberToList = (member: MemberRecordA) => {
-    const sundayDate = getMostRecentSunday(new Date());
-    const formattedDate = formatDateDDMMMYYYY(sundayDate);
-    const defaultDescription = `Tithe for ${formattedDate}`;
+    // Use the workspace's selected date, not today's date
+    const formattedDate = formatDateDDMMMYYYY(selectedDate);
 
     const newTitheRecord = createTitheList(
       [member],
       concatenationConfig,
-      sundayDate, // Use sundayDate here
-      defaultDescription, // Use defaultDescription here
+      selectedDate,
+      descriptionText || `Tithe for ${formattedDate}`,
       null,
     )[0];
     setTitheListData((prev) => [...prev, newTitheRecord]);
@@ -1091,11 +1086,12 @@ const App: React.FC = () => {
     setMemberToEdit(null);
   };
 
-  const openAddMemberToListModal = () => {
+  const openAddMemberToListModal = (crossAssembly: boolean = false) => {
     if (!currentAssembly) {
       addToast("An assembly must be active to add a member.", "warning");
       return;
     }
+    setIsCrossAssemblySearch(crossAssembly);
     setIsAddNewMemberModalOpen(true);
   };
 
@@ -1438,7 +1434,7 @@ const App: React.FC = () => {
             onClose={() => setIsAmountEntryModalOpen(false)}
             titheListData={titheListData}
             onSave={handleSaveFromPreview}
-            openAddMemberToListModal={openAddMemberToListModal}
+            openAddMemberToListModal={() => openAddMemberToListModal(true)}
           />
         )
       }
@@ -1447,7 +1443,10 @@ const App: React.FC = () => {
         isAddNewMemberModalOpen && (
           <AddNewMemberModal
             isOpen={isAddNewMemberModalOpen}
-            onClose={() => setIsAddNewMemberModalOpen(false)}
+            onClose={() => {
+              setIsAddNewMemberModalOpen(false);
+              setIsCrossAssemblySearch(false);
+            }}
             onConfirm={handleAddNewMemberToList}
             onAddExistingMember={handleAddExistingMemberToList}
             currentAssembly={currentAssembly}
@@ -1455,6 +1454,8 @@ const App: React.FC = () => {
               currentAssembly ? memberDatabase[currentAssembly]?.data || [] : []
             }
             titheListData={titheListData}
+            fullMemberDatabase={memberDatabase}
+            crossAssemblySearch={isCrossAssemblySearch}
           />
         )
       }

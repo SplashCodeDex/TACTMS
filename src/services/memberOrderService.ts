@@ -393,83 +393,42 @@ export const getWonSouls = async (
 };
 
 /**
- * Update a member's tithe book position (manual reorder)
+ * Apply a new order atomically by reassigning positions sequentially 1..N
+ * This is ideal for AI reorder where we want to match the physical tithe book exactly.
+ * No collision possible since we assign positions in one clean pass.
+ *
+ * @param orderedMemberIds - Array of member IDs in the desired order
+ * @param assemblyName - Assembly name
  */
-export const updateMemberPosition = async (
-    memberId: string,
-    newIndex: number,
+export const applyNewOrder = async (
+    orderedMemberIds: string[],
     assemblyName: string
 ): Promise<void> => {
     const db = await getDB();
-    const id = generateId(memberId, assemblyName);
+    const now = Date.now();
+
+    // Build a map of memberId (lowercase) -> db entry id
+    const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
+    const idByMemberId = new Map(entries.map(e => [e.memberId.toLowerCase(), e.id]));
 
     const tx = db.transaction('memberOrders', 'readwrite');
     const store = tx.objectStore('memberOrders');
-    const index = store.index('by-tithe-index');
 
-    // 1. Get the member moving
-    const entry = await store.get(id);
-    if (!entry) {
-        await tx.done;
-        return;
-    }
-    const oldIndex = entry.titheBookIndex;
+    // Assign sequential indices 1..N based on the ordered list
+    for (let i = 0; i < orderedMemberIds.length; i++) {
+        const memberId = orderedMemberIds[i];
+        const entryId = idByMemberId.get(memberId.toLowerCase());
+        if (!entryId) continue;
 
-    // 2. Check for collision at newIndex
-    // key range matching [assemblyName, newIndex]
-    const collisionEntry = await index.get(IDBKeyRange.only([assemblyName, newIndex]));
+        const entry = await store.get(entryId);
+        if (!entry) continue;
 
-    if (collisionEntry) {
-        // SWAP: Move collision member to oldIndex
-        collisionEntry.titheBookIndex = oldIndex;
-        collisionEntry.lastUpdated = Date.now();
-        await store.put(collisionEntry);
-    }
-
-    // 3. Move target member to newIndex
-    entry.titheBookIndex = newIndex;
-    entry.lastUpdated = Date.now();
-    await store.put(entry);
-
-    await tx.done;
-
-    // Log the change
-    await logOrderChange({
-        assemblyName,
-        action: 'manual',
-        timestamp: Date.now(),
-        description: collisionEntry
-            ? `Swapped #${oldIndex} (${entry.displayName}) with #${newIndex} (${collisionEntry.displayName})`
-            : `Moved ${entry.displayName} to #${newIndex} (was #${oldIndex})`,
-        affectedCount: collisionEntry ? 2 : 1
-    });
-};
-
-/**
- * Update multiple member positions (batch reorder)
- */
-export const updateMemberOrder = async (
-    updates: { memberId: string; newIndex: number }[],
-    assemblyName: string
-): Promise<void> => {
-    const db = await getDB();
-    const tx = db.transaction('memberOrders', 'readwrite');
-    const store = tx.objectStore('memberOrders');
-
-    for (const update of updates) {
-        const id = generateId(update.memberId, assemblyName);
-        const entry = await store.get(id);
-        if (entry) {
-            entry.titheBookIndex = update.newIndex;
-            entry.lastUpdated = Date.now();
-            await store.put(entry);
-        }
+        entry.titheBookIndex = i + 1;  // 1-indexed like physical book
+        entry.lastUpdated = now;
+        await store.put(entry);
     }
 
     await tx.done;
-
-    // Run integrity check after batch reorder
-    await validateAndRepairOrder(assemblyName, true);
 };
 
 /**

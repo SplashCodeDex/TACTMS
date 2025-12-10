@@ -28,7 +28,7 @@ import { analyticsService } from "@/services/AnalyticsService";
 import {
     initializeOrder,
     getOrderedMembers,
-    updateMemberOrder,
+    applyNewOrder,
     syncWithMasterList,
 } from "@/services/memberOrderService";
 
@@ -245,19 +245,15 @@ export function useAppActions(props: UseAppActionsProps): AppActions {
                 return newDb;
             });
 
-            // Persist to IndexedDB
-            const updates = updatedList
-                .map((record, index) => {
-                    const rawId = record.memberDetails?.["Membership Number"] || record.memberDetails?.["Old Membership Number"];
-                    if (rawId) {
-                        return { memberId: rawId, newIndex: index + 1 };
-                    }
-                    return null;
-                })
-                .filter((u): u is { memberId: string; newIndex: number } => u !== null);
+            // Persist to IndexedDB using atomic sequential reorder
+            const orderedMemberIds = updatedList
+                .map((record) =>
+                    record.memberDetails?.["Membership Number"] || record.memberDetails?.["Old Membership Number"]
+                )
+                .filter((id): id is string => !!id);
 
-            if (updates.length > 0) {
-                updateMemberOrder(updates, currentAssembly).catch((err) =>
+            if (orderedMemberIds.length > 0) {
+                applyNewOrder(orderedMemberIds, currentAssembly).catch((err) =>
                     console.error("Failed to persist member order:", err)
                 );
             }
@@ -410,24 +406,23 @@ export function useAppActions(props: UseAppActionsProps): AppActions {
             console.error("Failed to sync new member:", err)
         );
 
-        const sundayDate = getMostRecentSunday(new Date());
         const newTitheRecord = createTitheList(
-            [enrichedMember], concatenationConfig, sundayDate, `Tithe for ${formatDateDDMMMYYYY(sundayDate)}`, null
+            [enrichedMember], concatenationConfig, selectedDate, descriptionText || `Tithe for ${formatDateDDMMMYYYY(selectedDate)}`, null
         )[0];
 
         setTitheListData((prev) => [...prev, newTitheRecord]);
         setSoulsWonCount((prev) => (prev || 0) + 1);
         addToast(`Added new member: ${newMember["First Name"]} ${newMember.Surname}`, "success");
-    }, [currentAssembly, memberDatabase, concatenationConfig, setMemberDatabase, setTitheListData, setSoulsWonCount, addToast]);
+    }, [currentAssembly, memberDatabase, concatenationConfig, selectedDate, descriptionText, setMemberDatabase, setTitheListData, setSoulsWonCount, addToast]);
 
     const handleAddExistingMemberToList = useCallback((member: MemberRecordA) => {
-        const sundayDate = getMostRecentSunday(new Date());
+        // Use the workspace's selected date, not today's date
         const newTitheRecord = createTitheList(
-            [member], concatenationConfig, sundayDate, `Tithe for ${formatDateDDMMMYYYY(sundayDate)}`, null
+            [member], concatenationConfig, selectedDate, descriptionText || `Tithe for ${formatDateDDMMMYYYY(selectedDate)}`, null
         )[0];
         setTitheListData((prev) => [...prev, newTitheRecord]);
         addToast(`Added existing member: ${member["First Name"]} ${member.Surname}`, "success");
-    }, [concatenationConfig, setTitheListData, addToast]);
+    }, [concatenationConfig, selectedDate, descriptionText, setTitheListData, addToast]);
 
     const handleCreateTitheListFromDB = useCallback((members: MemberRecordA[], assembly: string) => {
         clearWorkspace();

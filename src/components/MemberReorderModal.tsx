@@ -12,14 +12,13 @@ import {
     DragEndEvent,
 } from "@dnd-kit/core";
 import {
-    arrayMove,
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
     useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MemberOrderEntry, updateMemberOrder, exportOrderForAssembly, importOrderForAssembly, OrderExport, createSnapshot, logOrderChange } from "@/services/memberOrderService";
+import { MemberOrderEntry, applyNewOrder, exportOrderForAssembly, importOrderForAssembly, OrderExport, createSnapshot, logOrderChange } from "@/services/memberOrderService";
 import { MemberRecordA } from "@/types";
 
 interface MemberReorderModalProps {
@@ -212,8 +211,13 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
             setMembers((items) => {
                 const oldIndex = items.findIndex((m) => m.id === active.id);
                 const newIndex = items.findIndex((m) => m.id === over.id);
+                // SWAP: Exchange positions, don't shift everyone
+                const newItems = [...items];
+                const temp = newItems[newIndex];
+                newItems[newIndex] = newItems[oldIndex];
+                newItems[oldIndex] = temp;
                 setHasChanges(true);
-                return arrayMove(items, oldIndex, newIndex);
+                return newItems;
             });
         }
     }, []);
@@ -292,10 +296,16 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const updates = members.map((member, index) => ({
-                memberId: member.memberId,
-                newIndex: index + 1,
-            }));
+            // Find members whose positions changed
+            const changedMembers = members.filter((member, index) =>
+                member.titheBookIndex !== index + 1
+            );
+
+            if (changedMembers.length === 0) {
+                addToast("No changes to save", "info");
+                setIsSaving(false);
+                return;
+            }
 
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `manual-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -303,15 +313,18 @@ const MemberReorderModal: React.FC<MemberReorderModalProps> = ({
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
 
-            await updateMemberOrder(updates, assemblyName);
+            // Apply the new order atomically using applyNewOrder
+            // This avoids issues with looped SWAP calls where DB state changes mid-loop
+            const orderedMemberIds = members.map(m => m.memberId);
+            await applyNewOrder(orderedMemberIds, assemblyName);
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
                 assemblyName,
                 action: 'manual',
                 timestamp: Date.now(),
-                description: `Manually reordered ${updates.length} members`,
-                affectedCount: updates.length,
+                description: `Manually reordered ${changedMembers.length} members`,
+                affectedCount: changedMembers.length,
             }, historyId);
 
             addToast(`Member order saved for ${assemblyName}`, "success");

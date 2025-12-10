@@ -30,5 +30,8 @@ export {
     levenshteinDistance,
     calculateSimilarity,
     tokenSimilarity,
-    findBestMatch
+    findBestMatch,
+    findOptimalMatches
 } from './matching';
+
+export type { ExtractedNameInput, OptimalMatchResult } from './matching';

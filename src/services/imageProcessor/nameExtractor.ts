@@ -1,18 +1,19 @@
 /**
  * Name Extraction from Tithe Book Images
  * Extracts names from tithe book NAME column and matches them to member database
+ * Uses Hungarian algorithm for optimal 1-to-1 matching (no duplicates)
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { MemberRecordA } from "../../types";
 import { cleanOCRName } from "../imageValidator";
 import { MODEL_NAME, fileToGenerativePart } from "./core";
 import { NAME_EXTRACTION_SCHEMA } from "./schemas";
-import { findBestMatch } from "./matching";
+import { findOptimalMatches, ExtractedNameInput } from "./matching";
 import { NameExtractionResult, NameMatchResult } from "./types";
 
 /**
  * Extract names from tithe book NAME column image and match to database
- * Used for reordering members to match physical book
+ * Uses Hungarian algorithm for globally optimal 1-to-1 matching
  */
 export const extractNamesFromTitheBook = async (
     imageFile: File,
@@ -54,29 +55,29 @@ export const extractNamesFromTitheBook = async (
         const jsonString = result.response.text().trim();
         const parsed: { names: Array<{ "No.": number; "Name": string }> } = JSON.parse(jsonString);
 
-        // Match each extracted name to database with enhanced matching
-        const matches: NameMatchResult[] = parsed.names.map((item, index) => {
-            const cleanedName = cleanOCRName(item.Name);
-            const position = item["No."] || index + 1;
+        // Prepare extracted names for optimal matching
+        const extractedNames: ExtractedNameInput[] = parsed.names.map((item, index) => ({
+            name: cleanOCRName(item.Name),
+            position: item["No."] || index + 1
+        }));
 
-            // Use enhanced findBestMatch with positional hints and aliases
-            const { member, score, alternatives } = findBestMatch(
-                cleanedName,
-                memberDatabase,
-                position,
-                memberOrderMap,
-                aliasMap  // Pass learned aliases
-            );
+        // Use Hungarian algorithm for globally optimal 1-to-1 matching
+        // This prevents the same member from being matched to multiple extracted names
+        const optimalResults = findOptimalMatches(
+            extractedNames,
+            memberDatabase,
+            memberOrderMap,
+            aliasMap
+        );
 
-            return {
-                extractedName: cleanedName,
-                matchedMember: member,
-                confidence: score,
-                position,
-                alternatives
-            };
-        });
-
+        // Convert to NameMatchResult format
+        const matches: NameMatchResult[] = optimalResults.map(result => ({
+            extractedName: result.extractedName,
+            matchedMember: result.matchedMember,
+            confidence: result.confidence,
+            position: result.position,
+            alternatives: result.alternatives
+        }));
 
         // Sort by position
         matches.sort((a, b) => a.position - b.position);

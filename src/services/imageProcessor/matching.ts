@@ -228,3 +228,245 @@ export function findBestMatch(
         alternatives: alternatives.filter(a => a.score >= 0.4)
     };
 }
+
+// ============================================================================
+// OPTIMAL ASSIGNMENT (HUNGARIAN ALGORITHM)
+// ============================================================================
+
+import { solveAssignment } from "@/lib/hungarian";
+
+/**
+ * Input for optimal matching
+ */
+export interface ExtractedNameInput {
+    name: string;
+    position: number;
+}
+
+/**
+ * Result of optimal matching for a single extracted name
+ */
+export interface OptimalMatchResult {
+    extractedName: string;
+    position: number;
+    matchedMember: MemberRecordA | null;
+    confidence: number;
+    alternatives: ScoredMember[];
+}
+
+/**
+ * Find optimal 1-to-1 matches between extracted names and database members
+ * Uses Hungarian algorithm for global optimal assignment (no duplicates)
+ *
+ * @param extractedNames - Array of extracted names with positions
+ * @param members - Database members to match against
+ * @param memberOrderMap - Optional position hints from existing order
+ * @param aliasMap - Optional learned aliases
+ * @returns Array of optimal matches
+ */
+export function findOptimalMatches(
+    extractedNames: ExtractedNameInput[],
+    members: MemberRecordA[],
+    memberOrderMap?: Map<string, number>,
+    aliasMap?: Map<string, string>
+): OptimalMatchResult[] {
+    if (extractedNames.length === 0 || members.length === 0) {
+        return extractedNames.map(en => ({
+            extractedName: en.name,
+            position: en.position,
+            matchedMember: null,
+            confidence: 0,
+            alternatives: []
+        }));
+    }
+
+    // First, check for alias matches (these are 100% certain, skip Hungarian)
+    const aliasMatches = new Map<number, { member: MemberRecordA; name: string }>();
+    const remainingExtracted: { name: string; position: number; originalIndex: number }[] = [];
+
+    for (let i = 0; i < extractedNames.length; i++) {
+        const en = extractedNames[i];
+        const cleanedName = en.name.toLowerCase().trim();
+
+        if (aliasMap?.has(cleanedName)) {
+            const aliasedMemberId = aliasMap.get(cleanedName)!;
+            const member = members.find(m => {
+                const memberId = (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase();
+                return memberId === aliasedMemberId;
+            });
+            if (member) {
+                aliasMatches.set(i, { member, name: en.name });
+                continue;
+            }
+        }
+        remainingExtracted.push({ ...en, originalIndex: i });
+    }
+
+    // Get members not already matched by alias
+    const aliasMatchedMemberIds = new Set(
+        Array.from(aliasMatches.values()).map(m =>
+            (m.member["Membership Number"] || m.member["Old Membership Number"] || "").toLowerCase()
+        )
+    );
+    const remainingMembers = members.filter(m => {
+        const id = (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase();
+        return !aliasMatchedMemberIds.has(id);
+    });
+
+    // Build score matrix for remaining names × remaining members
+    const scoreMatrix: number[][] = [];
+    const memberScores: Map<number, ScoredMember[]> = new Map(); // For alternatives
+
+    for (let i = 0; i < remainingExtracted.length; i++) {
+        const en = remainingExtracted[i];
+        const cleanedExtracted = en.name.toLowerCase().trim();
+        scoreMatrix[i] = [];
+        const rowScores: ScoredMember[] = [];
+
+        for (let j = 0; j < remainingMembers.length; j++) {
+            const member = remainingMembers[j];
+            const score = computeMemberScore(cleanedExtracted, member, en.position, memberOrderMap);
+            scoreMatrix[i][j] = score;
+            rowScores.push({ member, score });
+        }
+
+        // Sort for alternatives
+        rowScores.sort((a, b) => b.score - a.score);
+        memberScores.set(i, rowScores);
+    }
+
+    // Run Hungarian algorithm
+    const assignment = solveAssignment(scoreMatrix);
+
+    // Build results
+    const results: OptimalMatchResult[] = new Array(extractedNames.length);
+
+    // Add alias matches first (highest confidence)
+    for (const [originalIndex, match] of aliasMatches) {
+        results[originalIndex] = {
+            extractedName: match.name,
+            position: extractedNames[originalIndex].position,
+            matchedMember: match.member,
+            confidence: 0.98, // Alias matches are near-certain
+            alternatives: []
+        };
+    }
+
+    // Add Hungarian matches
+    for (let i = 0; i < remainingExtracted.length; i++) {
+        const originalIndex = remainingExtracted[i].originalIndex;
+        const assignedCol = assignment[i];
+        const alternatives = memberScores.get(i) || [];
+
+        if (assignedCol >= 0 && assignedCol < remainingMembers.length) {
+            const matchedMember = remainingMembers[assignedCol];
+            const confidence = scoreMatrix[i][assignedCol];
+
+            results[originalIndex] = {
+                extractedName: remainingExtracted[i].name,
+                position: remainingExtracted[i].position,
+                matchedMember: confidence >= 0.5 ? matchedMember : null,
+                confidence,
+                alternatives: alternatives.slice(1, 4).filter(a => a.score >= 0.4)
+            };
+        } else {
+            results[originalIndex] = {
+                extractedName: remainingExtracted[i].name,
+                position: remainingExtracted[i].position,
+                matchedMember: null,
+                confidence: 0,
+                alternatives: alternatives.slice(0, 3).filter(a => a.score >= 0.4)
+            };
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Compute score for a single extracted name vs member
+ * Enhanced with Ghanaian name utilities for better matching
+ */
+function computeMemberScore(
+    cleanedExtracted: string,
+    member: MemberRecordA,
+    extractedPosition: number,
+    memberOrderMap?: Map<string, number>
+): number {
+    const nameParts = [
+        member.Surname,
+        member["First Name"],
+        member["Other Names"],
+    ].filter(Boolean);
+
+    const fullName = nameParts.join(" ").toLowerCase();
+    const reverseName = [...nameParts].reverse().join(" ").toLowerCase();
+    const surnameFirst = `${member.Surname || ''} ${member["First Name"] || ''}`.toLowerCase().trim();
+    const firstSurname = `${member["First Name"] || ''} ${member.Surname || ''}`.toLowerCase().trim();
+
+    // Strip titles from extracted name for comparison
+    const strippedExtracted = stripTitles(cleanedExtracted);
+
+    // Levenshtein similarity (on stripped names)
+    const levenshteinScores = [
+        calculateSimilarity(strippedExtracted, stripTitles(fullName)),
+        calculateSimilarity(strippedExtracted, stripTitles(reverseName)),
+        calculateSimilarity(strippedExtracted, stripTitles(surnameFirst)),
+        calculateSimilarity(strippedExtracted, stripTitles(firstSurname)),
+    ];
+    const bestLevenshtein = Math.max(...levenshteinScores);
+
+    // Standard token similarity
+    const tokenScores = [
+        tokenSimilarity(strippedExtracted, fullName),
+        tokenSimilarity(strippedExtracted, surnameFirst),
+        tokenSimilarity(strippedExtracted, firstSurname),
+    ];
+    const bestToken = Math.max(...tokenScores);
+
+    // Ghanaian-enhanced token similarity (handles day names, phonetics)
+    const ghanaianScores = [
+        ghanaianTokenSimilarity(strippedExtracted, fullName),
+        ghanaianTokenSimilarity(strippedExtracted, surnameFirst),
+        ghanaianTokenSimilarity(strippedExtracted, firstSurname),
+    ];
+    const bestGhanaian = Math.max(...ghanaianScores);
+
+    // Surname variant check (e.g., Mensah == Mensa)
+    let surnameBoost = 0;
+    if (member.Surname) {
+        const extractedTokens = tokenizeGhanaianName(strippedExtracted);
+        for (const token of extractedTokens) {
+            if (areSurnameVariants(token, member.Surname)) {
+                surnameBoost = 0.1;
+                break;
+            }
+        }
+    }
+
+    // Positional boost
+    let positionBoost = 0;
+    if (memberOrderMap) {
+        const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
+        const memberPosition = memberOrderMap.get(memberId);
+        positionBoost = getPositionBoost(extractedPosition, memberPosition);
+    }
+
+    // Weighted score:
+    // 40% Levenshtein + 25% Standard Token + 20% Ghanaian Token + 10% Position + 5% Surname variants
+    const score = (bestLevenshtein * 0.40)
+        + (bestToken * 0.25)
+        + (bestGhanaian * 0.20)
+        + positionBoost
+        + surnameBoost;
+
+    return Math.min(score, 1.0); // Cap at 1.0
+}
+
+// Import Ghanaian name utilities
+import {
+    stripTitles,
+    ghanaianTokenSimilarity,
+    areSurnameVariants,
+    tokenizeGhanaianName
+} from "@/lib/ghanaianNames";

@@ -3,7 +3,7 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw, ArrowRight, Eye } from "lucide-react";
 import { MemberRecordA } from "@/types";
-import { updateMemberOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange } from "@/services/memberOrderService";
+import { applyNewOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange } from "@/services/memberOrderService";
 import { extractNamesFromTitheBook } from "@/services/imageProcessor";
 
 interface ReorderFromImageModalProps {
@@ -268,10 +268,10 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
         setIsSaving(true);
         try {
-            const updates = validRows.map((row) => ({
-                memberId: row.matchedMember!["Membership Number"] || row.matchedMember!["Old Membership Number"] || "",
-                newIndex: row.position,
-            })).filter(u => u.memberId);
+            // Extract ordered member IDs for atomic reorder
+            const orderedMemberIds = validRows.map((row) =>
+                row.matchedMember!["Membership Number"] || row.matchedMember!["Old Membership Number"] || ""
+            ).filter(Boolean);
 
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -279,18 +279,18 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
 
-            await updateMemberOrder(updates, assemblyName);
+            await applyNewOrder(orderedMemberIds, assemblyName);
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
                 assemblyName,
                 action: 'ai_reorder',
                 timestamp: Date.now(),
-                description: `AI reordered ${updates.length} members from tithe book image`,
-                affectedCount: updates.length,
+                description: `AI reordered ${orderedMemberIds.length} members from tithe book image`,
+                affectedCount: orderedMemberIds.length,
             }, historyId);
 
-            addToast(`Reordered ${updates.length} members to match tithe book`, "success");
+            addToast(`Reordered ${orderedMemberIds.length} members to match tithe book`, "success");
             onSaveComplete();
             handleClose();
         } catch (error) {
@@ -331,10 +331,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
         setIsSaving(true);
         try {
-            const updates = selectedChanges.map(c => ({
-                memberId: c.memberId,
-                newIndex: c.newPosition,
-            }));
+            // Extract ordered member IDs for atomic reorder (only selected changes)
+            const orderedMemberIds = selectedChanges.map(c => c.memberId).filter(Boolean);
 
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -342,18 +340,18 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
 
-            await updateMemberOrder(updates, assemblyName);
+            await applyNewOrder(orderedMemberIds, assemblyName);
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
                 assemblyName,
                 action: 'ai_reorder',
                 timestamp: Date.now(),
-                description: `AI reordered ${updates.length} members (selected from diff view)`,
-                affectedCount: updates.length,
+                description: `AI reordered ${orderedMemberIds.length} members (selected from diff view)`,
+                affectedCount: orderedMemberIds.length,
             }, historyId);
 
-            addToast(`Applied ${updates.length} order changes`, "success");
+            addToast(`Applied ${orderedMemberIds.length} order changes`, "success");
             onSaveComplete();
             handleClose();
         } catch (error) {
