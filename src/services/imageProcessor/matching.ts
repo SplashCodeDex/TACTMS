@@ -4,6 +4,15 @@
  */
 import { MemberRecordA } from "../../types";
 import { ScoredMember, MatchResult } from "./types";
+import { solveAssignment } from "@/lib/hungarian";
+import {
+    stripTitles,
+    ghanaianTokenSimilarity,
+    areSurnameVariants,
+    tokenizeGhanaianName,
+    preprocessName,
+    getInitialMatchBoost
+} from "@/lib/ghanaianNames";
 
 // ============================================================================
 // STRING SIMILARITY ALGORITHMS
@@ -233,7 +242,7 @@ export function findBestMatch(
 // OPTIMAL ASSIGNMENT (HUNGARIAN ALGORITHM)
 // ============================================================================
 
-import { solveAssignment } from "@/lib/hungarian";
+// solveAssignment imported at top of file
 
 /**
  * Input for optimal matching
@@ -468,12 +477,4 @@ function computeMemberScore(
     return Math.min(score, 1.0); // Cap at 1.0
 }
 
-// Import Ghanaian name utilities
-import {
-    stripTitles,
-    ghanaianTokenSimilarity,
-    areSurnameVariants,
-    tokenizeGhanaianName,
-    preprocessName,
-    getInitialMatchBoost
-} from "@/lib/ghanaianNames";
+// Ghanaian name utilities imported at top of file

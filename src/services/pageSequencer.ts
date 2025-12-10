@@ -43,6 +43,27 @@ export const getSetRange = (setNumber: number): { start: number; end: number } =
     return { start, end };
 };
 
+/**
+ * Get the page pair for a book page (left/right of landscape spread).
+ * Odd page = left side, Even page = right side.
+ *
+ * @param pageNumber - Any page number
+ * @returns Object with left and right page numbers
+ *
+ * @example
+ * getPagePair(13)  // { left: 13, right: 14 }
+ * getPagePair(14)  // { left: 13, right: 14 }
+ */
+export const getPagePair = (pageNumber: number): { left: number; right: number } => {
+    if (pageNumber <= 0) return { left: 1, right: 2 };
+
+    if (pageNumber % 2 === 1) {
+        return { left: pageNumber, right: pageNumber + 1 };
+    } else {
+        return { left: pageNumber - 1, right: pageNumber };
+    }
+};
+
 // ============================================================================
 // PAGE INFO INTERFACES
 // ============================================================================
