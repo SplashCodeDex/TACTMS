@@ -248,17 +248,17 @@ const DashboardSection: React.FC = () => {
 
   return (
     <motion.div
-      className="space-y-8"
+      className="space-y-6 md:space-y-8"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       <motion.div variants={itemVariants}>
-        <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+        <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]">
           {greeting}
           {userProfile ? `, ${userProfile.name.split(" ")[0]}` : ""}.
         </h1>
-        <p className="text-lg text-[var(--text-secondary)]">
+        <p className="text-base md:text-lg text-[var(--text-secondary)]">
           Here's your district's overview for today.
         </p>
       </motion.div>

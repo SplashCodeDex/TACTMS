@@ -213,8 +213,8 @@ body {
   .sidebar.collapsed ~ .main-content {
     margin-left: 0;
     padding-top: 5rem; /* Adjust for mobile header */
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
 
   /* Touch-friendly minimum sizes (44x44px per Apple/Google guidelines) */
