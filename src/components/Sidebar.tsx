@@ -39,6 +39,12 @@ interface SidebarProps {
   isConfigured: boolean;
   openCommandPalette: () => void;
   isOnline: boolean;
+  /** Touch handlers for swipe gesture detection (mobile) */
+  touchHandlers?: {
+    onTouchStart?: React.TouchEventHandler;
+    onTouchMove?: React.TouchEventHandler;
+    onTouchEnd?: React.TouchEventHandler;
+  };
 }
 
 const itemVariants = {
@@ -400,6 +406,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   setAccentColor,
   openCommandPalette,
   isOnline,
+  touchHandlers,
 }) => {
   const logoSrc = isCollapsed
     ? theme === "dark"
@@ -423,6 +430,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         width: isCollapsed ? "6.5rem" : "17rem",
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
+      {...touchHandlers}
     >
       <div
         className={`flex flex-col items-center mb-10 ${isCollapsed ? "w-full" : ""}`}

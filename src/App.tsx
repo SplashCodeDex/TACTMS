@@ -5,7 +5,7 @@ import React, {
   useMemo,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   MemberRecordA,
   TitheRecordB,
@@ -48,6 +48,7 @@ import { useModal } from "@/hooks/useModal";
 import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext } from "@/context";
 import { useFavorites } from "./hooks/useFavorites";
 import { useAppActions } from "./hooks/useAppActions";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 import {
   createTitheList,
@@ -151,6 +152,29 @@ const App: React.FC = () => {
     window.innerWidth < 768,
   );
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Auto-close mobile sidebar on route change
+  const location = useLocation();
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [location.pathname]);
+
+  // ESC key to close mobile sidebar
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileSidebarOpen) {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleEscKey);
+    return () => document.removeEventListener("keydown", handleEscKey);
+  }, [isMobileSidebarOpen]);
+
+  // Swipe-left to close mobile sidebar
+  const sidebarSwipeHandlers = useSwipeGesture({
+    onSwipeLeft: () => setIsMobileSidebarOpen(false),
+    threshold: 50,
+  });
 
 
   const assemblySelectionModal = useModal("assemblySelection");
@@ -1194,6 +1218,7 @@ const App: React.FC = () => {
         isConfigured={isDriveConfigured}
         openCommandPalette={() => setIsCommandPaletteOpen(true)}
         isOnline={!isOffline}
+        touchHandlers={sidebarSwipeHandlers}
       />
 
       <div className="main-content">

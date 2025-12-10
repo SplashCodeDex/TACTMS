@@ -147,6 +147,8 @@ body {
   padding: 1.25rem;
   width: 17rem; /* Default expanded width */
   border-right: 1px solid var(--border-color);
+  overflow-x: hidden; /* Prevents nav label overflow during expand/collapse transition */
+  overflow-y: auto; /* Allow vertical scrolling if needed */
   transition:
     transform 0.3s ease-in-out,
     width 0.3s ease-in-out;
