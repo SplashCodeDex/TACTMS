@@ -404,8 +404,9 @@ function computeMemberScore(
     const surnameFirst = `${member.Surname || ''} ${member["First Name"] || ''}`.toLowerCase().trim();
     const firstSurname = `${member["First Name"] || ''} ${member.Surname || ''}`.toLowerCase().trim();
 
-    // Strip titles from extracted name for comparison
-    const strippedExtracted = stripTitles(cleanedExtracted);
+    // Preprocess and strip titles from extracted name for comparison
+    const preprocessed = preprocessName(cleanedExtracted);
+    const strippedExtracted = stripTitles(preprocessed);
 
     // Levenshtein similarity (on stripped names)
     const levenshteinScores = [
@@ -438,11 +439,14 @@ function computeMemberScore(
         const extractedTokens = tokenizeGhanaianName(strippedExtracted);
         for (const token of extractedTokens) {
             if (areSurnameVariants(token, member.Surname)) {
-                surnameBoost = 0.1;
+                surnameBoost = 0.05;
                 break;
             }
         }
     }
+
+    // Initial match boost (e.g., "A. MENSAH" matches "ABENA MENSAH")
+    const initialBoost = getInitialMatchBoost(strippedExtracted, fullName);
 
     // Positional boost
     let positionBoost = 0;
@@ -458,7 +462,8 @@ function computeMemberScore(
         + (bestToken * 0.25)
         + (bestGhanaian * 0.20)
         + positionBoost
-        + surnameBoost;
+        + surnameBoost
+        + initialBoost;
 
     return Math.min(score, 1.0); // Cap at 1.0
 }
@@ -468,5 +473,7 @@ import {
     stripTitles,
     ghanaianTokenSimilarity,
     areSurnameVariants,
-    tokenizeGhanaianName
+    tokenizeGhanaianName,
+    preprocessName,
+    getInitialMatchBoost
 } from "@/lib/ghanaianNames";

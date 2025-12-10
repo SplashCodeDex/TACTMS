@@ -13,7 +13,11 @@ import {
     tokenizeGhanaianName,
     ghanaianTokenSimilarity,
     normalizeSurname,
-    areSurnameVariants
+    areSurnameVariants,
+    preprocessName,
+    isInitial,
+    matchInitialToName,
+    getInitialMatchBoost
 } from './ghanaianNames';
 
 // ============================================================================
@@ -171,6 +175,12 @@ describe('normalizeSurname', () => {
         expect(normalizeSurname('MENSAH')).toBe('mensah');
     });
 
+    it('normalizes new user-provided surnames', () => {
+        expect(normalizeSurname('ARHINN')).toBe('arhin');
+        expect(normalizeSurname('ODOOM')).toBe('odum');
+        expect(normalizeSurname('COMEY')).toBe('commey');
+    });
+
     it('returns lowercase for unknown surnames', () => {
         expect(normalizeSurname('UNKNOWN')).toBe('unknown');
     });
@@ -183,7 +193,89 @@ describe('areSurnameVariants', () => {
         expect(areSurnameVariants('LAMPTEY', 'LAMTEY')).toBe(true);
     });
 
+    it('recognizes user-provided variants', () => {
+        expect(areSurnameVariants('ARHIN', 'ARHINN')).toBe(true);
+        expect(areSurnameVariants('ODUM', 'ODOOM')).toBe(true);
+    });
+
     it('rejects non-variants', () => {
         expect(areSurnameVariants('MENSAH', 'WILSON')).toBe(false);
+    });
+});
+
+// ============================================================================
+// TESTS: preprocessName
+// ============================================================================
+
+describe('preprocessName', () => {
+    it('removes possessives', () => {
+        expect(preprocessName("NANA'S ARYEETEY WILSON")).toBe('NANA ARYEETEY WILSON');
+        expect(preprocessName("MAMA'S AKUA")).toBe('MAMA AKUA');
+    });
+
+    it('handles curly quotes', () => {
+        expect(preprocessName("NANA'S MENSAH")).toBe('NANA MENSAH');
+    });
+
+    it('normalizes whitespace', () => {
+        expect(preprocessName('JOHN   MENSAH')).toBe('JOHN MENSAH');
+    });
+
+    it('handles empty string', () => {
+        expect(preprocessName('')).toBe('');
+    });
+});
+
+// ============================================================================
+// TESTS: isInitial
+// ============================================================================
+
+describe('isInitial', () => {
+    it('recognizes single letters', () => {
+        expect(isInitial('A')).toBe(true);
+        expect(isInitial('A.')).toBe(true);
+        expect(isInitial('K')).toBe(true);
+    });
+
+    it('rejects multi-letter tokens', () => {
+        expect(isInitial('AB')).toBe(false);
+        expect(isInitial('MENSAH')).toBe(false);
+    });
+});
+
+// ============================================================================
+// TESTS: matchInitialToName
+// ============================================================================
+
+describe('matchInitialToName', () => {
+    it('matches initial to name', () => {
+        expect(matchInitialToName('A', 'ABENA')).toBe(true);
+        expect(matchInitialToName('A.', 'ARHIN')).toBe(true);
+    });
+
+    it('rejects non-matching initials', () => {
+        expect(matchInitialToName('A', 'MENSAH')).toBe(false);
+        expect(matchInitialToName('K', 'JOHN')).toBe(false);
+    });
+});
+
+// ============================================================================
+// TESTS: getInitialMatchBoost
+// ============================================================================
+
+describe('getInitialMatchBoost', () => {
+    it('returns boost for matching initials', () => {
+        const boost = getInitialMatchBoost('A. MENSAH', 'ABENA MENSAH');
+        expect(boost).toBeGreaterThan(0);
+    });
+
+    it('returns 0 for non-matching initials', () => {
+        const boost = getInitialMatchBoost('K. MENSAH', 'ABENA MENSAH');
+        expect(boost).toBe(0);
+    });
+
+    it('returns 0 for names without initials', () => {
+        const boost = getInitialMatchBoost('JOHN MENSAH', 'ABENA MENSAH');
+        expect(boost).toBe(0);
     });
 });

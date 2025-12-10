@@ -252,11 +252,13 @@ export function ghanaianTokenSimilarity(name1: string, name2: string): number {
 
 /**
  * Common Ghanaian surname variations that should be treated as equivalent
+ * Expanded from user-provided tithe book data
  */
 export const SURNAME_VARIANTS: Record<string, string[]> = {
+    // Common surnames with OCR/spelling variations
     'mensah': ['mensa', 'mensaa', 'mensah'],
     'owusu': ['owusu', 'owusu-ansah', 'owusu-boateng'],
-    'aryeetey': ['aryeetey', 'aryetey', 'ariyetey'],
+    'aryeetey': ['aryeetey', 'aryetey', 'ariyetey', 'aryee'],
     'wilson': ['wilson', 'willson'],
     'lamptey': ['lamptey', 'lampte', 'lamtey'],
     'addai': ['addai', 'adai', 'addey'],
@@ -271,6 +273,26 @@ export const SURNAME_VARIANTS: Record<string, string[]> = {
     'tetteh': ['tetteh', 'teteh', 'tete'],
     'twumasi': ['twumasi', 'tumasi', 'twumase'],
     'asare': ['asare', 'asarey', 'asareh'],
+    // User-provided surnames
+    'arhin': ['arhin', 'arhinn'],
+    'essuman': ['essuman', 'esuman'],
+    'moro': ['moro', 'moroh'],
+    'djan': ['djan', 'jan'],
+    'dome': ['dome', 'domeh'],
+    'gbafa': ['gbafa', 'gbafah'],
+    'nabork': ['nabork', 'nabok'],
+    'odum': ['odum', 'odoom', 'odom'],
+    'tawiah': ['tawiah', 'tawia'],
+    'armah': ['armah', 'arma', 'armaa'],
+    'atsuvi': ['atsuvi', 'atsuvie'],
+    'dayeetey': ['dayeetey', 'dayetey'],
+    'abadzi': ['abadzi', 'abazi'],
+    'adzewodo': ['adzewodo', 'azewodo'],
+    'akogyeram': ['akogyeram', 'akogyram'],
+    'bedzo': ['bedzo', 'bedzoh'],
+    'commey': ['commey', 'comey', 'kommey'],
+    'solomon': ['solomon', 'solmon'],
+    'tekpor': ['tekpor', 'tekpoh'],
 };
 
 // Build reverse lookup
@@ -296,4 +318,77 @@ export function areSurnameVariants(s1: string, s2: string): boolean {
     const n1 = normalizeSurname(s1);
     const n2 = normalizeSurname(s2);
     return n1 === n2;
+}
+
+// ============================================================================
+// NAME PREPROCESSING
+// ============================================================================
+
+/**
+ * Preprocess a name to normalize common OCR issues and patterns
+ * - Removes possessives (NANA'S → NANA)
+ * - Normalizes whitespace
+ * - Handles quotes and special characters
+ */
+export function preprocessName(name: string): string {
+    if (!name) return '';
+
+    return name
+        // Remove possessives (NANA'S → NANA)
+        .replace(/'[sS]\b/g, '')
+        .replace(/['']s\b/gi, '')
+        // Remove quotes
+        .replace(/['"''"]/g, '')
+        // Normalize whitespace
+        .replace(/\s+/g, ' ')
+        // Remove leading/trailing spaces
+        .trim();
+}
+
+/**
+ * Check if a token is likely an initial (single letter, with or without period)
+ */
+export function isInitial(token: string): boolean {
+    const cleaned = token.replace(/\./g, '').trim();
+    return cleaned.length === 1 && /^[a-zA-Z]$/.test(cleaned);
+}
+
+/**
+ * Extract initials from a name and potential expansions
+ * Returns the first letter that matches the initial
+ */
+export function matchInitialToName(initial: string, fullName: string): boolean {
+    const cleanedInitial = initial.replace(/\./g, '').toLowerCase().trim();
+    if (cleanedInitial.length !== 1) return false;
+
+    const firstLetter = fullName.toLowerCase().trim()[0];
+    return cleanedInitial === firstLetter;
+}
+
+/**
+ * Try to match a name with initials (e.g., "A. MENSAH") to a full name
+ * Returns similarity boost if initial matches
+ */
+export function getInitialMatchBoost(
+    extractedName: string,
+    memberName: string
+): number {
+    const extractedTokens = tokenizeGhanaianName(extractedName);
+    const memberTokens = tokenizeGhanaianName(memberName);
+
+    let boost = 0;
+
+    for (const eToken of extractedTokens) {
+        if (isInitial(eToken)) {
+            // Check if any member token starts with this initial
+            for (const mToken of memberTokens) {
+                if (matchInitialToName(eToken, mToken)) {
+                    boost += 0.15; // Boost for matching initial
+                    break;
+                }
+            }
+        }
+    }
+
+    return boost;
 }
