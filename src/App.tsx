@@ -1233,173 +1233,163 @@ const App: React.FC = () => {
         <DesktopNotifications globalNotifications={globalNotifications} accentColor={accentColor} />
 
         <main className="p-6 lg:p-8 max-w-[1600px] mx-auto">
-          <AnimatePresence mode="wait">
-            <MotionDiv
-              key={location.pathname}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-            >
-              <Outlet
-                context={{
-                  transactionLog,
-                  memberDatabase,
-                  favorites,
-                  onStartNewWeek: appActions.members.startNewWeek,
-                  userProfile: driveUserProfile,
-                  onUploadFile: handleFileAccepted,
-                  onScanImage: async (file: File, assemblyName?: string, month?: string, week?: string) => {
-                    // Use provided assembly name or fall back to current context
-                    const targetAssembly = assemblyName || currentAssembly;
+          <Outlet
+            context={{
+              transactionLog,
+              memberDatabase,
+              favorites,
+              onStartNewWeek: appActions.members.startNewWeek,
+              userProfile: driveUserProfile,
+              onUploadFile: handleFileAccepted,
+              onScanImage: async (file: File, assemblyName?: string, month?: string, week?: string) => {
+                // Use provided assembly name or fall back to current context
+                const targetAssembly = assemblyName || currentAssembly;
 
-                    if (!targetAssembly) {
-                      addToast("Please select an assembly first.", "warning");
-                      return;
-                    }
+                if (!targetAssembly) {
+                  addToast("Please select an assembly first.", "warning");
+                  return;
+                }
 
-                    // If a specific assembly was selected (and it's different), update the context
-                    if (assemblyName && assemblyName !== currentAssembly) {
-                      setCurrentAssembly(assemblyName);
-                      // Note: We don't necessarily need to "startNewWeek" here if we just want to add to existing data
-                      // But if we want to ensure the view updates, setting currentAssembly is key.
-                    }
+                // If a specific assembly was selected (and it's different), update the context
+                if (assemblyName && assemblyName !== currentAssembly) {
+                  setCurrentAssembly(assemblyName);
+                  // Note: We don't necessarily need to "startNewWeek" here if we just want to add to existing data
+                  // But if we want to ensure the view updates, setting currentAssembly is key.
+                }
 
-                    const masterList = memberDatabase[targetAssembly];
-                    if (!masterList || !masterList.data) {
-                      addToast(`No member data found for ${targetAssembly} Assembly.`, "warning");
-                      return;
-                    }
+                const masterList = memberDatabase[targetAssembly];
+                if (!masterList || !masterList.data) {
+                  addToast(`No member data found for ${targetAssembly} Assembly.`, "warning");
+                  return;
+                }
 
-                    setIsImageScanning(true);
-                    // Generate a date string for the transaction
-                    const currentYear = new Date().getFullYear();
-                    let dateString = "";
-                    let targetDateObj = new Date();
+                setIsImageScanning(true);
+                // Generate a date string for the transaction
+                const currentYear = new Date().getFullYear();
+                let dateString = "";
+                let targetDateObj = new Date();
 
-                    if (month && week) {
-                      targetDateObj = calculateSundayDate(month, week, currentYear);
-                      dateString = formatDateDDMMMYYYY(targetDateObj);
+                if (month && week) {
+                  targetDateObj = calculateSundayDate(month, week, currentYear);
+                  dateString = formatDateDDMMMYYYY(targetDateObj);
 
-                      // Update App State for Persistence
-                      setSelectedDate(targetDateObj);
-                      setFileNameToSave(`${targetAssembly.toUpperCase()}-${dateString}-TITHERS`);
-                    } else {
-                      dateString = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/ /g, '-');
-                    }
+                  // Update App State for Persistence
+                  setSelectedDate(targetDateObj);
+                  setFileNameToSave(`${targetAssembly.toUpperCase()}-${dateString}-TITHERS`);
+                } else {
+                  dateString = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/ /g, '-');
+                }
 
-                    try {
-                      const data = await analyzeImage(file, month, week, dateString);
-                      if (data) {
-                        setExtractedTitheData(data);
-                        // Ensure we use the master data for the TARGET assembly
-                        setImageVerificationMasterData(masterList.data);
-                        setIsImageVerificationModalOpen(true);
-                      }
-                    } finally {
-                      setIsImageScanning(false);
-                    }
+                try {
+                  const data = await analyzeImage(file, month, week, dateString);
+                  if (data) {
+                    setExtractedTitheData(data);
+                    // Ensure we use the master data for the TARGET assembly
+                    setImageVerificationMasterData(masterList.data);
+                    setIsImageVerificationModalOpen(true);
+                  }
+                } finally {
+                  setIsImageScanning(false);
+                }
+              },
+              // Processor Props
+              uploadedFile,
+              originalData,
+              processedDataA,
+              setProcessedDataA,
+              favoritesSearchTerm,
+              setFavoritesSearchTerm,
+              loadFavorite: appActions.favorites.loadFavorite,
+              deleteFavorite: handleDeleteFavorite,
+              viewFavoriteDetails,
+              updateFavoriteName,
+              addToast,
+              // Analytics
+              titheListData,
+              currentAssembly,
+              selectedDate,
+              // Reports
+              // MemberDatabase
+              onUploadMasterList: (file: File, assembly: string) =>
+                handleFileAccepted(file, true, assembly),
+              onCreateTitheList: (
+                members: MemberRecordA[],
+                assembly: string,
+              ) => {
+                setPendingTitheListMembers(members);
+                setPendingTitheListAssembly(assembly);
+                setIsCreateTitheListModalOpen(true); // TODO: move into useModalsPhase2 later
+              },
+              onEditMember: (member: MemberRecordA, assemblyName: string) => {
+                setMemberToEdit({ member, assemblyName });
+                editMember.open({ target: memberToEdit! });
+              },
+              onDeleteAssembly: appActions.members.handleDeleteAssembly,
+              onAddAssembly: (assemblyName: string) => {
+                if (memberDatabase[assemblyName]) {
+                  addToast(`Assembly "${assemblyName}" already exists.`, "warning");
+                  return;
+                }
+                // Add to memberDatabase
+                setMemberDatabase((prev) => ({
+                  ...prev,
+                  [assemblyName]: {
+                    data: [],
+                    lastUpdated: Date.now(),
+                    fileName: "",
                   },
-                  // Processor Props
-                  uploadedFile,
-                  originalData,
-                  processedDataA,
-                  setProcessedDataA,
-                  favoritesSearchTerm,
-                  setFavoritesSearchTerm,
-                  loadFavorite: appActions.favorites.loadFavorite,
-                  deleteFavorite: handleDeleteFavorite,
-                  viewFavoriteDetails,
-                  updateFavoriteName,
-                  addToast,
-                  // Analytics
-                  titheListData,
-                  currentAssembly,
-                  selectedDate,
-                  // Reports
-                  // MemberDatabase
-                  onUploadMasterList: (file: File, assembly: string) =>
-                    handleFileAccepted(file, true, assembly),
-                  onCreateTitheList: (
-                    members: MemberRecordA[],
-                    assembly: string,
-                  ) => {
-                    setPendingTitheListMembers(members);
-                    setPendingTitheListAssembly(assembly);
-                    setIsCreateTitheListModalOpen(true); // TODO: move into useModalsPhase2 later
-                  },
-                  onEditMember: (member: MemberRecordA, assemblyName: string) => {
-                    setMemberToEdit({ member, assemblyName });
-                    editMember.open({ target: memberToEdit! });
-                  },
-                  onDeleteAssembly: appActions.members.handleDeleteAssembly,
-                  onAddAssembly: (assemblyName: string) => {
-                    if (memberDatabase[assemblyName]) {
-                      addToast(`Assembly "${assemblyName}" already exists.`, "warning");
-                      return;
-                    }
-                    // Add to memberDatabase
-                    setMemberDatabase((prev) => ({
-                      ...prev,
-                      [assemblyName]: {
-                        data: [],
-                        lastUpdated: Date.now(),
-                        fileName: "",
-                      },
-                    }));
-                    // Also add to AppConfigContext so it appears in dropdowns
-                    addAssembly(assemblyName);
-                    addToast(`Assembly "${assemblyName}" created. Upload a master list to populate it.`, "success");
-                  },
-                  // ListOverviewActions
-                  currentTotalTithe: totalTitheAmount,
-                  hasUnsavedChanges,
-                  tithersCount,
-                  nonTithersCount: processedDataA.length - tithersCount,
-                  tithersPercentage:
-                    processedDataA.length > 0
-                      ? (tithersCount / processedDataA.length) * 100
-                      : 0,
-                  setIsFullPreviewModalOpen,
-                  setIsAmountEntryModalOpen,
-                  fileNameToSave,
-                  setFileNameToSave,
-                  inputErrors,
-                  setInputErrors,
-                  handleDownloadExcel: appActions.download.handleDownloadExcel,
-                  openSaveFavoriteModal: () => saveFavorite.open(),
-                  onClearWorkspace: () => clearWorkspaceModal.open(),
-                  soulsWonCount,
-                  // Configuration
-                  isLoggedIn: isDriveLoggedIn,
-                  syncStatus: driveSyncStatus,
-                  signIn: driveSignIn,
-                  signOut: driveSignOut,
-                  isConfigured: isDriveConfigured,
-                  ageRangeMin,
-                  setAgeRangeMin,
-                  ageRangeMax,
-                  setAgeRangeMax,
-                  isAgeFilterActive,
-                  handleApplyAgeFilter: appActions.titheProcessing.handleApplyAgeFilter,
-                  handleRemoveAgeFilter: appActions.titheProcessing.handleRemoveAgeFilter,
-                  concatenationConfig,
-                  handleConcatenationConfigChange: appActions.titheProcessing.handleConcatenationConfigChange,
-                  descriptionText,
-                  handleDescriptionChange: appActions.titheProcessing.handleDescriptionChange,
-                  amountMappingColumn,
-                  setAmountMappingColumn,
-                  theme,
-                  setTheme,
-                  accentColor,
-                  setAccentColor,
-                  isSubscribed,
-                  requestNotificationPermission,
-                  onDateChange: appActions.titheProcessing.handleDateChange,
-                }}
-              />
-            </MotionDiv>
-          </AnimatePresence>
+                }));
+                // Also add to AppConfigContext so it appears in dropdowns
+                addAssembly(assemblyName);
+                addToast(`Assembly "${assemblyName}" created. Upload a master list to populate it.`, "success");
+              },
+              // ListOverviewActions
+              currentTotalTithe: totalTitheAmount,
+              hasUnsavedChanges,
+              tithersCount,
+              nonTithersCount: processedDataA.length - tithersCount,
+              tithersPercentage:
+                processedDataA.length > 0
+                  ? (tithersCount / processedDataA.length) * 100
+                  : 0,
+              setIsFullPreviewModalOpen,
+              setIsAmountEntryModalOpen,
+              fileNameToSave,
+              setFileNameToSave,
+              inputErrors,
+              setInputErrors,
+              handleDownloadExcel: appActions.download.handleDownloadExcel,
+              openSaveFavoriteModal: () => saveFavorite.open(),
+              onClearWorkspace: () => clearWorkspaceModal.open(),
+              soulsWonCount,
+              // Configuration
+              isLoggedIn: isDriveLoggedIn,
+              syncStatus: driveSyncStatus,
+              signIn: driveSignIn,
+              signOut: driveSignOut,
+              isConfigured: isDriveConfigured,
+              ageRangeMin,
+              setAgeRangeMin,
+              ageRangeMax,
+              setAgeRangeMax,
+              isAgeFilterActive,
+              handleApplyAgeFilter: appActions.titheProcessing.handleApplyAgeFilter,
+              handleRemoveAgeFilter: appActions.titheProcessing.handleRemoveAgeFilter,
+              concatenationConfig,
+              handleConcatenationConfigChange: appActions.titheProcessing.handleConcatenationConfigChange,
+              descriptionText,
+              handleDescriptionChange: appActions.titheProcessing.handleDescriptionChange,
+              amountMappingColumn,
+              setAmountMappingColumn,
+              theme,
+              setTheme,
+              accentColor,
+              setAccentColor,
+              isSubscribed,
+              requestNotificationPermission,
+              onDateChange: appActions.titheProcessing.handleDateChange,
+            }}
+          />
         </main>
 
         {/* Mobile Bottom Navigation */}
