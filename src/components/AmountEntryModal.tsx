@@ -11,6 +11,8 @@ import Button from "./Button";
 import { SortDesc, Filter, Search, Check, UserPlus } from "lucide-react";
 import { hapticSelect, hapticSuccess } from "../lib/haptics";
 import confetti from "canvas-confetti";
+import { useWorkspaceContext } from "@/context";
+import { saveAmountCorrection } from "@/services/handwritingLearning";
 
 interface DataEntryRowProps {
   record: TitheRecordB;
@@ -133,6 +135,7 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
   titheListData,
   openAddMemberToListModal,
 }) => {
+  const { currentAssembly } = useWorkspaceContext();
   const [localData, setLocalData] = useState<TitheRecordB[]>([]);
   const [sortOrder, setSortOrder] = useState<"original" | "alpha" | "amount">("original");
   const [activeRecordId, setActiveRecordId] = useState<number | string | null>(
@@ -141,6 +144,10 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
   const [filterText, setFilterText] = useState("");
   const [showOnlyEmpty, setShowOnlyEmpty] = useState(false);
   const [globalDescription, setGlobalDescription] = useState("");
+  // Track original AI-extracted values for correction learning
+  const originalValuesRef = useRef<Map<number | string, string>>(new Map());
+  // Track pending corrections to save in batch when modal closes
+  const pendingCorrectionsRef = useRef<Map<string, { original: string; corrected: number }>>(new Map());
 
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
@@ -148,6 +155,15 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
     if (isOpen) {
       // Create a deep copy to work with locally
       setLocalData(JSON.parse(JSON.stringify(titheListData)));
+      // Store original AI-extracted amounts for correction learning
+      const originals = new Map<number | string, string>();
+      titheListData.forEach(record => {
+        const amount = record["Transaction Amount"];
+        if (amount !== undefined && amount !== null && amount !== "") {
+          originals.set(record["No."], String(amount));
+        }
+      });
+      originalValuesRef.current = originals;
       // Set the first record as active when modal opens
       if (titheListData.length > 0) {
         setActiveRecordId(titheListData[0]["No."]);
@@ -202,6 +218,22 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
 
   const handleAmountChange = useCallback(
     (recordNo: number | string, amount: string) => {
+      // Track correction if this differs from AI-extracted value (save in batch later)
+      const originalValue = originalValuesRef.current.get(recordNo);
+      if (originalValue && currentAssembly) {
+        const newAmount = parseFloat(amount);
+        if (!isNaN(newAmount) && originalValue !== amount) {
+          // Store for batch save - use recordNo as key to avoid duplicates
+          pendingCorrectionsRef.current.set(String(recordNo), {
+            original: originalValue,
+            corrected: newAmount
+          });
+        } else {
+          // If user reverted to original, remove pending correction
+          pendingCorrectionsRef.current.delete(String(recordNo));
+        }
+      }
+
       setLocalData((prevData) =>
         prevData.map((record) =>
           record["No."] === recordNo
@@ -210,7 +242,7 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
         ),
       );
     },
-    [],
+    [currentAssembly],
   );
 
   const handleNavigation = useCallback(
@@ -242,7 +274,26 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
     }
   }, [activeRecordId]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Save all pending corrections in batch
+    if (currentAssembly && pendingCorrectionsRef.current.size > 0) {
+      const corrections = Array.from(pendingCorrectionsRef.current.values());
+      for (const { original, corrected } of corrections) {
+        try {
+          await saveAmountCorrection(
+            currentAssembly,
+            original,
+            corrected,
+            undefined,
+            'tithe_entry'
+          );
+        } catch (err) {
+          console.warn('Failed to save correction:', err);
+        }
+      }
+      pendingCorrectionsRef.current.clear();
+    }
+
     // Apply global description to all records before saving
     const dataWithDescription = localData.map(record => ({
       ...record,

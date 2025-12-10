@@ -125,6 +125,36 @@ export const validateAmount = (
 };
 
 /**
+ * Validate with learned corrections (async version)
+ * Checks handwriting learning database first for known patterns
+ */
+export const validateAmountWithLearning = async (
+    amount: number | string,
+    assemblyName: string,
+    memberHistory?: MemberTitheHistory
+): Promise<AmountValidation> => {
+    const { suggestCorrection } = await import('./handwritingLearning');
+
+    // If amount is a string, check learned corrections first
+    if (typeof amount === 'string') {
+        const learnedSuggestion = await suggestCorrection(assemblyName, amount);
+
+        if (learnedSuggestion && learnedSuggestion.confidence > 0.6) {
+            return {
+                originalAmount: parseFloat(amount) || 0,
+                suggestedAmount: learnedSuggestion.suggestedAmount,
+                confidence: learnedSuggestion.confidence,
+                reason: 'ocr_artifact',
+                message: `Learned correction: "${amount}" → ${learnedSuggestion.suggestedAmount} (seen ${learnedSuggestion.occurrences}x)`
+            };
+        }
+    }
+
+    // Fall back to standard validation
+    return validateAmount(amount, memberHistory);
+};
+
+/**
  * Build member tithe history from transaction logs
  */
 export const buildMemberHistory = (
