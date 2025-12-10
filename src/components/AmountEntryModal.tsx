@@ -403,134 +403,136 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
         </div>
 
         {/* Mobile View - Focus Card */}
-        <div className="md:hidden fixed inset-0 z-[60] bg-[var(--bg-main)] flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold text-[var(--text-primary)]">
-                Entry Mode
-              </div>
-              <div className="px-2 py-0.5 rounded-full bg-[var(--bg-secondary)] text-xs text-[var(--text-secondary)] font-medium">
-                {entriesFilled} / {totalEntries}
-              </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose} className="text-[var(--text-secondary)]">Close</Button>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full bg-[var(--bg-secondary)] h-1">
-            <div
-              className="bg-[var(--primary-accent-start)] h-1 transition-all duration-300"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-
-          {/* Focus Content */}
-          <div className="flex-1 flex flex-col justify-center px-6 py-4 overflow-y-auto">
-            {activeRecordId ? (() => {
-              const currentRecord = localData.find(r => r["No."] === activeRecordId);
-              if (!currentRecord) return <div className="text-center text-[var(--text-muted)]">Record not found</div>;
-
-              // Helper to navigate
-              const goToNext = () => {
-                const idx = filteredAndSortedData.findIndex(r => r["No."] === activeRecordId);
-                if (idx < filteredAndSortedData.length - 1) {
-                  hapticSelect();
-                  setActiveRecordId(filteredAndSortedData[idx + 1]["No."]);
-                }
-              };
-              const goToPrev = () => {
-                const idx = filteredAndSortedData.findIndex(r => r["No."] === activeRecordId);
-                if (idx > 0) {
-                  hapticSelect();
-                  setActiveRecordId(filteredAndSortedData[idx - 1]["No."]);
-                }
-              };
-
-              return (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300" key={activeRecordId}>
-                  <div className="text-center space-y-2">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white text-2xl font-bold shadow-lg mb-2">
-                      {currentRecord["First Name"]?.charAt(0)}
-                    </div>
-                    <h2 className="text-2xl font-bold text-[var(--text-primary)] leading-tight">
-                      {currentRecord["First Name"]} {currentRecord.Surname}
-                    </h2>
-                    <p className="text-[var(--text-secondary)] font-medium">
-                      #{currentRecord["Membership Number"]}
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-center text-sm font-medium text-[var(--text-muted)] uppercase tracking-wider">
-                      Enter Amount (GH₵)
-                    </label>
-                    <div className="relative max-w-[280px] mx-auto">
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        autoFocus
-                        value={currentRecord["Transaction Amount"] || ""}
-                        onChange={(e) => handleAmountChange(currentRecord["No."], e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            hapticSuccess(); // Satisfying click
-                            goToNext();
-                          }
-                        }}
-                        className="w-full bg-transparent text-center text-5xl font-bold text-[var(--text-primary)] border-b-2 border-[var(--border-color)] focus:border-[var(--primary-accent-start)] focus:outline-none py-2 placeholder-[var(--text-placeholder)]/20"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Navigation Controls */}
-                  <div className="grid grid-cols-2 gap-4 pt-4">
-                    <Button
-                      variant="subtle"
-                      className="h-14 text-lg rounded-2xl"
-                      onClick={goToPrev}
-                      disabled={filteredAndSortedData.findIndex(r => r["No."] === activeRecordId) === 0}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="primary"
-                      className="h-14 text-lg rounded-2xl shadow-lg"
-                      onClick={goToNext}
-                    >
-                      Next
-                    </Button>
-                  </div>
+        {isOpen && (
+          <div className="md:hidden fixed inset-0 z-[60] bg-[var(--bg-main)] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <div className="text-sm font-semibold text-[var(--text-primary)]">
+                  Entry Mode
                 </div>
-              );
-            })() : (
-              <div className="text-center">
-                <p className="text-[var(--text-muted)]">No members selected.</p>
+                <div className="px-2 py-0.5 rounded-full bg-[var(--bg-secondary)] text-xs text-[var(--text-secondary)] font-medium">
+                  {entriesFilled} / {totalEntries}
+                </div>
               </div>
-            )}
-          </div>
+              <Button variant="ghost" size="sm" onClick={onClose} className="text-[var(--text-secondary)]">Close</Button>
+            </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-main)]">
-            <Button
-              variant="primary"
-              className="w-full h-12 text-lg rounded-xl shadow-md bg-green-600 hover:bg-green-700 border-transparent text-white"
-              onClick={() => {
-                hapticSuccess();
-                confetti({
-                  particleCount: 100,
-                  spread: 70,
-                  origin: { y: 0.6 }
-                });
-                handleSave();
-              }}
-            >
-              Done & Save Changes
-            </Button>
+            {/* Progress Bar */}
+            <div className="w-full bg-[var(--bg-secondary)] h-1">
+              <div
+                className="bg-[var(--primary-accent-start)] h-1 transition-all duration-300"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+
+            {/* Focus Content */}
+            <div className="flex-1 flex flex-col justify-center px-6 py-4 overflow-y-auto">
+              {activeRecordId ? (() => {
+                const currentRecord = localData.find(r => r["No."] === activeRecordId);
+                if (!currentRecord) return <div className="text-center text-[var(--text-muted)]">Record not found</div>;
+
+                // Helper to navigate
+                const goToNext = () => {
+                  const idx = filteredAndSortedData.findIndex(r => r["No."] === activeRecordId);
+                  if (idx < filteredAndSortedData.length - 1) {
+                    hapticSelect();
+                    setActiveRecordId(filteredAndSortedData[idx + 1]["No."]);
+                  }
+                };
+                const goToPrev = () => {
+                  const idx = filteredAndSortedData.findIndex(r => r["No."] === activeRecordId);
+                  if (idx > 0) {
+                    hapticSelect();
+                    setActiveRecordId(filteredAndSortedData[idx - 1]["No."]);
+                  }
+                };
+
+                return (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300" key={activeRecordId}>
+                    <div className="text-center space-y-2">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white text-2xl font-bold shadow-lg mb-2">
+                        {currentRecord["First Name"]?.charAt(0)}
+                      </div>
+                      <h2 className="text-2xl font-bold text-[var(--text-primary)] leading-tight">
+                        {currentRecord["First Name"]} {currentRecord.Surname}
+                      </h2>
+                      <p className="text-[var(--text-secondary)] font-medium">
+                        #{currentRecord["Membership Number"]}
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="block text-center text-sm font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                        Enter Amount (GH₵)
+                      </label>
+                      <div className="relative max-w-[280px] mx-auto">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          autoFocus
+                          value={currentRecord["Transaction Amount"] || ""}
+                          onChange={(e) => handleAmountChange(currentRecord["No."], e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              hapticSuccess(); // Satisfying click
+                              goToNext();
+                            }
+                          }}
+                          className="w-full bg-transparent text-center text-5xl font-bold text-[var(--text-primary)] border-b-2 border-[var(--border-color)] focus:border-[var(--primary-accent-start)] focus:outline-none py-2 placeholder-[var(--text-placeholder)]/20"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Navigation Controls */}
+                    <div className="grid grid-cols-2 gap-4 pt-4">
+                      <Button
+                        variant="subtle"
+                        className="h-14 text-lg rounded-2xl"
+                        onClick={goToPrev}
+                        disabled={filteredAndSortedData.findIndex(r => r["No."] === activeRecordId) === 0}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="primary"
+                        className="h-14 text-lg rounded-2xl shadow-lg"
+                        onClick={goToNext}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className="text-center">
+                  <p className="text-[var(--text-muted)]">No members selected.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-main)]">
+              <Button
+                variant="primary"
+                className="w-full h-12 text-lg rounded-xl shadow-md bg-green-600 hover:bg-green-700 border-transparent text-white"
+                onClick={() => {
+                  hapticSuccess();
+                  confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                  });
+                  handleSave();
+                }}
+              >
+                Done & Save Changes
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
     </Modal>
