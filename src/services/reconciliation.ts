@@ -214,6 +214,12 @@ import { getOCRAwareSimilarity, getTokenSimilarity, OCR_CONFIDENCE_TIERS } from 
 import { FuzzyMatchResult } from "../types";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { semanticCache } from "./semanticCache";
+import {
+  stripTitles,
+  ghanaianTokenSimilarity,
+  areSurnameVariants,
+  preprocessName
+} from "@/lib/ghanaianNames";
 
 /**
  * AI-powered semantic matching for difficult names
@@ -326,7 +332,10 @@ export const findMemberByName = async (
 ): Promise<FuzzyMatchResult | null> => {
   if (!rawName || !masterData.length) return null;
 
-  // Strategy 1 & 2: Combined OCR-aware and token matching
+  // Preprocess and strip titles from raw name
+  const cleanedRaw = stripTitles(preprocessName(rawName));
+
+  // Strategy 1, 2, 3: Combined OCR-aware, token, and Ghanaian matching
   let bestMatch: FuzzyMatchResult | null = null;
 
   for (const member of masterData) {
@@ -346,14 +355,22 @@ export const findMemberByName = async (
     ].filter(Boolean) as string[];
 
     for (const nameCombo of combinations) {
+      const cleanedCombo = stripTitles(nameCombo);
+
       // Strategy 1: OCR-normalized Levenshtein
-      const ocrResult = getOCRAwareSimilarity(rawName, nameCombo);
+      const ocrResult = getOCRAwareSimilarity(cleanedRaw, cleanedCombo);
 
       // Strategy 2: Token-based matching
-      const tokenScore = getTokenSimilarity(rawName, nameCombo);
+      const tokenScore = getTokenSimilarity(cleanedRaw, cleanedCombo);
 
-      // Take the best of both strategies
-      const score = Math.max(ocrResult.score, tokenScore);
+      // Strategy 3: Ghanaian-specific matching
+      const ghanaianScore = ghanaianTokenSimilarity(cleanedRaw, cleanedCombo);
+
+      // Surname variant boost
+      const surnameBoost = areSurnameVariants(cleanedRaw, surname) ? 0.1 : 0;
+
+      // Combined score: max of all methods + surname boost
+      const score = Math.min(1.0, Math.max(ocrResult.score, tokenScore, ghanaianScore) + surnameBoost);
 
       if (score >= threshold) {
         if (!bestMatch || score > bestMatch.score) {
@@ -392,6 +409,7 @@ export const findMemberByName = async (
 
 /**
  * Synchronous version for backwards compatibility.
+ * Enhanced with Ghanaian name utilities for better matching.
  */
 export const findMemberByNameSync = (
   rawName: string,
@@ -399,6 +417,9 @@ export const findMemberByNameSync = (
   threshold: number = OCR_CONFIDENCE_TIERS.MEDIUM
 ): FuzzyMatchResult | null => {
   if (!rawName || !masterData.length) return null;
+
+  // Preprocess and strip titles from raw name
+  const cleanedRaw = stripTitles(preprocessName(rawName));
 
   let bestMatch: FuzzyMatchResult | null = null;
 
@@ -416,9 +437,20 @@ export const findMemberByNameSync = (
     ];
 
     for (const nameCombo of combinations) {
-      const ocrResult = getOCRAwareSimilarity(rawName, nameCombo);
-      const tokenScore = getTokenSimilarity(rawName, nameCombo);
-      const score = Math.max(ocrResult.score, tokenScore);
+      const cleanedCombo = stripTitles(nameCombo);
+
+      // Original scoring
+      const ocrResult = getOCRAwareSimilarity(cleanedRaw, cleanedCombo);
+      const tokenScore = getTokenSimilarity(cleanedRaw, cleanedCombo);
+
+      // Ghanaian-specific scoring
+      const ghanaianScore = ghanaianTokenSimilarity(cleanedRaw, cleanedCombo);
+
+      // Surname variant boost
+      const surnameBoost = areSurnameVariants(cleanedRaw, surname) ? 0.1 : 0;
+
+      // Combined score: max of all methods + surname boost
+      const score = Math.min(1.0, Math.max(ocrResult.score, tokenScore, ghanaianScore) + surnameBoost);
 
       if (score >= threshold) {
         if (!bestMatch || score > bestMatch.score) {
@@ -451,6 +483,9 @@ export const getTopFuzzyMatches = (
 ): FuzzyMatchResult[] => {
   if (!rawName || !masterData.length) return [];
 
+  // Preprocess and strip titles from raw name
+  const cleanedRaw = stripTitles(preprocessName(rawName));
+
   const allMatches: FuzzyMatchResult[] = [];
 
   for (const member of masterData) {
@@ -470,9 +505,12 @@ export const getTopFuzzyMatches = (
     let bestCombo = "";
 
     for (const nameCombo of combinations) {
-      const ocrResult = getOCRAwareSimilarity(rawName, nameCombo);
-      const tokenScore = getTokenSimilarity(rawName, nameCombo);
-      const score = Math.max(ocrResult.score, tokenScore);
+      const cleanedCombo = stripTitles(nameCombo);
+      const ocrResult = getOCRAwareSimilarity(cleanedRaw, cleanedCombo);
+      const tokenScore = getTokenSimilarity(cleanedRaw, cleanedCombo);
+      const ghanaianScore = ghanaianTokenSimilarity(cleanedRaw, cleanedCombo);
+      const surnameBoost = areSurnameVariants(cleanedRaw, surname) ? 0.1 : 0;
+      const score = Math.min(1.0, Math.max(ocrResult.score, tokenScore, ghanaianScore) + surnameBoost);
 
       if (score > bestScoreForMember) {
         bestScoreForMember = score;
