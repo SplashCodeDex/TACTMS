@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { TitheRecordB, MemberRecordA } from "@/types";
 import { findMemberByName } from "@/services/reconciliation";
-import { validateAmountWithLearning, AmountValidation } from "@/services/amountValidator";
+import { validateAmountWithLearning } from "@/services/amountValidator";
+import type { AmountValidation } from "@/types";
 import Button from "./Button";
 import { Check, AlertTriangle, AlertCircle } from "lucide-react";
 import MemberSelect from "./MemberSelect";
@@ -72,7 +73,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         };
 
         processMatches();
-    }, [isOpen, extractedData, masterData]);
+    }, [isOpen, extractedData, masterData, currentAssembly]);
 
     const handleConfirm = () => {
         const verifiedData = rows.map((row) => {

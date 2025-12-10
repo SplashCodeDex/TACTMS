@@ -7,31 +7,13 @@
  * Uses IndexedDB for persistent storage per assembly.
  */
 
-// ============================================================================
-// TYPES
-// ============================================================================
+import type { AmountCorrection, CorrectionSuggestion } from '@/types';
 
-export interface AmountCorrection {
-    id: string;
-    assemblyName: string;       // Use '__GLOBAL__' for cross-assembly patterns
-    originalValue: string;      // What AI extracted: "1OO", "5O"
-    correctedValue: number;     // What user entered: 100, 50
-    memberId?: string;          // Optional: specific member pattern
-    timestamp: number;
-    source: 'tithe_entry' | 'verification' | 'batch';
-    isGlobal?: boolean;         // True = applies to all assemblies
-}
+// Re-export for convenience
+export type { AmountCorrection, CorrectionSuggestion } from '@/types';
 
 // Special assembly name for global/cross-assembly patterns
 export const GLOBAL_ASSEMBLY = '__GLOBAL__';
-
-export interface CorrectionSuggestion {
-    suggestedAmount: number;
-    confidence: number;        // 0-1 based on frequency
-    occurrences: number;       // How many times this correction was made
-    isExactMatch: boolean;     // True if originalValue matches exactly
-    isGlobal?: boolean;        // True if from global patterns
-}
 
 // ============================================================================
 // INDEXEDDB SETUP
@@ -139,7 +121,15 @@ export const saveAmountCorrection = async (
         const store = tx.objectStore(STORE_NAME);
         const request = store.add(correction);
 
-        request.onsuccess = () => resolve();
+        request.onsuccess = () => {
+            // Train ensemble (char substitution + ML neural network)
+            import('./ensembleOCR').then(({ trainEnsemble }) => {
+                trainEnsemble(normalizedOriginal, correctedValue);
+            }).catch(() => {
+                // Ensemble not available
+            });
+            resolve();
+        };
         request.onerror = () => reject(request.error);
 
         tx.oncomplete = () => db.close();

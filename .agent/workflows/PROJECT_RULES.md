@@ -90,7 +90,11 @@ import { AppProviders } from '@/context';
 | `excelProcessor.ts` | Excel file processing |
 | `imageProcessor/` | Image OCR processing (modular) |
 | `imageValidator.ts` | Image validation |
-| `handwritingLearning.ts` | Handwriting recognition |
+| `handwritingLearning.ts` | Handwriting recognition learning |
+| `amountValidator.ts` | Amount validation with ML integration |
+| `ocrMLService.ts` | TensorFlow.js neural network for OCR |
+| `charSubstitutionEngine.ts` | Character substitution learning (O→0) |
+| `ensembleOCR.ts` | Ensemble OCR combining ML methods |
 | `memberOrderService.ts` | Member ordering logic |
 | `reconciliation.ts` | Data reconciliation |
 | `titheList.ts` | Tithe list operations |

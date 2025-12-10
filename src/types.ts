@@ -221,3 +221,80 @@ export interface FuzzyMatchResult {
   confidenceTier: 'high' | 'medium' | 'low';
   matchSource?: 'fuzzy' | 'ai_semantic';
 }
+
+// ============================================================================
+// AI OCR CORRECTION TYPES
+// ============================================================================
+
+/**
+ * Amount correction learned from user feedback
+ */
+export interface AmountCorrection {
+  id: string;
+  assemblyName: string;       // Use '__GLOBAL__' for cross-assembly patterns
+  originalValue: string;      // What AI extracted: "1OO", "5O"
+  correctedValue: number;     // What user entered: 100, 50
+  memberId?: string;          // Optional: specific member pattern
+  timestamp: number;
+  source: 'tithe_entry' | 'verification' | 'batch';
+  isGlobal?: boolean;         // True = applies to all assemblies
+}
+
+/**
+ * Suggestion from OCR correction system
+ */
+export interface CorrectionSuggestion {
+  suggestedAmount: number;
+  confidence: number;        // 0-1 based on frequency
+  occurrences: number;       // How many times this correction was made
+  isExactMatch: boolean;     // True if originalValue matches exactly
+  isGlobal?: boolean;        // True if from global patterns
+}
+
+/**
+ * Character substitution pattern for OCR errors (O→0, I→1)
+ */
+export interface SubstitutionPattern {
+  from: string;   // Character that appears in OCR: "O"
+  to: string;     // What it should be: "0"
+  frequency: number;
+  contexts: string[];  // Examples where this was learned
+}
+
+/**
+ * Ensemble prediction combining multiple AI methods
+ */
+export interface EnsemblePrediction {
+  suggestedAmount: number;
+  confidence: number;
+  method: 'ensemble' | 'char_substitution' | 'ml' | 'exact';
+  agreementScore: number;  // How many methods agreed
+  breakdown: {
+    charSub?: { value: number; confidence: number };
+    ml?: { value: number; confidence: number };
+  };
+}
+
+/**
+ * Result of amount validation
+ */
+export interface AmountValidation {
+  originalAmount: number;
+  suggestedAmount?: number;
+  confidence: number;
+  reason: 'ocr_artifact' | 'unusual_high' | 'unusual_low' | 'anomaly' | 'member_pattern' | 'valid';
+  message?: string;
+}
+
+/**
+ * Member tithe history for anomaly detection
+ */
+export interface MemberTitheHistory {
+  memberId: string;
+  averageAmount: number;
+  standardDeviation: number; // For 2σ anomaly detection
+  minAmount: number;
+  maxAmount: number;
+  lastAmount: number;
+  occurrences: number;
+}

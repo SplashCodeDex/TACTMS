@@ -3,25 +3,10 @@
  * Detects and suggests corrections for OCR-misread amounts
  */
 
-import { TitheRecordB, TransactionLogEntry } from "../types";
+import type { TitheRecordB, TransactionLogEntry, AmountValidation, MemberTitheHistory } from '@/types';
 
-export interface AmountValidation {
-    originalAmount: number;
-    suggestedAmount?: number;
-    confidence: number;
-    reason: 'ocr_artifact' | 'unusual_high' | 'unusual_low' | 'anomaly' | 'member_pattern' | 'valid';
-    message?: string;
-}
-
-export interface MemberTitheHistory {
-    memberId: string;
-    averageAmount: number;
-    standardDeviation: number; // For 2σ anomaly detection
-    minAmount: number;
-    maxAmount: number;
-    lastAmount: number;
-    occurrences: number;
-}
+// Re-export types for convenience
+export type { AmountValidation, MemberTitheHistory } from '@/types';
 
 // Common OCR misreadings for numbers
 const OCR_NUMBER_CORRECTIONS: Record<string, number> = {
@@ -192,6 +177,30 @@ export const validateAmountWithLearning = async (
                     message: `This member always pays GHS ${averageAmount} (${memberHistory.occurrences} consecutive payments)`
                 };
             }
+        }
+    }
+
+    // Try Ensemble prediction (combines char substitution + ML neural network)
+    if (typeof amount === 'string') {
+        try {
+            const { predictEnsemble } = await import('./ensembleOCR');
+            const ensemblePrediction = await predictEnsemble(amount);
+
+            if (ensemblePrediction && ensemblePrediction.confidence > 0.6) {
+                const methodNote = ensemblePrediction.agreementScore > 1
+                    ? ` (${ensemblePrediction.agreementScore} methods agree)`
+                    : ` (${ensemblePrediction.method})`;
+
+                return {
+                    originalAmount: parseFloat(amount) || 0,
+                    suggestedAmount: ensemblePrediction.suggestedAmount,
+                    confidence: ensemblePrediction.confidence,
+                    reason: 'ocr_artifact',
+                    message: `AI correction: "${amount}" → ${ensemblePrediction.suggestedAmount}${methodNote}`
+                };
+            }
+        } catch {
+            // Ensemble not available, continue to fallback
         }
     }
 

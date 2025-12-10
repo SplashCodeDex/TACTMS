@@ -52,17 +52,32 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
         inputRef.current?.focus();
         inputRef.current?.select();
 
-        // Fetch suggestion when row becomes active
+        // Fetch suggestion when row becomes active (using ensemble for best accuracy)
         if (originalValue && assemblyName) {
-          import("@/services/handwritingLearning").then(({ suggestCorrection }) => {
-            suggestCorrection(assemblyName, originalValue).then((result) => {
-              if (result && result.confidence > 0.5) {
-                setSuggestion({ amount: result.suggestedAmount, confidence: result.confidence });
-              } else {
-                setSuggestion(null);
-              }
+          import("@/services/ensembleOCR")
+            .then(({ predictEnsemble }) => {
+              predictEnsemble(originalValue).then((result) => {
+                if (result && result.confidence > 0.5) {
+                  setSuggestion({ amount: result.suggestedAmount, confidence: result.confidence });
+                } else {
+                  setSuggestion(null);
+                }
+              }).catch(() => setSuggestion(null));
+            })
+            .catch(() => {
+              // Ensemble not available, try fallback
+              import("@/services/handwritingLearning")
+                .then(({ suggestCorrection }) => {
+                  suggestCorrection(assemblyName, originalValue).then((result) => {
+                    if (result && result.confidence > 0.5) {
+                      setSuggestion({ amount: result.suggestedAmount, confidence: result.confidence });
+                    } else {
+                      setSuggestion(null);
+                    }
+                  }).catch(() => setSuggestion(null));
+                })
+                .catch(() => setSuggestion(null));
             });
-          });
         }
       }
     }, [isActive, originalValue, assemblyName]);

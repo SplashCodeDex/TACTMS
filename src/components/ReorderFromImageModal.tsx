@@ -105,6 +105,9 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
     // Reset state when modal opens/closes
     const handleClose = useCallback(() => {
+        // Prevent closing while save is in progress
+        if (isSaving) return;
+
         setStep("upload");
         setUploadedImages([]);
         setImagePreviews([]);
@@ -114,7 +117,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
         setSearchTerm("");
         setOrderChanges([]);  // Reset diff state
         onClose();
-    }, [onClose]);
+    }, [onClose, isSaving]);
 
     // Handle image upload
     const handleImageSelect = useCallback((files: File[]) => {
@@ -192,21 +195,27 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                 console.log(`Loaded ${aliasMap.size} learned aliases for ${assemblyName}`);
             }
 
-            // Process sequentially
+            // Process sequentially with per-image error handling
             for (let i = 0; i < uploadedImages.length; i++) {
-                // Pass memberOrderMap for positional hints and aliasMap for learned names
-                const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase, memberOrderMap, aliasMap);
+                try {
+                    // Pass memberOrderMap for positional hints and aliasMap for learned names
+                    const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase, memberOrderMap, aliasMap);
 
-                const pageRows: ExtractedNameRow[] = result.matches.map((match) => ({
-                    position: match.position,
-                    extractedName: match.extractedName,
-                    matchedMember: match.matchedMember,
-                    matchScore: match.confidence,
-                    isManuallyResolved: false,
-                    alternatives: match.alternatives || [],
-                }));
+                    const pageRows: ExtractedNameRow[] = result.matches.map((match) => ({
+                        position: match.position,
+                        extractedName: match.extractedName,
+                        matchedMember: match.matchedMember,
+                        matchScore: match.confidence,
+                        isManuallyResolved: false,
+                        alternatives: match.alternatives || [],
+                    }));
 
-                allRows.push(...pageRows);
+                    allRows.push(...pageRows);
+                } catch (imgError) {
+                    console.error(`Failed to process image ${i + 1}:`, imgError);
+                    addToast(`Failed to process image ${i + 1}: ${imgError instanceof Error ? imgError.message : "Unknown error"}`, "warning");
+                    // Continue with remaining images
+                }
             }
 
             // Sort by extracted position to keep order
@@ -274,7 +283,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             ).filter(Boolean);
 
             // Generate a unique history ID to link snapshot and history entry
-            const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+            const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
@@ -332,10 +341,14 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
         setIsSaving(true);
         try {
             // Extract ordered member IDs for atomic reorder (only selected changes)
-            const orderedMemberIds = selectedChanges.map(c => c.memberId).filter(Boolean);
+            // Sort by newPosition to preserve the correct order
+            const orderedMemberIds = selectedChanges
+                .sort((a, b) => a.newPosition - b.newPosition)
+                .map(c => c.memberId)
+                .filter(Boolean);
 
             // Generate a unique history ID to link snapshot and history entry
-            const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+            const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
