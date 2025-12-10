@@ -21,6 +21,8 @@ interface DataEntryRowProps {
   onAmountChange: (recordNo: number | string, amount: string) => void;
   onNavigate: (direction: "up" | "down") => void;
   setActiveRow: () => void;
+  originalValue?: string; // Original AI-extracted value for suggestion lookup
+  assemblyName?: string;  // Current assembly for suggestion lookup
 }
 
 const DataEntryRow = React.memo<DataEntryRowProps>(
@@ -31,10 +33,13 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
     onAmountChange,
     onNavigate,
     setActiveRow,
+    originalValue,
+    assemblyName,
   }) => {
     const [localAmount, setLocalAmount] = useState(
       String(record["Transaction Amount"] ?? ""),
     );
+    const [suggestion, setSuggestion] = useState<{ amount: number; confidence: number } | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -46,11 +51,32 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
       if (isActive) {
         inputRef.current?.focus();
         inputRef.current?.select();
+
+        // Fetch suggestion when row becomes active
+        if (originalValue && assemblyName) {
+          import("@/services/handwritingLearning").then(({ suggestCorrection }) => {
+            suggestCorrection(assemblyName, originalValue).then((result) => {
+              if (result && result.confidence > 0.5) {
+                setSuggestion({ amount: result.suggestedAmount, confidence: result.confidence });
+              } else {
+                setSuggestion(null);
+              }
+            });
+          });
+        }
       }
-    }, [isActive]);
+    }, [isActive, originalValue, assemblyName]);
 
     const handleBlur = () => {
       onAmountChange(record["No."], localAmount);
+    };
+
+    const applySuggestion = () => {
+      if (suggestion) {
+        setLocalAmount(String(suggestion.amount));
+        onAmountChange(record["No."], String(suggestion.amount));
+        setSuggestion(null);
+      }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -68,7 +94,12 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
           break;
         case "Tab":
           e.preventDefault();
-          onAmountChange(record["No."], localAmount);
+          // Apply suggestion if exists, otherwise just navigate
+          if (suggestion && !e.shiftKey) {
+            applySuggestion();
+          } else {
+            onAmountChange(record["No."], localAmount);
+          }
           onNavigate(e.shiftKey ? "up" : "down");
           break;
         case "Escape":
@@ -93,26 +124,40 @@ const DataEntryRow = React.memo<DataEntryRowProps>(
           {record["Membership Number"]}
         </td>
         <td className="p-2 align-middle text-sm w-1/3">
-          <input
-            ref={inputRef}
-            type="number"
-            step="any"
-            min="0"
-            value={localAmount}
-            onChange={(e) => {
-              const value = e.target.value;
-              const sanitizedValue = value.replace(/[^0-9.]/g, '');
-              const decimalCount = sanitizedValue.split('.').length - 1;
-              if (decimalCount > 1) {
-                return;
-              }
-              setLocalAmount(sanitizedValue);
-            }}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            className="form-input-light w-full text-sm py-1"
-            aria-label={`Amount for ${record["Membership Number"]}`}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="number"
+              step="any"
+              min="0"
+              value={localAmount}
+              onChange={(e) => {
+                const value = e.target.value;
+                const sanitizedValue = value.replace(/[^0-9.]/g, '');
+                const decimalCount = sanitizedValue.split('.').length - 1;
+                if (decimalCount > 1) {
+                  return;
+                }
+                setLocalAmount(sanitizedValue);
+                // Clear suggestion when user types
+                if (suggestion) setSuggestion(null);
+              }}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              className="form-input-light w-full text-sm py-1"
+              aria-label={`Amount for ${record["Membership Number"]}`}
+            />
+            {suggestion && isActive && (
+              <button
+                type="button"
+                onClick={applySuggestion}
+                className="flex items-center gap-1 px-2 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors whitespace-nowrap"
+                title="Press Tab to apply suggestion"
+              >
+                💡→{suggestion.amount}
+              </button>
+            )}
+          </div>
         </td>
       </tr>
     );
@@ -467,6 +512,8 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
                     onAmountChange={handleAmountChange}
                     onNavigate={handleNavigation}
                     setActiveRow={() => setActiveRecordId(record["No."])}
+                    originalValue={originalValuesRef.current.get(record["No."])}
+                    assemblyName={currentAssembly || undefined}
                   />
                 ))}
               </tbody>

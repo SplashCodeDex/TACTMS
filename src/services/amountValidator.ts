@@ -9,7 +9,7 @@ export interface AmountValidation {
     originalAmount: number;
     suggestedAmount?: number;
     confidence: number;
-    reason: 'ocr_artifact' | 'unusual_high' | 'unusual_low' | 'anomaly' | 'valid';
+    reason: 'ocr_artifact' | 'unusual_high' | 'unusual_low' | 'anomaly' | 'member_pattern' | 'valid';
     message?: string;
 }
 
@@ -127,6 +127,7 @@ export const validateAmount = (
 /**
  * Validate with learned corrections (async version)
  * Checks handwriting learning database first for known patterns
+ * Uses member history to weight suggestions (context-aware)
  */
 export const validateAmountWithLearning = async (
     amount: number | string,
@@ -139,14 +140,58 @@ export const validateAmountWithLearning = async (
     if (typeof amount === 'string') {
         const learnedSuggestion = await suggestCorrection(assemblyName, amount);
 
-        if (learnedSuggestion && learnedSuggestion.confidence > 0.6) {
+        if (learnedSuggestion && learnedSuggestion.confidence > 0.5) {
+            let adjustedConfidence = learnedSuggestion.confidence;
+            let contextNote = '';
+
+            // Context-aware: Boost confidence if suggestion matches member's typical payment
+            if (memberHistory && memberHistory.occurrences >= 3) {
+                const { averageAmount, standardDeviation } = memberHistory;
+                const suggestedValue = learnedSuggestion.suggestedAmount;
+
+                // Check if suggestion is within 1σ of member's average
+                const deviation = standardDeviation > 0
+                    ? Math.abs(suggestedValue - averageAmount) / standardDeviation
+                    : 0;
+
+                if (deviation <= 1) {
+                    // Suggestion matches member's typical payment - boost confidence
+                    adjustedConfidence = Math.min(0.98, adjustedConfidence + 0.15);
+                    contextNote = ` (matches typical payment of GHS ${Math.round(averageAmount)})`;
+                } else if (deviation > 2) {
+                    // Suggestion is unusual for this member - reduce confidence
+                    adjustedConfidence = Math.max(0.4, adjustedConfidence - 0.2);
+                    contextNote = ` (unusual for this member who typically pays GHS ${Math.round(averageAmount)})`;
+                }
+            }
+
             return {
                 originalAmount: parseFloat(amount) || 0,
                 suggestedAmount: learnedSuggestion.suggestedAmount,
-                confidence: learnedSuggestion.confidence,
+                confidence: adjustedConfidence,
                 reason: 'ocr_artifact',
-                message: `Learned correction: "${amount}" → ${learnedSuggestion.suggestedAmount} (seen ${learnedSuggestion.occurrences}x)`
+                message: `Learned correction: "${amount}" → ${learnedSuggestion.suggestedAmount} (seen ${learnedSuggestion.occurrences}x)${contextNote}`
             };
+        }
+    }
+
+    // Context-aware: If member always pays the same amount, suggest it
+    if (memberHistory && memberHistory.occurrences >= 5) {
+        const { averageAmount, standardDeviation, minAmount, maxAmount } = memberHistory;
+        const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+        // Very consistent payer (low variance)
+        if (standardDeviation < averageAmount * 0.1 && minAmount === maxAmount) {
+            // Member always pays exact same amount
+            if (!isNaN(numAmount) && numAmount !== averageAmount) {
+                return {
+                    originalAmount: numAmount,
+                    suggestedAmount: averageAmount,
+                    confidence: 0.9,
+                    reason: 'member_pattern',
+                    message: `This member always pays GHS ${averageAmount} (${memberHistory.occurrences} consecutive payments)`
+                };
+            }
         }
     }
 

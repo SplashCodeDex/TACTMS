@@ -380,3 +380,99 @@ export const promoteToGlobalIfQualifies = async (
 
     return false;
 };
+
+// ============================================================================
+// EXPORT/IMPORT FUNCTIONS
+// ============================================================================
+
+/**
+ * Export patterns to JSON for backup or sharing
+ * @param assemblyName - Optional: export only this assembly, or all if omitted
+ */
+export const exportPatterns = async (assemblyName?: string): Promise<string> => {
+    const db = await openDB();
+    if (!db) return JSON.stringify({ patterns: [], exportedAt: Date.now() });
+
+    const patterns: AmountCorrection[] = await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+
+        if (assemblyName) {
+            const index = store.index('assembly');
+            const request = index.getAll(assemblyName.toLowerCase());
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        } else {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        }
+    });
+
+    db.close();
+
+    return JSON.stringify({
+        patterns,
+        exportedAt: Date.now(),
+        version: 1,
+        assembly: assemblyName || 'all'
+    }, null, 2);
+};
+
+/**
+ * Import patterns from JSON
+ * @param json - JSON string from exportPatterns
+ * @param targetAssembly - Optional: override assembly name for all imported patterns
+ * @returns Number of patterns imported
+ */
+export const importPatterns = async (
+    json: string,
+    targetAssembly?: string
+): Promise<{ imported: number; skipped: number }> => {
+    const db = await openDB();
+    if (!db) return { imported: 0, skipped: 0 };
+
+    let data: { patterns: AmountCorrection[]; version?: number };
+    try {
+        data = JSON.parse(json);
+    } catch {
+        throw new Error('Invalid JSON format');
+    }
+
+    if (!Array.isArray(data.patterns)) {
+        throw new Error('Invalid patterns format - expected { patterns: [...] }');
+    }
+
+    let imported = 0;
+    let skipped = 0;
+
+    for (const pattern of data.patterns) {
+        // Skip invalid entries
+        if (!pattern.originalValue || pattern.correctedValue === undefined) {
+            skipped++;
+            continue;
+        }
+
+        // Override assembly if specified
+        const assemblyToUse = targetAssembly?.toLowerCase() || pattern.assemblyName;
+
+        // Check if this exact pattern already exists
+        const existing = await suggestCorrection(assemblyToUse, pattern.originalValue);
+        if (existing && existing.suggestedAmount === pattern.correctedValue) {
+            skipped++;
+            continue;
+        }
+
+        // Save the pattern with new ID and timestamp
+        await saveAmountCorrection(
+            assemblyToUse,
+            pattern.originalValue,
+            pattern.correctedValue,
+            pattern.memberId,
+            pattern.source || 'batch'
+        );
+        imported++;
+    }
+
+    return { imported, skipped };
+};
