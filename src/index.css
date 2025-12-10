@@ -835,3 +835,8 @@ body {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
+
+/* Bottom Nav Spacing */
+.pb-safe-bottom {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+}

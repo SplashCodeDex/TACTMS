@@ -20,7 +20,7 @@ const BarChart: React.FC<BarChartProps> = ({ data }) => {
               initial={{ height: 0 }}
               animate={{ height: maxCount > 0 ? `${(item.count / maxCount) * 100}%` : "0%" }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="w-full max-w-[20px] bg-blue-500 rounded-t-sm opacity-80 group-hover:opacity-100 transition-opacity"
+              className="w-full max-w-[40px] bg-blue-500 rounded-t-sm opacity-90 group-hover:opacity-100 transition-opacity"
             >
               {/* Tooltip */}
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">

@@ -19,6 +19,8 @@ import * as XLSX from "xlsx";
 
 import { computeColumnWidths } from "@/lib/exportUtils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { motion } from "framer-motion";
+import { hapticSelect } from "@/lib/haptics";
 
 interface MemberDatabaseSectionProps {
   memberDatabase: MemberDatabase;
@@ -278,7 +280,8 @@ const MemberDatabaseSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Desktop Header */}
+      <div className="hidden md:flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-2xl font-bold">Member Database</h2>
         <div className="flex items-center gap-2">
           <Button
@@ -292,7 +295,68 @@ const MemberDatabaseSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex border-b border-[var(--border-color)] overflow-x-auto">
+      {/* Mobile Header (Sticky) */}
+      <div className="md:hidden sticky top-16 z-20 bg-[var(--bg-main)]/95 backdrop-blur-md -mx-6 px-6 py-2 border-b border-[var(--border-color)] space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Members</h2>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => addAssemblyModal.open()}
+            leftIcon={<PlusCircle size={14} />}
+          >
+            Add
+          </Button>
+        </div>
+
+        {/* Mobile Assembly Selector */}
+        <div className="flex overflow-x-auto gap-2 no-scrollbar pb-1 -mx-6 px-6">
+          {Object.keys(memberDatabase)
+            .filter(key => key !== "true")
+            .map((assemblyName) => (
+              <button
+                key={assemblyName}
+                onClick={() => {
+                  hapticSelect();
+                  setSelectedAssembly(assemblyName);
+                }}
+                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-all ${selectedAssembly === assemblyName
+                  ? "bg-[var(--primary-accent-start)] text-white shadow-md"
+                  : "bg-[var(--bg-element)] text-[var(--text-secondary)] border border-[var(--border-color)]"
+                  }`}
+              >
+                {assemblyName}
+              </button>
+            ))}
+          <button
+            onClick={() => {
+              hapticSelect();
+              setSelectedAssembly("ALL MEMBERS");
+            }}
+            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-all ${selectedAssembly === "ALL MEMBERS"
+              ? "bg-[var(--primary-accent-start)] text-white shadow-md"
+              : "bg-[var(--bg-element)] text-[var(--text-secondary)] border border-[var(--border-color)]"
+              }`}
+          >
+            All
+          </button>
+        </div>
+
+        {/* Mobile Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-[var(--bg-secondary)] rounded-xl border-none text-sm focus:ring-2 focus:ring-[var(--primary-accent-start)]"
+          />
+        </div>
+      </div>
+
+      {/* Desktop Tabs */}
+      <div className="hidden md:flex border-b border-[var(--border-color)] overflow-x-auto">
         {Object.keys(memberDatabase)
           .filter(key => key !== "true") // Fix: Filter out "true" key
           .map((assemblyName) => (
@@ -330,249 +394,305 @@ const MemberDatabaseSection: React.FC = () => {
       </div>
 
       {selectedAssembly && (memberDatabase[selectedAssembly] || selectedAssembly === "ALL MEMBERS") ? (
-        <div className="content-card">
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4">
-            <div>
-              <h3 className="text-lg font-semibold">{selectedAssembly}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedAssembly === "ALL MEMBERS"
-                  ? sortedAndFilteredMembers.length
-                  : memberDatabase[selectedAssembly]?.data.length} members
-              </p>
-            </div>
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2 bg-[var(--bg-secondary)] p-1 rounded-md border border-[var(--border-color)]">
-                <Filter size={16} className="text-gray-400 ml-2" />
-                <input
-                  type="number"
-                  placeholder="Min Age"
-                  value={ageRangeMin}
-                  onChange={(e) => setAgeRangeMin(e.target.value)}
-                  className="bg-transparent border-none text-sm w-20 focus:ring-0 p-1"
-                />
-                <span className="text-gray-400">-</span>
-                <input
-                  type="number"
-                  placeholder="Max Age"
-                  value={ageRangeMax}
-                  onChange={(e) => setAgeRangeMax(e.target.value)}
-                  className="bg-transparent border-none text-sm w-20 focus:ring-0 p-1"
-                />
+        <>
+          {/* Desktop Content Card */}
+          <div className="hidden md:block content-card">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4">
+              <div>
+                <h3 className="text-lg font-semibold">{selectedAssembly}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {selectedAssembly === "ALL MEMBERS"
+                    ? sortedAndFilteredMembers.length
+                    : memberDatabase[selectedAssembly]?.data.length} members
+                </p>
               </div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2 bg-[var(--bg-secondary)] p-1 rounded-md border border-[var(--border-color)]">
+                  <Filter size={16} className="text-gray-400 ml-2" />
+                  <input
+                    type="number"
+                    placeholder="Min Age"
+                    value={ageRangeMin}
+                    onChange={(e) => setAgeRangeMin(e.target.value)}
+                    className="bg-transparent border-none text-sm w-20 focus:ring-0 p-1"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max Age"
+                    value={ageRangeMax}
+                    onChange={(e) => setAgeRangeMax(e.target.value)}
+                    className="bg-transparent border-none text-sm w-20 focus:ring-0 p-1"
+                  />
+                </div>
 
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search members..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-[var(--primary-accent-start)] focus:border-transparent w-64"
+                  />
+                </div>
+
+
                 <input
-                  type="text"
-                  placeholder="Search members..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg focus:ring-2 focus:ring-[var(--primary-accent-start)] focus:border-transparent w-64"
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={(e) => selectedAssembly && handleFileChange(e, selectedAssembly)}
+                  className="hidden"
                 />
-              </div>
+                {selectedAssembly !== "ALL MEMBERS" && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      leftIcon={<GripVertical size={16} />}
+                      onClick={async () => {
+                        if (selectedAssembly) {
+                          let ordered = await getOrderedMembers(selectedAssembly);
+                          const currentMembers = memberDatabase[selectedAssembly]?.data || [];
 
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={(e) => selectedAssembly && handleFileChange(e, selectedAssembly)}
-                className="hidden"
-              />
-              {selectedAssembly !== "ALL MEMBERS" && (
-                <>
-                  <Button
-                    variant="secondary"
-                    leftIcon={<GripVertical size={16} />}
-                    onClick={async () => {
-                      if (selectedAssembly) {
-                        let ordered = await getOrderedMembers(selectedAssembly);
-                        const currentMembers = memberDatabase[selectedAssembly]?.data || [];
-
-                        // If no order exists in IndexedDB, initialize from member database
-                        if (ordered.length === 0) {
-                          if (currentMembers.length > 0) {
-                            await initializeOrder(currentMembers, selectedAssembly);
-                            ordered = await getOrderedMembers(selectedAssembly);
+                          // If no order exists in IndexedDB, initialize from member database
+                          if (ordered.length === 0) {
+                            if (currentMembers.length > 0) {
+                              await initializeOrder(currentMembers, selectedAssembly);
+                              ordered = await getOrderedMembers(selectedAssembly);
+                            }
+                          } else {
+                            // Filter to only include members that exist in current database
+                            const currentMemberIds = new Set(
+                              currentMembers.map(m =>
+                                (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase()
+                              )
+                            );
+                            ordered = ordered.filter(o => currentMemberIds.has(o.memberId.toLowerCase()));
                           }
-                        } else {
-                          // Filter to only include members that exist in current database
-                          const currentMemberIds = new Set(
-                            currentMembers.map(m =>
-                              (m["Membership Number"] || m["Old Membership Number"] || "").toLowerCase()
-                            )
-                          );
-                          ordered = ordered.filter(o => currentMemberIds.has(o.memberId.toLowerCase()));
-                        }
 
-                        setOrderedMembersForModal(ordered);
-                        reorderModal.open();
+                          setOrderedMembersForModal(ordered);
+                          reorderModal.open();
+                        }
+                      }}
+                    >
+                      Reorder
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      leftIcon={<Image size={16} />}
+                      onClick={() => reorderFromImageModal.open()}
+                    >
+                      AI Reorder
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      leftIcon={<Download size={16} />}
+                      onClick={handleExportExcel}
+                    >
+                      Export
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      leftIcon={<FileUp size={16} />}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Import
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      leftIcon={<History size={16} />}
+                      onClick={() => orderHistoryModal.open()}
+                    >
+                      History
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="border rounded-md border-[var(--border-color)] bg-[var(--bg-elevated)]">
+              <ScrollArea className="h-[calc(100vh-280px)]" type="always">
+                <table className="modern-table min-w-full divide-y divide-[var(--border-color)]">
+                  <thead className="bg-[var(--bg-elevated)] sticky top-0 z-10 shadow-sm">
+                    <tr>
+                      <th scope="col" className="p-4">
+                        <Checkbox
+                          checked={
+                            selectedMembers.length === sortedAndFilteredMembers.length &&
+                            sortedAndFilteredMembers.length > 0
+                          }
+                          onChange={() => handleSelectAll()}
+                        />
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                        onClick={() => handleSort("customOrder")}
+                        title="Tithe Book Order - Position in physical tithe book"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <Hash size={14} />
+                          {sortConfig.key === "customOrder" && (
+                            sortConfig.direction === "asc" ? (
+                              <ArrowUp size={14} />
+                            ) : (
+                              <ArrowDown size={14} />
+                            )
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                        onClick={() => handleSort("First Name")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Name
+                          {sortConfig.key === "First Name" && (
+                            sortConfig.direction === "asc" ? (
+                              <ArrowUp size={14} />
+                            ) : (
+                              <ArrowDown size={14} />
+                            )
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                        onClick={() => handleSort("Membership Number")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Membership No.
+                          {sortConfig.key === "Membership Number" && (
+                            sortConfig.direction === "asc" ? (
+                              <ArrowUp size={14} />
+                            ) : (
+                              <ArrowDown size={14} />
+                            )
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                        onClick={() => handleSort("Phone Number")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Phone Number
+                          {sortConfig.key === "Phone Number" && (
+                            sortConfig.direction === "asc" ? (
+                              <ArrowUp size={14} />
+                            ) : (
+                              <ArrowDown size={14} />
+                            )
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-color)]">
+                    {sortedAndFilteredMembers.map((member, index) => (
+                      <tr key={member["Membership Number"] || `${member["No."]}-${index}`}>
+                        <td className="p-4">
+                          <Checkbox
+                            checked={selectedMembers.some(
+                              (m) => m["No."] === member["No."],
+                            )}
+                            onChange={() => handleSelectMember(member)}
+                          />
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-[var(--primary-accent-start)] font-semibold">
+                          {(() => {
+                            const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
+                            return memberOrderMap.get(memberId) || "-";
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">
+                          {member["First Name"]} {member.Surname}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {member["Membership Number"]}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {member["Phone Number"]}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEditMember(member, selectedAssembly)}
+                          >
+                            <Edit size={16} />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </div>
+          </div>
+
+          {/* Mobile Member List */}
+          <div className="md:hidden space-y-3 pb-24">
+            {sortedAndFilteredMembers.length === 0 ? (
+              <div className="text-center py-12 px-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--bg-secondary)] mb-4">
+                  <Search size={24} className="text-[var(--text-muted)]" />
+                </div>
+                <h3 className="text-lg font-medium text-[var(--text-primary)]">No members found</h3>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">Try searching for a different name or checking another assembly.</p>
+              </div>
+            ) : (
+              sortedAndFilteredMembers.map((member) => (
+                <motion.div
+                  key={member["No."]}
+                  className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] overflow-hidden relative"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {/* Swipe Background Actions */}
+                  <div className="absolute inset-y-0 right-0 w-24 bg-yellow-500 flex items-center justify-center">
+                    <Edit className="text-white" size={20} />
+                  </div>
+
+                  <motion.div
+                    className="bg-[var(--bg-card)] p-4 relative z-10 flex items-center gap-4"
+                    drag="x"
+                    dragConstraints={{ left: -100, right: 0 }}
+                    onDragEnd={(e, info) => {
+                      if (info.offset.x < -60) {
+                        hapticSelect();
+                        onEditMember(member, selectedAssembly || "");
                       }
                     }}
                   >
-                    Reorder
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    leftIcon={<Image size={16} />}
-                    onClick={() => reorderFromImageModal.open()}
-                  >
-                    AI Reorder
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    leftIcon={<Download size={16} />}
-                    onClick={handleExportExcel}
-                  >
-                    Export
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    leftIcon={<FileUp size={16} />}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Import
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    leftIcon={<History size={16} />}
-                    onClick={() => orderHistoryModal.open()}
-                  >
-                    History
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="border rounded-md border-[var(--border-color)] bg-[var(--bg-elevated)]">
-            <ScrollArea className="h-[calc(100vh-280px)]" type="always">
-              <table className="modern-table min-w-full divide-y divide-[var(--border-color)]">
-                <thead className="bg-[var(--bg-elevated)] sticky top-0 z-10 shadow-sm">
-                  <tr>
-                    <th scope="col" className="p-4">
-                      <Checkbox
-                        checked={
-                          selectedMembers.length === sortedAndFilteredMembers.length &&
-                          sortedAndFilteredMembers.length > 0
-                        }
-                        onChange={() => handleSelectAll()}
-                      />
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                      onClick={() => handleSort("customOrder")}
-                      title="Tithe Book Order - Position in physical tithe book"
-                    >
-                      <div className="flex items-center justify-center gap-1">
-                        <Hash size={14} />
-                        {sortConfig.key === "customOrder" && (
-                          sortConfig.direction === "asc" ? (
-                            <ArrowUp size={14} />
-                          ) : (
-                            <ArrowDown size={14} />
-                          )
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                      onClick={() => handleSort("First Name")}
-                    >
-                      <div className="flex items-center gap-1">
-                        Name
-                        {sortConfig.key === "First Name" && (
-                          sortConfig.direction === "asc" ? (
-                            <ArrowUp size={14} />
-                          ) : (
-                            <ArrowDown size={14} />
-                          )
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                      onClick={() => handleSort("Membership Number")}
-                    >
-                      <div className="flex items-center gap-1">
-                        Membership No.
-                        {sortConfig.key === "Membership Number" && (
-                          sortConfig.direction === "asc" ? (
-                            <ArrowUp size={14} />
-                          ) : (
-                            <ArrowDown size={14} />
-                          )
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                      onClick={() => handleSort("Phone Number")}
-                    >
-                      <div className="flex items-center gap-1">
-                        Phone Number
-                        {sortConfig.key === "Phone Number" && (
-                          sortConfig.direction === "asc" ? (
-                            <ArrowUp size={14} />
-                          ) : (
-                            <ArrowDown size={14} />
-                          )
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-color)]">
-                  {sortedAndFilteredMembers.map((member, index) => (
-                    <tr key={member["Membership Number"] || `${member["No."]}-${index}`}>
-                      <td className="p-4">
-                        <Checkbox
-                          checked={selectedMembers.some(
-                            (m) => m["No."] === member["No."],
-                          )}
-                          onChange={() => handleSelectMember(member)}
-                        />
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-[var(--primary-accent-start)] font-semibold">
-                        {(() => {
-                          const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
-                          return memberOrderMap.get(memberId) || "-";
-                        })()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] flex items-center justify-center text-white font-bold text-lg shadow-sm flex-shrink-0">
+                      {member["First Name"]?.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-[var(--text-primary)] truncate">
                         {member["First Name"]} {member.Surname}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {member["Membership Number"]}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {member["Phone Number"]}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEditMember(member, selectedAssembly)}
-                        >
-                          <Edit size={16} />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </ScrollArea>
+                      </h4>
+                      <p className="text-xs text-[var(--text-secondary)] truncate">
+                        #{member["Membership Number"]} • {member["Phone Number"] || "No Phone"}
+                      </p>
+                    </div>
+                    <div className="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg-secondary)] px-2 py-1 rounded">
+                      {memberOrderMap.get((member["Membership Number"] || "").toLowerCase()) || "#"}
+                    </div>
+                  </motion.div>
+                </motion.div>
+              ))
+            )}
           </div>
-        </div>
+        </>
       ) : (
         <div className="text-center py-12 content-card">
           <p className="text-gray-500 dark:text-gray-400">
@@ -584,6 +704,7 @@ const MemberDatabaseSection: React.FC = () => {
         </div>
       )
       }
+
 
       {/* Add Assembly Modal */}
       <AddAssemblyModal

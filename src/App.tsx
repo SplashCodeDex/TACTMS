@@ -49,6 +49,7 @@ import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext 
 import { useFavorites } from "./hooks/useFavorites";
 import { useAppActions } from "./hooks/useAppActions";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 import {
   createTitheList,
@@ -1221,7 +1222,7 @@ const App: React.FC = () => {
         touchHandlers={sidebarSwipeHandlers}
       />
 
-      <div className="main-content">
+      <div className="main-content pb-safe-bottom md:pb-0">
         <MobileHeader
           onMenuClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           title={currentAssembly ? `${currentAssembly} Assembly` : "TACTMS"}
@@ -1235,10 +1236,10 @@ const App: React.FC = () => {
           <AnimatePresence mode="wait">
             <MotionDiv
               key={location.pathname}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
             >
               <Outlet
                 context={{
@@ -1400,6 +1401,9 @@ const App: React.FC = () => {
             </MotionDiv>
           </AnimatePresence>
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav onMenuClick={() => setIsMobileSidebarOpen(true)} />
       </div>
 
       <CommandPalette

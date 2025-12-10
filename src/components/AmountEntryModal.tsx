@@ -9,6 +9,8 @@ import { TitheRecordB } from "../types";
 import Modal from "./Modal";
 import Button from "./Button";
 import { SortAsc, SortDesc, Filter, Search, Check } from "lucide-react";
+import { hapticSelect, hapticSuccess } from "../lib/haptics";
+import confetti from "canvas-confetti";
 
 interface DataEntryRowProps {
   record: TitheRecordB;
@@ -276,125 +278,260 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
       }
     >
       <div className="space-y-4">
-        <div className="flex justify-between items-center flex-wrap gap-4 bg-[var(--bg-elevated)] p-3 rounded-lg border border-[var(--border-color)]">
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant={sortOrder === "original" ? "secondary" : "subtle"}
-              onClick={() => setSortOrder("original")}
-              leftIcon={<SortAsc size={16} />}
-            >
-              Original
-            </Button>
-            <Button
-              size="sm"
-              variant={sortOrder === "alpha" ? "secondary" : "subtle"}
-              onClick={() => setSortOrder("alpha")}
-              leftIcon={<SortDesc size={16} />}
-            >
-              A-Z
-            </Button>
+        {/* Desktop View - Table */}
+        <div className="hidden md:block">
+          <div className="flex justify-between items-center flex-wrap gap-4 bg-[var(--bg-elevated)] p-3 rounded-lg border border-[var(--border-color)]">
+            {/* ... existing header controls ... */}
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant={sortOrder === "original" ? "secondary" : "subtle"}
+                onClick={() => setSortOrder("original")}
+                leftIcon={<SortAsc size={16} />}
+              >
+                Original
+              </Button>
+              <Button
+                size="sm"
+                variant={sortOrder === "alpha" ? "secondary" : "subtle"}
+                onClick={() => setSortOrder("alpha")}
+                leftIcon={<SortDesc size={16} />}
+              >
+                A-Z
+              </Button>
+            </div>
+
+            {/* Global Description Input */}
+            <div className="flex-grow min-w-[200px]">
+              <input
+                type="text"
+                placeholder="Narration/Description (e.g. Tithe for Nov)"
+                value={globalDescription}
+                onChange={(e) => setGlobalDescription(e.target.value)}
+                className="form-input-light w-full text-sm py-1.5"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+              <div className="relative flex-grow">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                />
+                <input
+                  type="text"
+                  placeholder="Jump to member..."
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="form-input-light !pl-9 !py-1.5 w-full text-sm"
+                />
+              </div>
+              <Button
+                size="sm"
+                variant={showOnlyEmpty ? "secondary" : "subtle"}
+                onClick={() => setShowOnlyEmpty((p) => !p)}
+                leftIcon={<Filter size={16} />}
+              >
+                Needs Amount
+              </Button>
+            </div>
+            <div className="w-full sm:w-1/3">
+              <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
+                <span>Progress</span>
+                <span>
+                  {entriesFilled} / {totalEntries} Filled
+                </span>
+              </div>
+              <div className="w-full bg-[var(--input-bg)] rounded-full h-2.5">
+                <div
+                  className="bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${progressPercentage}%` }}
+                ></div>
+              </div>
+            </div>
           </div>
 
-          {/* Global Description Input */}
-          <div className="flex-grow min-w-[200px]">
-            <input
-              type="text"
-              placeholder="Narration/Description (e.g. Tithe for Nov)"
-              value={globalDescription}
-              onChange={(e) => setGlobalDescription(e.target.value)}
-              className="form-input-light w-full text-sm py-1.5"
+          <div className="overflow-y-auto border border-[var(--border-color)] rounded-lg shadow-md bg-[var(--bg-elevated)] max-h-[55vh]">
+            <table className="min-w-full text-sm modern-table">
+              <caption className="sr-only">
+                Table for rapid data entry of tithe amounts.
+              </caption>
+              <thead className="bg-[var(--bg-card-subtle-accent)] backdrop-blur-lg sticky top-0 z-10">
+                <tr>
+                  <th
+                    scope="col"
+                    className="p-2.5 text-center text-xs font-semibold uppercase tracking-wider w-12"
+                  >
+                    No.
+                  </th>
+                  <th
+                    scope="col"
+                    className="p-2.5 text-left text-xs font-semibold uppercase tracking-wider w-2/3"
+                  >
+                    Member Details
+                  </th>
+                  <th
+                    scope="col"
+                    className="p-2.5 text-left text-xs font-semibold uppercase tracking-wider w-1/3"
+                  >
+                    Amount (GH₵)
+                  </th>
+                </tr>
+              </thead>
+              <tbody ref={tableBodyRef}>
+                {filteredAndSortedData.map((record) => (
+                  <DataEntryRow
+                    key={record["No."]}
+                    record={record}
+                    visualIndex={
+                      localData.findIndex((r) => r["No."] === record["No."]) + 1
+                    } // Show original index
+                    isActive={activeRecordId === record["No."]}
+                    onAmountChange={handleAmountChange}
+                    onNavigate={handleNavigation}
+                    setActiveRow={() => setActiveRecordId(record["No."])}
+                  />
+                ))}
+              </tbody>
+            </table>
+            {filteredAndSortedData.length === 0 && (
+              <div className="text-center py-8 text-[var(--text-muted)]">
+                No members match your current filters.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile View - Focus Card */}
+        <div className="md:hidden fixed inset-0 z-[60] bg-[var(--bg-main)] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold text-[var(--text-primary)]">
+                Entry Mode
+              </div>
+              <div className="px-2 py-0.5 rounded-full bg-[var(--bg-secondary)] text-xs text-[var(--text-secondary)] font-medium">
+                {entriesFilled} / {totalEntries}
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={onClose} className="text-[var(--text-secondary)]">Close</Button>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full bg-[var(--bg-secondary)] h-1">
+            <div
+              className="bg-[var(--primary-accent-start)] h-1 transition-all duration-300"
+              style={{ width: `${progressPercentage}%` }}
             />
           </div>
 
-          <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
-            <div className="relative flex-grow">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-              />
-              <input
-                type="text"
-                placeholder="Jump to member..."
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                className="form-input-light !pl-9 !py-1.5 w-full text-sm"
-              />
-            </div>
-            <Button
-              size="sm"
-              variant={showOnlyEmpty ? "secondary" : "subtle"}
-              onClick={() => setShowOnlyEmpty((p) => !p)}
-              leftIcon={<Filter size={16} />}
-            >
-              Needs Amount
-            </Button>
+          {/* Focus Content */}
+          <div className="flex-1 flex flex-col justify-center px-6 py-4 overflow-y-auto">
+            {activeRecordId ? (() => {
+              const currentRecord = localData.find(r => r["No."] === activeRecordId);
+              if (!currentRecord) return <div className="text-center text-[var(--text-muted)]">Record not found</div>;
+
+              // Helper to navigate
+              const goToNext = () => {
+                const idx = filteredAndSortedData.findIndex(r => r["No."] === activeRecordId);
+                if (idx < filteredAndSortedData.length - 1) {
+                  hapticSelect();
+                  setActiveRecordId(filteredAndSortedData[idx + 1]["No."]);
+                }
+              };
+              const goToPrev = () => {
+                const idx = filteredAndSortedData.findIndex(r => r["No."] === activeRecordId);
+                if (idx > 0) {
+                  hapticSelect();
+                  setActiveRecordId(filteredAndSortedData[idx - 1]["No."]);
+                }
+              };
+
+              return (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300" key={activeRecordId}>
+                  <div className="text-center space-y-2">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white text-2xl font-bold shadow-lg mb-2">
+                      {currentRecord["First Name"]?.charAt(0)}
+                    </div>
+                    <h2 className="text-2xl font-bold text-[var(--text-primary)] leading-tight">
+                      {currentRecord["First Name"]} {currentRecord.Surname}
+                    </h2>
+                    <p className="text-[var(--text-secondary)] font-medium">
+                      #{currentRecord["Membership Number"]}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-center text-sm font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                      Enter Amount (GH₵)
+                    </label>
+                    <div className="relative max-w-[280px] mx-auto">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        autoFocus
+                        value={currentRecord["Transaction Amount"] || ""}
+                        onChange={(e) => handleAmountChange(currentRecord["No."], e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            hapticSuccess(); // Satisfying click
+                            goToNext();
+                          }
+                        }}
+                        className="w-full bg-transparent text-center text-5xl font-bold text-[var(--text-primary)] border-b-2 border-[var(--border-color)] focus:border-[var(--primary-accent-start)] focus:outline-none py-2 placeholder-[var(--text-placeholder)]/20"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Navigation Controls */}
+                  <div className="grid grid-cols-2 gap-4 pt-4">
+                    <Button
+                      variant="subtle"
+                      className="h-14 text-lg rounded-2xl"
+                      onClick={goToPrev}
+                      disabled={filteredAndSortedData.findIndex(r => r["No."] === activeRecordId) === 0}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="primary"
+                      className="h-14 text-lg rounded-2xl shadow-lg"
+                      onClick={goToNext}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="text-center">
+                <p className="text-[var(--text-muted)]">No members selected.</p>
+              </div>
+            )}
           </div>
-          <div className="w-full sm:w-1/3">
-            <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
-              <span>Progress</span>
-              <span>
-                {entriesFilled} / {totalEntries} Filled
-              </span>
-            </div>
-            <div className="w-full bg-[var(--input-bg)] rounded-full h-2.5">
-              <div
-                className="bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] h-2.5 rounded-full transition-all duration-300"
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
-            </div>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-main)]">
+            <Button
+              variant="primary"
+              className="w-full h-12 text-lg rounded-xl shadow-md bg-green-600 hover:bg-green-700 border-transparent text-white"
+              onClick={() => {
+                hapticSuccess();
+                confetti({
+                  particleCount: 100,
+                  spread: 70,
+                  origin: { y: 0.6 }
+                });
+                handleSave();
+              }}
+            >
+              Done & Save Changes
+            </Button>
           </div>
         </div>
 
-        <div className="overflow-y-auto border border-[var(--border-color)] rounded-lg shadow-md bg-[var(--bg-elevated)] max-h-[55vh]">
-          <table className="min-w-full text-sm modern-table">
-            <caption className="sr-only">
-              Table for rapid data entry of tithe amounts.
-            </caption>
-            <thead className="bg-[var(--bg-card-subtle-accent)] backdrop-blur-lg sticky top-0 z-10">
-              <tr>
-                <th
-                  scope="col"
-                  className="p-2.5 text-center text-xs font-semibold uppercase tracking-wider w-12"
-                >
-                  No.
-                </th>
-                <th
-                  scope="col"
-                  className="p-2.5 text-left text-xs font-semibold uppercase tracking-wider w-2/3"
-                >
-                  Member Details
-                </th>
-                <th
-                  scope="col"
-                  className="p-2.5 text-left text-xs font-semibold uppercase tracking-wider w-1/3"
-                >
-                  Amount (GH₵)
-                </th>
-              </tr>
-            </thead>
-            <tbody ref={tableBodyRef}>
-              {filteredAndSortedData.map((record) => (
-                <DataEntryRow
-                  key={record["No."]}
-                  record={record}
-                  visualIndex={
-                    localData.findIndex((r) => r["No."] === record["No."]) + 1
-                  } // Show original index
-                  isActive={activeRecordId === record["No."]}
-                  onAmountChange={handleAmountChange}
-                  onNavigate={handleNavigation}
-                  setActiveRow={() => setActiveRecordId(record["No."])}
-                />
-              ))}
-            </tbody>
-          </table>
-          {filteredAndSortedData.length === 0 && (
-            <div className="text-center py-8 text-[var(--text-muted)]">
-              No members match your current filters.
-            </div>
-          )}
-        </div>
       </div>
     </Modal>
   );
