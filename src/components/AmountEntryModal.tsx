@@ -8,7 +8,7 @@ import React, {
 import { TitheRecordB } from "../types";
 import Modal from "./Modal";
 import Button from "./Button";
-import { SortAsc, SortDesc, Filter, Search, Check } from "lucide-react";
+import { SortDesc, Filter, Search, Check, UserPlus } from "lucide-react";
 import { hapticSelect, hapticSuccess } from "../lib/haptics";
 import confetti from "canvas-confetti";
 
@@ -123,6 +123,7 @@ interface AmountEntryModalProps {
   onClose: () => void;
   onSave: (updatedList: TitheRecordB[]) => void;
   titheListData: TitheRecordB[];
+  openAddMemberToListModal: () => void;
 }
 
 const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
@@ -130,9 +131,10 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
   onClose,
   onSave,
   titheListData,
+  openAddMemberToListModal,
 }) => {
   const [localData, setLocalData] = useState<TitheRecordB[]>([]);
-  const [sortOrder, setSortOrder] = useState<"original" | "alpha">("original");
+  const [sortOrder, setSortOrder] = useState<"original" | "alpha" | "amount">("original");
   const [activeRecordId, setActiveRecordId] = useState<number | string | null>(
     null,
   );
@@ -183,6 +185,17 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
       return [...data].sort((a, b) =>
         a["Membership Number"].localeCompare(b["Membership Number"]),
       );
+    }
+    if (sortOrder === "amount") {
+      return [...data].sort((a, b) => {
+        const amtA = Number(a["Transaction Amount"]) || 0;
+        const amtB = Number(b["Transaction Amount"]) || 0;
+        // Sort descending, empty amounts go to bottom
+        if (amtA === 0 && amtB === 0) return 0;
+        if (amtA === 0) return 1;
+        if (amtB === 0) return -1;
+        return amtB - amtA;
+      });
     }
     return data; // Original order is preserved if not sorting
   }, [localData, sortOrder, filterText, showOnlyEmpty]);
@@ -236,6 +249,8 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
       "Narration/Description": globalDescription
     }));
     onSave(dataWithDescription);
+    // Close the modal after saving
+    onClose();
   };
 
   const { entriesFilled, totalEntries, progressPercentage } = useMemo(() => {
@@ -285,19 +300,25 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                variant={sortOrder === "original" ? "secondary" : "subtle"}
-                onClick={() => setSortOrder("original")}
-                leftIcon={<SortAsc size={16} />}
+                variant="primary"
+                onClick={openAddMemberToListModal}
+                leftIcon={<UserPlus size={16} />}
               >
-                Original
+                Add Member
               </Button>
               <Button
                 size="sm"
-                variant={sortOrder === "alpha" ? "secondary" : "subtle"}
-                onClick={() => setSortOrder("alpha")}
+                variant={sortOrder !== "original" ? "secondary" : "subtle"}
+                onClick={() => {
+                  // Cycle through: original -> alpha -> amount -> original
+                  if (sortOrder === "original") setSortOrder("alpha");
+                  else if (sortOrder === "alpha") setSortOrder("amount");
+                  else setSortOrder("original");
+                }}
                 leftIcon={<SortDesc size={16} />}
+                title={`Sort: ${sortOrder === "original" ? "Original Order" : sortOrder === "alpha" ? "A-Z" : "By Amount"}`}
               >
-                A-Z
+                {sortOrder === "original" ? "A-Z" : sortOrder === "alpha" ? "Amount" : "Original"}
               </Button>
             </div>
 

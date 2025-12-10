@@ -1438,6 +1438,7 @@ const App: React.FC = () => {
             onClose={() => setIsAmountEntryModalOpen(false)}
             titheListData={titheListData}
             onSave={handleSaveFromPreview}
+            openAddMemberToListModal={openAddMemberToListModal}
           />
         )
       }
