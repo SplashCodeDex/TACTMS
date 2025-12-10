@@ -38,8 +38,13 @@ interface AddNewMemberModalProps {
 
   onAddExistingMember: (member: MemberRecordA) => void;
   currentAssembly: string | null;
+  /** For single-assembly search (default behavior) */
   memberDatabase: MemberRecordA[];
   titheListData: TitheRecordB[];
+  /** For cross-assembly search - pass the entire database object */
+  fullMemberDatabase?: Record<string, { data: MemberRecordA[]; fileName?: string; lastUpdated?: number }>;
+  /** Enable cross-assembly search mode */
+  crossAssemblySearch?: boolean;
 }
 
 const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
@@ -50,6 +55,8 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
   currentAssembly,
   memberDatabase,
   titheListData,
+  fullMemberDatabase,
+  crossAssemblySearch = false,
 }) => {
   const [activeTab, setActiveTab] = useState<"search" | "create">("search");
 
@@ -57,33 +64,56 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
   const [formData, setFormData] = useState<Partial<MemberRecordA>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const existingTitheListMemberNos = useMemo(() => {
-    return new Set(titheListData.map((r) => r["No."]));
+  // Track already-added members by Membership Number (more reliable than No.)
+  const existingTitheListMemberIds = useMemo(() => {
+    return new Set(titheListData.map((r) => {
+      // Extract the membership ID from the concatenated string
+      const match = r["Membership Number"]?.match(/\(([^|)]+)/);
+      return match ? match[1].toLowerCase() : r["Membership Number"]?.toLowerCase() || "";
+    }).filter(Boolean));
   }, [titheListData]);
+
+  // Build unified search pool: either cross-assembly or single-assembly
+  const searchPool = useMemo(() => {
+    if (crossAssemblySearch && fullMemberDatabase) {
+      // Flatten all assemblies into a single list with assembly name attached
+      const pool: Array<MemberRecordA & { _sourceAssembly: string }> = [];
+      Object.entries(fullMemberDatabase).forEach(([assemblyName, assemblyData]) => {
+        if (assemblyData?.data) {
+          assemblyData.data.forEach((member) => {
+            pool.push({ ...member, _sourceAssembly: assemblyName });
+          });
+        }
+      });
+      return pool;
+    }
+    // Single assembly mode - attach current assembly name
+    return memberDatabase.map((m) => ({ ...m, _sourceAssembly: currentAssembly || "" }));
+  }, [crossAssemblySearch, fullMemberDatabase, memberDatabase, currentAssembly]);
 
   const searchResults = useMemo(() => {
     if (!searchTerm.trim()) return [];
-    if (!memberDatabase) return [];
+    if (searchPool.length === 0) return [];
 
     const lowerSearchTerm = searchTerm.toLowerCase();
 
-    return memberDatabase
+    return searchPool
       .filter((member) => {
-        // More robust check: if a member with this unique 'No.' is already in the list, exclude them.
-        if (member["No."] && existingTitheListMemberNos.has(member["No."])) {
+        // Check if already in the tithe list by membership ID
+        const memberId = (member["Membership Number"] || member["Old Membership Number"] || "").toLowerCase();
+        if (memberId && existingTitheListMemberIds.has(memberId)) {
           return false;
         }
 
         const name =
           `${member["First Name"] || ""} ${member.Surname || ""}`.toLowerCase();
-        const memberId = (member["Membership Number"] || "").toLowerCase();
 
         return (
           name.includes(lowerSearchTerm) || memberId.includes(lowerSearchTerm)
         );
       })
-      .slice(0, 15);
-  }, [searchTerm, memberDatabase, existingTitheListMemberNos]);
+      .slice(0, 20); // Show more results for cross-assembly search
+  }, [searchTerm, searchPool, existingTitheListMemberIds]);
 
   useEffect(() => {
     if (isOpen) {
@@ -143,7 +173,9 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Add Member to List for ${currentAssembly} Assembly`}
+      title={crossAssemblySearch
+        ? `Add Member to ${currentAssembly}'s Tithe List`
+        : `Add Member to List for ${currentAssembly} Assembly`}
       size="lg"
       closeOnOutsideClick={false}
       footerContent={
@@ -176,7 +208,9 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
             />
             <input
               type="text"
-              placeholder="Search by name or membership ID..."
+              placeholder={crossAssemblySearch
+                ? "Search all assemblies by name or ID..."
+                : "Search by name or membership ID..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-input-light w-full !pl-10"
@@ -186,15 +220,20 @@ const AddNewMemberModal: React.FC<AddNewMemberModalProps> = ({
           {searchTerm && searchResults.length > 0 && (
             <ScrollArea className="h-64">
               <ul className="space-y-2 pr-2">
-                {searchResults.map((member) => (
+                {searchResults.map((member, idx) => (
                   <li
-                    key={member["No."]}
+                    key={`${member["Membership Number"]}-${idx}`}
                     className="p-2 flex items-center justify-between bg-[var(--bg-elevated)] rounded-md border border-[var(--border-color)]"
                   >
                     <div>
                       <p className="font-semibold text-[var(--text-primary)]">{`${member["First Name"] || ""} ${member.Surname || ""}`}</p>
                       <p className="text-xs text-[var(--text-muted)]">
                         ID: {member["Membership Number"]}
+                        {crossAssemblySearch && (member as any)._sourceAssembly && (member as any)._sourceAssembly !== currentAssembly && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded bg-[var(--primary-accent-start)]/20 text-[var(--primary-accent-start)] text-[10px] font-medium">
+                            {(member as any)._sourceAssembly}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <Button

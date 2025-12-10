@@ -469,14 +469,21 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
                   }
                 };
 
+                const displayName = currentRecord.memberDetails
+                  ? `${currentRecord.memberDetails["First Name"] || ""} ${currentRecord.memberDetails.Surname || ""}`.trim()
+                  : currentRecord["Membership Number"];
+                const initial =
+                  currentRecord.memberDetails?.["First Name"]?.charAt(0) ||
+                  currentRecord["Membership Number"]?.charAt(0) || "";
+
                 return (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300" key={activeRecordId}>
                     <div className="text-center space-y-2">
                       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white text-2xl font-bold shadow-lg mb-2">
-                        {currentRecord["First Name"]?.charAt(0)}
+                        {initial}
                       </div>
                       <h2 className="text-2xl font-bold text-[var(--text-primary)] leading-tight">
-                        {currentRecord["First Name"]} {currentRecord.Surname}
+                        {displayName}
                       </h2>
                       <p className="text-[var(--text-secondary)] font-medium">
                         #{currentRecord["Membership Number"]}
