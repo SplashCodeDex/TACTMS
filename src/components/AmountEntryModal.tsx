@@ -12,7 +12,7 @@ import { SortDesc, Filter, Search, Check, UserPlus } from "lucide-react";
 import { hapticSelect, hapticSuccess } from "../lib/haptics";
 import confetti from "canvas-confetti";
 import { useWorkspaceContext } from "@/context";
-import { saveAmountCorrection } from "@/services/handwritingLearning";
+import { saveAmountCorrection, promoteToGlobalIfQualifies } from "@/services/handwritingLearning";
 
 interface DataEntryRowProps {
   record: TitheRecordB;
@@ -178,6 +178,9 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
       setFilterText("");
       setShowOnlyEmpty(false);
       setGlobalDescription("");
+      // Clear pending corrections (user closed without saving)
+      pendingCorrectionsRef.current.clear();
+      originalValuesRef.current.clear();
     }
   }, [isOpen, titheListData]);
 
@@ -287,6 +290,8 @@ const AmountEntryModal: React.FC<AmountEntryModalProps> = ({
             undefined,
             'tithe_entry'
           );
+          // Check if pattern qualifies for global promotion (fire-and-forget)
+          promoteToGlobalIfQualifies(original, corrected).catch(console.warn);
         } catch (err) {
           console.warn('Failed to save correction:', err);
         }

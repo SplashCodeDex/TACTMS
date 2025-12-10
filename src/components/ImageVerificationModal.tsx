@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { TitheRecordB, MemberRecordA } from "@/types";
 import { findMemberByName } from "@/services/reconciliation";
-import { validateAmount, AmountValidation } from "@/services/amountValidator";
+import { validateAmountWithLearning, AmountValidation } from "@/services/amountValidator";
 import Button from "./Button";
 import { Check, AlertTriangle, AlertCircle } from "lucide-react";
 import MemberSelect from "./MemberSelect";
 import ParsingIndicator from "./ParsingIndicator";
+import { useWorkspaceContext } from "@/context";
 
 interface ImageVerificationModalProps {
     isOpen: boolean;
@@ -35,6 +36,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     masterData,
     onConfirm,
 }) => {
+    const { currentAssembly } = useWorkspaceContext();
     const [rows, setRows] = useState<VerificationRow[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -57,7 +59,10 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                         aiConfidence: record.Confidence || 0,
                         manualOverride: false,
                         confidenceTier: match?.confidenceTier || 'low',
-                        amountWarning: validateAmount(record["Transaction Amount"]),
+                        amountWarning: await validateAmountWithLearning(
+                            record["Transaction Amount"],
+                            currentAssembly || 'default'
+                        ),
                         matchSource: match?.matchSource
                     };
                 }));

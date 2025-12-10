@@ -13,19 +13,24 @@
 
 export interface AmountCorrection {
     id: string;
-    assemblyName: string;
-    originalValue: string;     // What AI extracted: "1OO", "5O"
-    correctedValue: number;    // What user entered: 100, 50
-    memberId?: string;         // Optional: specific member pattern
+    assemblyName: string;       // Use '__GLOBAL__' for cross-assembly patterns
+    originalValue: string;      // What AI extracted: "1OO", "5O"
+    correctedValue: number;     // What user entered: 100, 50
+    memberId?: string;          // Optional: specific member pattern
     timestamp: number;
     source: 'tithe_entry' | 'verification' | 'batch';
+    isGlobal?: boolean;         // True = applies to all assemblies
 }
+
+// Special assembly name for global/cross-assembly patterns
+export const GLOBAL_ASSEMBLY = '__GLOBAL__';
 
 export interface CorrectionSuggestion {
     suggestedAmount: number;
     confidence: number;        // 0-1 based on frequency
     occurrences: number;       // How many times this correction was made
     isExactMatch: boolean;     // True if originalValue matches exactly
+    isGlobal?: boolean;        // True if from global patterns
 }
 
 // ============================================================================
@@ -176,17 +181,30 @@ export const suggestCorrection = async (
     const db = await openDB();
     if (!db) return null; // IndexedDB unavailable
 
-    const corrections: AmountCorrection[] = await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const index = store.index('assembly_original');
-        const request = index.getAll([assemblyName.toLowerCase(), normalizedOriginal]);
+    // Helper to query corrections for a specific assembly
+    const getCorrections = (targetAssembly: string): Promise<AmountCorrection[]> => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const index = store.index('assembly_original');
+            const request = index.getAll([targetAssembly.toLowerCase(), normalizedOriginal]);
 
-        request.onsuccess = () => resolve(request.result || []);
-        request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    };
 
-        tx.oncomplete = () => db.close();
-    });
+    // Priority: Assembly-specific first, then global fallback
+    let corrections = await getCorrections(assemblyName);
+    let isGlobalMatch = false;
+
+    if (corrections.length === 0) {
+        // Fallback to global patterns
+        corrections = await getCorrections(GLOBAL_ASSEMBLY);
+        isGlobalMatch = true;
+    }
+
+    db.close();
 
     if (corrections.length === 0) {
         return null;
@@ -209,14 +227,16 @@ export const suggestCorrection = async (
         }
     }
 
-    // Calculate confidence based on frequency and total occurrences
-    const confidence = Math.min(0.95, 0.5 + (maxCount / corrections.length) * 0.3 + Math.min(corrections.length / 10, 0.15));
+    // Calculate confidence (global patterns get slightly lower confidence)
+    const baseConfidence = 0.5 + (maxCount / corrections.length) * 0.3 + Math.min(corrections.length / 10, 0.15);
+    const confidence = Math.min(0.95, isGlobalMatch ? baseConfidence * 0.9 : baseConfidence);
 
     return {
         suggestedAmount: mostCommonValue,
         confidence,
         occurrences: maxCount,
-        isExactMatch: true
+        isExactMatch: true,
+        isGlobal: isGlobalMatch
     };
 };
 
@@ -259,6 +279,8 @@ export const getMostCommonCorrections = async (
  */
 export const clearCorrections = async (assemblyName: string): Promise<void> => {
     const db = await openDB();
+    if (!db) return;
+
     const corrections = await getCorrectionsForAssembly(assemblyName);
 
     return new Promise((resolve, reject) => {
@@ -275,4 +297,86 @@ export const clearCorrections = async (assemblyName: string): Promise<void> => {
         };
         tx.onerror = () => reject(tx.error);
     });
+};
+
+/**
+ * Save a global correction that applies to all assemblies
+ * Checks for duplicates before saving
+ */
+export const saveGlobalCorrection = async (
+    originalValue: string,
+    correctedValue: number,
+    source: 'tithe_entry' | 'verification' | 'batch' = 'batch'
+): Promise<void> => {
+    // Check if this global pattern already exists
+    const existingGlobal = await suggestCorrection(GLOBAL_ASSEMBLY, originalValue);
+    if (existingGlobal && existingGlobal.suggestedAmount === correctedValue) {
+        // Already exists with same correction, skip
+        return;
+    }
+
+    return saveAmountCorrection(
+        GLOBAL_ASSEMBLY,
+        originalValue,
+        correctedValue,
+        undefined,
+        source
+    );
+};
+
+/**
+ * Check if a pattern should be promoted to global
+ * Returns true if the same correction exists in 3+ different assemblies
+ */
+export const shouldPromoteToGlobal = async (
+    originalValue: string,
+    correctedValue: number
+): Promise<boolean> => {
+    const db = await openDB();
+    if (!db) return false;
+
+    const normalizedOriginal = originalValue.trim().toUpperCase();
+
+    // Get all corrections with this original value
+    const allCorrections: AmountCorrection[] = await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const index = store.index('original');
+        const request = index.getAll(normalizedOriginal);
+
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    });
+
+    db.close();
+
+    // Count unique assemblies with this correction
+    const assembliesWithCorrection = new Set<string>();
+    for (const correction of allCorrections) {
+        if (correction.correctedValue === correctedValue &&
+            correction.assemblyName !== GLOBAL_ASSEMBLY.toLowerCase()) {
+            assembliesWithCorrection.add(correction.assemblyName);
+        }
+    }
+
+    // Promote if seen in 3+ assemblies
+    return assembliesWithCorrection.size >= 3;
+};
+
+/**
+ * Promote a pattern to global if it qualifies
+ * Call this after saving a correction to auto-promote common patterns
+ */
+export const promoteToGlobalIfQualifies = async (
+    originalValue: string,
+    correctedValue: number
+): Promise<boolean> => {
+    const shouldPromote = await shouldPromoteToGlobal(originalValue, correctedValue);
+
+    if (shouldPromote) {
+        await saveGlobalCorrection(originalValue, correctedValue, 'batch');
+        return true;
+    }
+
+    return false;
 };

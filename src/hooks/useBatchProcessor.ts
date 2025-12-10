@@ -4,7 +4,7 @@ import { processTitheImageWithValidation } from '@/services/imageProcessor';
 import { validateTitheBookImage, validateExtractedTitheData } from '@/services/imageValidator';
 import { sequencePages, detectDuplicatePages, mergeDuplicateExtractions } from '@/services/pageSequencer';
 import { findMemberByNameSync, getTopFuzzyMatches } from '@/services/reconciliation';
-import { validateAmount, buildMemberHistory } from '@/services/amountValidator';
+import { validateAmountWithLearning, buildMemberHistory } from '@/services/amountValidator';
 
 interface UseBatchProcessorProps {
     memberDatabase: MemberDatabase;
@@ -116,7 +116,7 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
                 let unmatchedCount = 0;
                 let anomalyCount = 0;
 
-                const matchedResults = potentialMerged.map(record => {
+                const matchedResults = await Promise.all(potentialMerged.map(async record => {
                     const rawName = record["Membership Number"]; // This contains the OCR-extracted name
                     const match = findMemberByNameSync(rawName, assemblyMembers);
 
@@ -132,18 +132,27 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
                             memberDetails: match.member
                         };
 
-                        // Validate amount against member's history (anomaly detection)
+                        // Validate amount with learned corrections + anomaly detection
                         const memberHistory = buildMemberHistory(memberId, transactionLog);
-                        if (memberHistory) {
-                            const amountValidation = validateAmount(record["Transaction Amount"], memberHistory);
-                            if (amountValidation.reason === 'anomaly' || amountValidation.reason === 'unusual_high' || amountValidation.reason === 'unusual_low') {
-                                anomalyCount++;
-                                // Add anomaly warning to the record
-                                resultRecord = {
-                                    ...resultRecord,
-                                    "Narration/Description": `[ANOMALY: ${amountValidation.message}] ${resultRecord["Narration/Description"] || ''}`
-                                };
-                            }
+                        const amountValidation = await validateAmountWithLearning(
+                            record["Transaction Amount"],
+                            assembly,
+                            memberHistory || undefined
+                        );
+                        if (amountValidation.reason === 'anomaly' || amountValidation.reason === 'unusual_high' || amountValidation.reason === 'unusual_low') {
+                            anomalyCount++;
+                            // Add anomaly warning to the record
+                            resultRecord = {
+                                ...resultRecord,
+                                "Narration/Description": `[ANOMALY: ${amountValidation.message}] ${resultRecord["Narration/Description"] || ''}`
+                            };
+                        } else if (amountValidation.reason === 'ocr_artifact' && amountValidation.suggestedAmount) {
+                            // Apply learned OCR correction
+                            resultRecord = {
+                                ...resultRecord,
+                                "Transaction Amount": amountValidation.suggestedAmount,
+                                "Narration/Description": `[OCR CORRECTED: ${amountValidation.message}] ${resultRecord["Narration/Description"] || ''}`
+                            };
                         }
                     } else {
                         unmatchedCount++;
@@ -164,7 +173,7 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
                     }
 
                     return resultRecord;
-                });
+                }));
 
                 console.info(
                     `Batch processing: ${matchedCount} matched, ${unmatchedCount} unmatched, ` +
