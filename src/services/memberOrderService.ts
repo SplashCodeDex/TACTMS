@@ -456,10 +456,10 @@ export const applyNewOrder = async (
  * Apply order changes respecting the extracted positions from the image.
  * This is for partial reorders (e.g., only SET2: positions 32-62).
  *
- * Logic:
+ * Logic (TRUE SWAP):
  * 1. Members BEFORE minPos: Keep their positions
  * 2. Members AT extracted positions: Assign from positionedMembers
- * 3. Displaced members (were in range but not in extracted): Push to end
+ * 3. Displaced members (were in range but not in extracted): SWAP to vacated positions
  *
  * @param positionedMembers - Array of { memberId, position } from extraction
  * @param assemblyName - Assembly name
@@ -475,7 +475,6 @@ export const applyRangeAwareOrder = async (
 
     // Get all existing entries for this assembly
     const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
-    const entryById = new Map(entries.map(e => [e.memberId.toLowerCase(), e]));
 
     // Detect the range from extracted positions
     const extractedPositions = positionedMembers.map(pm => pm.position);
@@ -485,10 +484,30 @@ export const applyRangeAwareOrder = async (
     // Track which members are being placed by the extraction
     const extractedMemberIds = new Set(positionedMembers.map(pm => pm.memberId.toLowerCase()));
 
-    // Map of position -> memberId for the extraction
-    const extractionPositionMap = new Map(
-        positionedMembers.map(pm => [pm.position, pm.memberId.toLowerCase()])
+    // Build map: memberId -> their NEW position (from extraction)
+    const newPositionByMemberId = new Map(
+        positionedMembers.map(pm => [pm.memberId.toLowerCase(), pm.position])
     );
+
+    // Build map: memberId -> their OLD position (before any changes)
+    const oldPositionByMemberId = new Map(
+        entries.filter(e => e.isActive).map(e => [e.memberId.toLowerCase(), e.titheBookIndex])
+    );
+
+    // Collect vacated positions (where extracted members CAME FROM, outside the range)
+    // These are positions that will become empty when extracted members move to their new positions
+    const vacatedPositions: number[] = [];
+    for (const pm of positionedMembers) {
+        const memberId = pm.memberId.toLowerCase();
+        const oldPos = oldPositionByMemberId.get(memberId);
+        // Only vacated if the old position is OUTSIDE the extraction range
+        // (positions inside the range are handled by the extraction itself)
+        if (oldPos !== undefined && (oldPos < minPos || oldPos > maxPos)) {
+            vacatedPositions.push(oldPos);
+        }
+    }
+    // Sort vacated positions for assignment
+    vacatedPositions.sort((a, b) => a - b);
 
     const tx = db.transaction('memberOrders', 'readwrite');
     const store = tx.objectStore('memberOrders');
@@ -496,7 +515,7 @@ export const applyRangeAwareOrder = async (
     // Collect displaced members (were in range but not in extracted set)
     const displacedMembers: MemberOrderEntry[] = [];
 
-    // Process all entries
+    // First pass: identify displaced members and update extracted members
     for (const entry of entries) {
         if (!entry.isActive) continue;
 
@@ -505,10 +524,7 @@ export const applyRangeAwareOrder = async (
 
         // Case 1: This member is in the extracted set -> assign their new extracted position
         if (extractedMemberIds.has(memberId)) {
-            const newPos = positionedMembers.find(
-                pm => pm.memberId.toLowerCase() === memberId
-            )?.position;
-
+            const newPos = newPositionByMemberId.get(memberId);
             if (newPos !== undefined) {
                 const dbEntry = await store.get(entry.id);
                 if (dbEntry) {
@@ -523,35 +539,38 @@ export const applyRangeAwareOrder = async (
             displacedMembers.push(entry);
         }
         // Case 3: Member is BEFORE minPos -> keep their position (no change needed)
-        // Case 4: Member is AFTER maxPos -> will be shifted if needed
+        // Case 4: Member is AFTER maxPos -> keep their position (no change needed)
     }
 
-    // Push displaced members to positions after maxPos
-    // Sort them by their original position to preserve relative order
+    // Second pass: assign displaced members to vacated positions (TRUE SWAP)
+    // Sort displaced by their original position to preserve relative order
     displacedMembers.sort((a, b) => a.titheBookIndex - b.titheBookIndex);
 
-    // Find the next available position after maxPos
-    // We need to check what positions are already taken after maxPos
-    const positionsAfterMax = entries
-        .filter(e => e.isActive && e.titheBookIndex > maxPos && !extractedMemberIds.has(e.memberId.toLowerCase()))
-        .map(e => e.titheBookIndex);
-
-    let nextPos = maxPos + 1;
-
-    // Assign displaced members to positions after maxPos
-    for (const displaced of displacedMembers) {
-        // Find next free position
-        while (positionsAfterMax.includes(nextPos)) {
-            nextPos++;
-        }
-
+    for (let i = 0; i < displacedMembers.length; i++) {
+        const displaced = displacedMembers[i];
         const dbEntry = await store.get(displaced.id);
-        if (dbEntry) {
+        if (!dbEntry) continue;
+
+        if (i < vacatedPositions.length) {
+            // SWAP: Assign to a vacated position
+            dbEntry.titheBookIndex = vacatedPositions[i];
+        } else {
+            // No more vacated positions - find next available after maxPos
+            // This handles edge cases where there are more displaced than vacated
+            const takenPositions = new Set(
+                entries.filter(e => e.isActive).map(e => e.titheBookIndex)
+            );
+            let nextPos = maxPos + 1;
+            while (takenPositions.has(nextPos)) {
+                nextPos++;
+            }
             dbEntry.titheBookIndex = nextPos;
-            dbEntry.lastUpdated = now;
-            await store.put(dbEntry);
+            // Add to taken so next displaced doesn't get same position
+            takenPositions.add(nextPos);
         }
-        nextPos++;
+
+        dbEntry.lastUpdated = now;
+        await store.put(dbEntry);
     }
 
     await tx.done;

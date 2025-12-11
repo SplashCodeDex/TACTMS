@@ -3,7 +3,7 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw, ArrowRight, Eye, RotateCcw, Zap, Download, FileUp, GitCompare } from "lucide-react";
 import { MemberRecordA } from "@/types";
-import { applyNewOrder, applyRangeAwareOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange, restoreSnapshot, getLatestSnapshot, exportOrderForAssembly, importOrderForAssembly, OrderExport } from "@/services/memberOrderService";
+import { applyRangeAwareOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange, restoreSnapshot, getLatestSnapshot, exportOrderForAssembly, importOrderForAssembly, OrderExport } from "@/services/memberOrderService";
 import { extractNamesFromTitheBook } from "@/services/imageProcessor";
 
 interface ReorderFromImageModalProps {
@@ -325,9 +325,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                 position: row.position  // Use extracted position from image, not array index
             })).filter(pm => pm.memberId);
 
-            // Detect if this is a full reorder (starts at 1) or partial reorder (starts at 32+)
             const minPos = Math.min(...positionedMembers.map(pm => pm.position));
-            const isPartialReorder = minPos > 1;
+            const maxPos = Math.max(...positionedMembers.map(pm => pm.position));
 
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
@@ -335,27 +334,20 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
 
-            // Use range-aware for partial reorders, standard for full reorders
-            if (isPartialReorder) {
-                await applyRangeAwareOrder(positionedMembers, assemblyName);
-            } else {
-                // Full reorder: fall back to original behavior for compatibility
-                const orderedMemberIds = positionedMembers
-                    .sort((a, b) => a.position - b.position)
-                    .map(pm => pm.memberId);
-                await applyNewOrder(orderedMemberIds, assemblyName);
-            }
+            // ALWAYS use applyRangeAwareOrder to preserve extracted positions
+            // This ensures declined positions (e.g., 1,2,3,5,6...) are preserved as gaps
+            await applyRangeAwareOrder(positionedMembers, assemblyName);
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
                 assemblyName,
                 action: 'ai_reorder',
                 timestamp: Date.now(),
-                description: `AI reordered ${positionedMembers.length} members from tithe book image${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`,
+                description: `AI reordered ${positionedMembers.length} members from tithe book image (positions ${minPos}-${maxPos})`,
                 affectedCount: positionedMembers.length,
             }, historyId);
 
-            addToast(`Reordered ${positionedMembers.length} members to match tithe book${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`, "success");
+            addToast(`Reordered ${positionedMembers.length} members to match tithe book (positions ${minPos}-${maxPos})`, "success");
             onSaveComplete();
             handleClose();
         } catch (error) {
@@ -404,9 +396,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                 }))
                 .filter(pm => pm.memberId);
 
-            // Detect if this is a full reorder (starts at 1) or partial reorder (starts at 32+)
             const minPos = Math.min(...positionedMembers.map(pm => pm.position));
-            const isPartialReorder = minPos > 1;
+            const maxPos = Math.max(...positionedMembers.map(pm => pm.position));
 
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
@@ -414,27 +405,19 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
 
-            // Use range-aware for partial reorders, standard for full reorders
-            if (isPartialReorder) {
-                await applyRangeAwareOrder(positionedMembers, assemblyName);
-            } else {
-                // Full reorder: fall back to original behavior for compatibility
-                const orderedMemberIds = positionedMembers
-                    .sort((a, b) => a.position - b.position)
-                    .map(pm => pm.memberId);
-                await applyNewOrder(orderedMemberIds, assemblyName);
-            }
+            // ALWAYS use applyRangeAwareOrder to preserve extracted positions
+            await applyRangeAwareOrder(positionedMembers, assemblyName);
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
                 assemblyName,
                 action: 'ai_reorder',
                 timestamp: Date.now(),
-                description: `AI reordered ${positionedMembers.length} members (selected from diff view)${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`,
+                description: `AI reordered ${positionedMembers.length} members (selected from diff view, positions ${minPos}-${maxPos})`,
                 affectedCount: positionedMembers.length,
             }, historyId);
 
-            addToast(`Applied ${positionedMembers.length} order changes${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`, "success");
+            addToast(`Applied ${positionedMembers.length} order changes (positions ${minPos}-${maxPos})`, "success");
             onSaveComplete();
             handleClose();
         } catch (error) {
