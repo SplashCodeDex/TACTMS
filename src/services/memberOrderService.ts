@@ -1026,6 +1026,22 @@ export const cleanupOldSnapshots = async (
     return deletedCount;
 };
 
+/**
+ * Get the most recent snapshot for an assembly (for undo)
+ */
+export const getLatestSnapshot = async (
+    assemblyName: string
+): Promise<OrderSnapshot | null> => {
+    const db = await getDB();
+    const snapshots = await db.getAllFromIndex('orderSnapshots', 'by-assembly', assemblyName);
+
+    if (snapshots.length === 0) return null;
+
+    // Sort by timestamp descending and return newest
+    snapshots.sort((a, b) => b.timestamp - a.timestamp);
+    return snapshots[0];
+};
+
 // ============================================================================
 // LEARNED ALIASES (NAME LEARNING)
 // ============================================================================

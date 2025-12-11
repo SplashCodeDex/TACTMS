@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
-import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw, ArrowRight, Eye } from "lucide-react";
+import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw, ArrowRight, Eye, RotateCcw, Zap, Download, FileUp, GitCompare } from "lucide-react";
 import { MemberRecordA } from "@/types";
-import { applyNewOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange } from "@/services/memberOrderService";
+import { applyNewOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange, restoreSnapshot, getLatestSnapshot, exportOrderForAssembly, importOrderForAssembly, OrderExport } from "@/services/memberOrderService";
 import { extractNamesFromTitheBook } from "@/services/imageProcessor";
 
 interface ReorderFromImageModalProps {
@@ -16,7 +16,7 @@ interface ReorderFromImageModalProps {
     memberOrderMap?: Map<string, number>; // For positional hints
 }
 
-type ModalStep = "upload" | "processing" | "preview" | "resolving" | "diff";
+type ModalStep = "upload" | "processing" | "preview" | "resolving" | "diff" | "compare";
 
 interface ExtractedNameRow {
     position: number;
@@ -54,6 +54,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [orderChanges, setOrderChanges] = useState<OrderChange[]>([]);
+    const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -196,7 +197,9 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             }
 
             // Process sequentially with per-image error handling
+            setProcessingProgress({ current: 0, total: uploadedImages.length });
             for (let i = 0; i < uploadedImages.length; i++) {
+                setProcessingProgress({ current: i + 1, total: uploadedImages.length });
                 try {
                     // Pass memberOrderMap for positional hints and aliasMap for learned names
                     const result = await extractNamesFromTitheBook(uploadedImages[i], apiKey, memberDatabase, memberOrderMap, aliasMap);
@@ -221,8 +224,47 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             // Sort by extracted position to keep order
             allRows.sort((a, b) => a.position - b.position);
 
-            setExtractedRows(allRows);
-            const unmatchedCount = allRows.filter(r => !r.matchedMember).length;
+            // Multi-page merge: deduplicate by position (keep highest confidence match)
+            const seenPositions = new Map<number, ExtractedNameRow>();
+            const seenMemberIds = new Set<string>();
+            let duplicatesRemoved = 0;
+
+            for (const row of allRows) {
+                const memberId = row.matchedMember
+                    ? (row.matchedMember["Membership Number"] || row.matchedMember["Old Membership Number"] || "").toLowerCase()
+                    : null;
+
+                // Check for duplicate position
+                const existingByPosition = seenPositions.get(row.position);
+                if (existingByPosition) {
+                    // Keep the one with higher match score
+                    if (row.matchScore > existingByPosition.matchScore) {
+                        seenPositions.set(row.position, row);
+                    }
+                    duplicatesRemoved++;
+                    continue;
+                }
+
+                // Check for duplicate member (same member matched twice at different positions)
+                if (memberId && seenMemberIds.has(memberId)) {
+                    duplicatesRemoved++;
+                    continue;
+                }
+
+                seenPositions.set(row.position, row);
+                if (memberId) seenMemberIds.add(memberId);
+            }
+
+            // Convert map to array, sorted by position
+            const finalRows = Array.from(seenPositions.values())
+                .sort((a, b) => a.position - b.position);
+
+            if (duplicatesRemoved > 0) {
+                addToast(`Merged ${duplicatesRemoved} duplicate entries across pages`, "info");
+            }
+
+            setExtractedRows(finalRows);
+            const unmatchedCount = finalRows.filter(r => !r.matchedMember).length;
 
             if (unmatchedCount > 0) {
                 setStep("preview");
@@ -375,6 +417,125 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
         }
     };
 
+    // Undo last reorder using snapshot
+    const handleUndo = async () => {
+        setIsSaving(true);
+        try {
+            const latestSnapshot = await getLatestSnapshot(assemblyName);
+            if (!latestSnapshot) {
+                addToast("No previous order to restore", "warning");
+                return;
+            }
+            const result = await restoreSnapshot(latestSnapshot.id);
+            if (result.success) {
+                addToast(`Restored previous order (${result.restoredCount} members)`, "success");
+                onSaveComplete();
+            } else {
+                addToast(result.error || "Failed to restore", "error");
+            }
+        } catch (error) {
+            console.error("Failed to undo:", error);
+            addToast("Failed to undo", "error");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Export current order as JSON
+    const handleExportOrder = async () => {
+        try {
+            const exportData = await exportOrderForAssembly(assemblyName);
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${assemblyName.replace(/\s+/g, "_")}_order_${new Date().toISOString().split("T")[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            addToast(`Exported order for ${exportData.memberCount} members`, "success");
+        } catch (error) {
+            console.error("Export failed:", error);
+            addToast("Failed to export order", "error");
+        }
+    };
+
+    // Import order from JSON file
+    const handleImportOrder = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            try {
+                const data: OrderExport = JSON.parse(ev.target?.result as string);
+                const result = await importOrderForAssembly(data, assemblyName);
+                if (result.success) {
+                    addToast(`Imported order: ${result.imported} updated, ${result.skipped} skipped`, "success");
+                    onSaveComplete();
+                } else {
+                    addToast(`Import failed: ${result.errors.join(", ")}`, "error");
+                }
+            } catch (error) {
+                console.error("Import failed:", error);
+                addToast("Invalid JSON file", "error");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ""; // Reset input
+    };
+
+    const importInputRef = useRef<HTMLInputElement>(null);
+
+    // Batch auto-assign: assign best alternative to all unmatched rows
+    const handleBatchResolve = useCallback(async () => {
+        let resolved = 0;
+        for (let i = 0; i < extractedRows.length; i++) {
+            const row = extractedRows[i];
+            if (!row.matchedMember && row.alternatives.length > 0) {
+                const bestAlt = row.alternatives[0];
+                if (bestAlt.score > 0.6) {
+                    await handleResolveMember(i, bestAlt.member);
+                    resolved++;
+                }
+            }
+        }
+        if (resolved > 0) {
+            addToast(`Auto-assigned ${resolved} matches`, "success");
+        } else {
+            addToast("No confident matches available", "info");
+        }
+    }, [extractedRows, handleResolveMember, addToast]);
+
+    // Keyboard navigation for diff view
+    const [focusedDiffIndex, setFocusedDiffIndex] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (step !== "diff") return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setFocusedDiffIndex(prev =>
+                    prev === null ? 0 : Math.min(prev + 1, orderChanges.length - 1)
+                );
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setFocusedDiffIndex(prev =>
+                    prev === null ? 0 : Math.max(prev - 1, 0)
+                );
+            } else if ((e.key === "Enter" || e.key === " ") && focusedDiffIndex !== null) {
+                e.preventDefault();
+                toggleChangeInclusion(focusedDiffIndex);
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                setStep("preview");
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [step, focusedDiffIndex, orderChanges.length, toggleChangeInclusion]);
+
     // Filter members for manual resolution
     const filteredMembers = searchTerm
         ? memberDatabase.filter(m => {
@@ -410,6 +571,51 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                     {step === "preview" && (
                         <>
                             <Button
+                                variant="ghost"
+                                onClick={handleUndo}
+                                disabled={isSaving}
+                                leftIcon={<RotateCcw size={16} />}
+                                title="Restore previous order"
+                            >
+                                Undo
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={handleExportOrder}
+                                disabled={isSaving}
+                                leftIcon={<Download size={16} />}
+                                title="Export current order as JSON"
+                            >
+                                Export
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => importInputRef.current?.click()}
+                                disabled={isSaving}
+                                leftIcon={<FileUp size={16} />}
+                                title="Import order from JSON"
+                            >
+                                Import
+                            </Button>
+                            <input
+                                ref={importInputRef}
+                                type="file"
+                                accept=".json"
+                                onChange={handleImportOrder}
+                                className="hidden"
+                            />
+                            {unmatchedCount > 0 && (
+                                <Button
+                                    variant="secondary"
+                                    onClick={handleBatchResolve}
+                                    disabled={isSaving}
+                                    leftIcon={<Zap size={16} />}
+                                    title="Auto-assign confident matches"
+                                >
+                                    Auto-Assign
+                                </Button>
+                            )}
+                            <Button
                                 variant="secondary"
                                 onClick={handleReviewChanges}
                                 disabled={unmatchedCount > 0 || isSaving}
@@ -436,6 +642,34 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                                 disabled={isSaving}
                             >
                                 Back
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => setStep("compare")}
+                                disabled={isSaving}
+                                leftIcon={<GitCompare size={16} />}
+                            >
+                                Side-by-Side
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleApplySelected}
+                                disabled={diffStats.selected === 0 || isSaving}
+                                isLoading={isSaving}
+                                leftIcon={<Check size={16} />}
+                            >
+                                Apply Selected ({diffStats.selected})
+                            </Button>
+                        </>
+                    )}
+                    {step === "compare" && (
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setStep("diff")}
+                                disabled={isSaving}
+                            >
+                                Back to Diff
                             </Button>
                             <Button
                                 variant="primary"
@@ -543,11 +777,22 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                     <div className="text-center py-12">
                         <RefreshCw size={48} className="mx-auto text-[var(--primary-accent-start)] mb-4 animate-spin" />
                         <p className="text-lg font-medium text-[var(--text-primary)]">
-                            Extracting names from image...
+                            {processingProgress.total > 1
+                                ? `Processing image ${processingProgress.current} of ${processingProgress.total}...`
+                                : "Extracting names from image..."
+                            }
                         </p>
                         <p className="text-sm text-[var(--text-muted)] mt-2">
                             This may take a few seconds
                         </p>
+                        {processingProgress.total > 1 && (
+                            <div className="mt-4 w-48 mx-auto bg-[var(--bg-secondary)] rounded-full h-2">
+                                <div
+                                    className="bg-[var(--primary-accent-start)] h-2 rounded-full transition-all"
+                                    style={{ width: `${(processingProgress.current / processingProgress.total) * 100}%` }}
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -729,63 +974,161 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                                         <th className="p-3 text-center font-medium w-10">✓</th>
                                         <th className="p-3 text-left font-medium">Member</th>
                                         <th className="p-3 text-center font-medium w-20">Current</th>
-                                        <th className="p-3 text-center font-medium w-8"><ArrowRight size={14} /></th>
+                                        <th className="p-3 text-center font-medium w-16">Delta</th>
                                         <th className="p-3 text-center font-medium w-20">New</th>
                                         <th className="p-3 text-center font-medium w-24">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-color)]">
-                                    {orderChanges.map((change, idx) => (
-                                        <tr
-                                            key={`${change.memberId}-${change.newPosition}-${idx}`}
-                                            className={`${change.included ? "" : "opacity-50"} ${change.changeType === 'moved'
-                                                ? "bg-yellow-500/5"
-                                                : change.changeType === 'new'
-                                                    ? "bg-blue-500/5"
-                                                    : ""
-                                                }`}
-                                        >
-                                            <td className="p-3 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={change.included}
-                                                    onChange={() => toggleChangeInclusion(idx)}
-                                                    className="w-4 h-4 rounded border-[var(--border-color)] accent-[var(--primary-accent-start)]"
-                                                />
-                                            </td>
-                                            <td className="p-3 text-[var(--text-primary)]">
-                                                {change.memberName}
-                                            </td>
-                                            <td className="p-3 text-center font-mono text-[var(--text-muted)]">
-                                                {change.currentPosition ?? "—"}
-                                            </td>
-                                            <td className="p-3 text-center text-[var(--text-muted)]">
-                                                <ArrowRight size={14} className="inline" />
-                                            </td>
-                                            <td className="p-3 text-center font-mono font-bold text-[var(--primary-accent-start)]">
-                                                {change.newPosition}
-                                            </td>
-                                            <td className="p-3 text-center">
-                                                {change.changeType === 'moved' && (
-                                                    <span className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">
-                                                        Moved
-                                                    </span>
-                                                )}
-                                                {change.changeType === 'unchanged' && (
-                                                    <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">
-                                                        Same
-                                                    </span>
-                                                )}
-                                                {change.changeType === 'new' && (
-                                                    <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-400">
-                                                        New
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {orderChanges.map((change, idx) => {
+                                        const delta = change.currentPosition !== null
+                                            ? change.newPosition - change.currentPosition
+                                            : null;
+                                        return (
+                                            <tr
+                                                key={`${change.memberId}-${change.newPosition}-${idx}`}
+                                                className={`${change.included ? "" : "opacity-50"} ${focusedDiffIndex === idx ? "ring-2 ring-[var(--primary-accent-start)] ring-inset" : ""} ${change.changeType === 'moved'
+                                                    ? "bg-yellow-500/5"
+                                                    : change.changeType === 'new'
+                                                        ? "bg-blue-500/5"
+                                                        : ""
+                                                    }`}
+                                            >
+                                                <td className="p-3 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={change.included}
+                                                        onChange={() => toggleChangeInclusion(idx)}
+                                                        className="w-4 h-4 rounded border-[var(--border-color)] accent-[var(--primary-accent-start)]"
+                                                    />
+                                                </td>
+                                                <td className="p-3 text-[var(--text-primary)]">
+                                                    {change.memberName}
+                                                </td>
+                                                <td className="p-3 text-center font-mono text-[var(--text-muted)]">
+                                                    {change.currentPosition ?? "—"}
+                                                </td>
+                                                <td className="p-3 text-center font-mono font-bold">
+                                                    {delta === null ? (
+                                                        <span className="text-blue-400">new</span>
+                                                    ) : delta === 0 ? (
+                                                        <span className="text-[var(--text-muted)]">—</span>
+                                                    ) : delta > 0 ? (
+                                                        <span className="text-red-400">+{delta}</span>
+                                                    ) : (
+                                                        <span className="text-green-400">{delta}</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-3 text-center font-mono font-bold text-[var(--primary-accent-start)]">
+                                                    {change.newPosition}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    {change.changeType === 'moved' && (
+                                                        <span className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">
+                                                            Moved
+                                                        </span>
+                                                    )}
+                                                    {change.changeType === 'unchanged' && (
+                                                        <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">
+                                                            Same
+                                                        </span>
+                                                    )}
+                                                    {change.changeType === 'new' && (
+                                                        <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-400">
+                                                            New
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
+                        </div>
+                    </>
+                )}
+
+                {/* Side-by-Side Comparison View */}
+                {step === "compare" && (
+                    <>
+                        <div className="flex justify-between items-center mb-4">
+                            <p className="text-sm font-medium text-[var(--text-primary)]">
+                                Side-by-Side Order Comparison
+                            </p>
+                            <span className="text-xs text-[var(--text-muted)]">
+                                {diffStats.moved} moves, {diffStats.newMembers} new
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 max-h-[60vh]">
+                            {/* Current Order Column */}
+                            <div className="border border-[var(--border-color)] rounded-lg overflow-hidden">
+                                <div className="bg-[var(--bg-elevated)] p-3 border-b border-[var(--border-color)]">
+                                    <h4 className="font-medium text-sm text-[var(--text-primary)]">Current Order</h4>
+                                </div>
+                                <div className="max-h-[50vh] overflow-y-auto">
+                                    {orderChanges
+                                        .filter(c => c.currentPosition !== null)
+                                        .sort((a, b) => (a.currentPosition ?? 0) - (b.currentPosition ?? 0))
+                                        .map((change, idx) => (
+                                            <div
+                                                key={`current-${change.memberId}-${idx}`}
+                                                className={`p-2 flex items-center gap-2 text-sm border-b border-[var(--border-color)] last:border-b-0 ${change.changeType === 'moved' ? 'bg-yellow-500/10' : ''
+                                                    }`}
+                                            >
+                                                <span className="w-8 text-center font-mono text-[var(--text-muted)]">
+                                                    {change.currentPosition}
+                                                </span>
+                                                <span className="flex-1 truncate text-[var(--text-primary)]">
+                                                    {change.memberName}
+                                                </span>
+                                                {change.changeType === 'moved' && (
+                                                    <ArrowRight size={14} className="text-yellow-400 shrink-0" />
+                                                )}
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
+
+                            {/* Proposed Order Column */}
+                            <div className="border border-[var(--border-color)] rounded-lg overflow-hidden">
+                                <div className="bg-[var(--bg-elevated)] p-3 border-b border-[var(--border-color)]">
+                                    <h4 className="font-medium text-sm text-[var(--text-primary)]">Proposed Order</h4>
+                                </div>
+                                <div className="max-h-[50vh] overflow-y-auto">
+                                    {orderChanges
+                                        .filter(c => c.included)
+                                        .sort((a, b) => a.newPosition - b.newPosition)
+                                        .map((change, idx) => {
+                                            const delta = change.currentPosition !== null
+                                                ? change.newPosition - change.currentPosition
+                                                : null;
+                                            return (
+                                                <div
+                                                    key={`proposed-${change.memberId}-${idx}`}
+                                                    className={`p-2 flex items-center gap-2 text-sm border-b border-[var(--border-color)] last:border-b-0 ${change.changeType === 'new' ? 'bg-blue-500/10' :
+                                                            change.changeType === 'moved' ? 'bg-green-500/10' : ''
+                                                        }`}
+                                                >
+                                                    <span className="w-8 text-center font-mono text-[var(--primary-accent-start)] font-bold">
+                                                        {change.newPosition}
+                                                    </span>
+                                                    <span className="flex-1 truncate text-[var(--text-primary)]">
+                                                        {change.memberName}
+                                                    </span>
+                                                    {delta !== null && delta !== 0 && (
+                                                        <span className={`text-xs font-mono ${delta > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                                            {delta > 0 ? `+${delta}` : delta}
+                                                        </span>
+                                                    )}
+                                                    {change.changeType === 'new' && (
+                                                        <span className="text-xs text-blue-400">new</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                            </div>
                         </div>
                     </>
                 )}

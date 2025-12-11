@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { MemberDatabase } from "../types";
-import { Trash2, AlertTriangle, Building2, Settings2, Info, RotateCcw } from "lucide-react";
+import { Trash2, AlertTriangle, Settings2, RotateCcw } from "lucide-react";
 import Button from "../components/Button";
 import { useAppConfigContext, useToast } from "../context";
 import { resetOrderFromMasterList, repairMemberOrder } from "../services/memberOrderService";
@@ -97,8 +97,6 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
 }) => {
     const addToast = useToast();
     const {
-        assemblies,
-        isCustomAssembly,
         fuzzyMatchThreshold,
         setFuzzyMatchThreshold
     } = useAppConfigContext();
@@ -145,43 +143,6 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
                 <p className="text-[var(--text-secondary)] mt-1">
                     Manage application data and preferences.
                 </p>
-            </div>
-
-            {/* Assembly Configuration Card */}
-            <div className="content-card">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--border-color)]">
-                    <Building2 className="text-[var(--accent-color)]" size={24} />
-                    <h3 className="text-lg font-semibold text-[var(--text-primary)]">
-                        Assembly Configuration
-                    </h3>
-                </div>
-
-                <p className="text-sm text-[var(--text-secondary)] mb-4">
-                    Your configured assemblies. Default Jei-Krodua District assemblies are highlighted.
-                </p>
-
-                {/* Info Banner - Direct to Database for adding */}
-                <div className="flex items-start gap-2 p-3 mb-4 rounded-lg bg-[var(--info-bg)] border border-[var(--info-border)]">
-                    <Info size={16} className="text-[var(--info-text)] mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-[var(--info-text)]">
-                        To add a new assembly, go to the <strong>Database</strong> section and click the <strong>+</strong> button.
-                    </p>
-                </div>
-
-                {/* Assembly List (Read-only display) */}
-                <div className="flex flex-wrap gap-2">
-                    {assemblies.map((assembly) => (
-                        <div
-                            key={assembly}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${!isCustomAssembly(assembly)
-                                ? "bg-[var(--accent-color)]/10 border-[var(--accent-color)]/30 text-[var(--accent-color)]"
-                                : "bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-primary)]"
-                                }`}
-                        >
-                            <span className="text-sm">{assembly}</span>
-                        </div>
-                    ))}
-                </div>
             </div>
 
             {/* Fuzzy Match Configuration */}
