@@ -30,6 +30,14 @@ export interface TitheImageExtractionResult {
     lowConfidenceCount: number;
     targetColumnZone?: TargetColumnZone;
     setInfo?: SetInfo;
+    /** Anomaly warnings for amounts that deviate from member history */
+    anomalyWarnings?: Array<{
+        rowNo: number;
+        memberName: string;
+        extractedAmount: number;
+        expectedAmount: number;
+        reason: string;
+    }>;
 }
 
 export interface EnhancedRawEntry {

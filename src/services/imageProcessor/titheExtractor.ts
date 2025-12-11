@@ -11,9 +11,11 @@
  * - Row context validation
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { TitheRecordB } from "../../types";
+import { TitheRecordB, TransactionLogEntry } from "../../types";
 import { cleanOCRName } from "../imageValidator";
 import { cleanOCRAmount } from "../../utils/stringUtils";
+import { predictEnsemble } from "../ensembleOCR";
+import { buildMemberHistory } from "../amountValidator";
 import {
     MODEL_NAME,
     fileToGenerativePart,
@@ -115,13 +117,16 @@ const calculateAmountConfidence = (
 /**
  * Enhanced tithe image processor using gemini-2.5-flash
  * With advanced zone detection, SET inference, and multi-factor confidence
+ *
+ * @param transactionLogs - Optional transaction logs for member history anomaly detection
  */
 export const processTitheImageWithValidation = async (
     imageFile: File,
     apiKey: string,
     targetMonth: string,
     targetWeek: string,
-    targetDateString: string
+    targetDateString: string,
+    transactionLogs?: TransactionLogEntry[]
 ): Promise<TitheImageExtractionResult> => {
     if (!apiKey) throw new Error("API Key is missing");
     if (!targetMonth || !targetWeek || !targetDateString) {
@@ -203,6 +208,30 @@ export const processTitheImageWithValidation = async (
     - RED INK amounts in week columns → Flag as suspicious (might be reading TOTAL column by mistake)
 
     ---
+    ## GHANAIAN NUMERAL HANDWRITING PATTERNS (CRITICAL!)
+
+    Ghanaian handwriting has distinct characteristics. Look for these patterns:
+
+    ### Common Digit Shapes
+    - **0**: Often written as a tall loop, may look like "O" or "o"
+    - **1**: Elongated vertical stroke, sometimes with serif, may look like "l" or "I"
+    - **2**: May have exaggerated loop at bottom, can look like "Z"
+    - **5**: Long curved top stroke, may look like "S"
+    - **6**: Closed or open loop, distinguish from 0 by the tail
+    - **8**: Two stacked circles, may look like "B"
+
+    ### Common Amount Patterns (MOST LIKELY VALUES)
+    - **Round numbers**: 5, 10, 20, 50, 100, 200, 500 (most common)
+    - **Multiples of 5/10**: 15, 25, 30, 40, 60, 80, 150, 250
+    - **Unlikely amounts**: 37, 83, 94 (rare - likely OCR error if seen)
+    - **If amount doesn't end in 0 or 5, double-check!**
+
+    ### Ink Bleed on Cheap Paper
+    - Digits may appear thicker than written
+    - Adjacent digits may connect
+    - "00" may appear as a single blob → still means "00"
+
+    ---
     ## HANDWRITING PATTERNS (Ghanaian Names)
 
     - **Titles**: PASTOR, DEACON, DEACONESS, ELDER, MRS, MADAM (or: PST, DCN, DCNS, ELD, APT)
@@ -262,48 +291,128 @@ export const processTitheImageWithValidation = async (
         let lowConfidenceCount = 0;
 
         // Map entries to TitheRecordB format with adaptive confidence
-        const entries: TitheRecordB[] = (rawResult.entries || []).map((item: EnhancedRawEntry, index) => {
-            const cleanedName = cleanOCRName(item.Name);
-            const cleanedAmount = cleanOCRAmount(item.Amount);
+        // Uses async for ensemble OCR integration
+        const entries: TitheRecordB[] = await Promise.all(
+            (rawResult.entries || []).map(async (item: EnhancedRawEntry, index) => {
+                const cleanedName = cleanOCRName(item.Name);
+                let finalAmount = cleanOCRAmount(item.Amount);
+                let ensembleApplied = false;
 
-            // Calculate adaptive confidence with all factors
-            const confidence = calculateAmountConfidence(
-                cleanedAmount,
-                item.legibility,
-                item.rawAmountText,
-                item.inkColor,
-                item.cellCondition,
-                item["No."]
-            );
+                // ============================================================
+                // ENSEMBLE OCR INTEGRATION
+                // If raw text contains letters (OCR artifacts), try learned patterns
+                // ============================================================
+                const rawText = item.rawAmountText;
+                if (rawText && /[OoIilLsS]/.test(rawText) && finalAmount !== 0) {
+                    try {
+                        const ensemblePrediction = await predictEnsemble(rawText);
+                        if (ensemblePrediction && ensemblePrediction.confidence >= 0.65) {
+                            // Ensemble has a high-confidence correction
+                            console.log(
+                                `[TitheExtractor] Row ${item["No."]}: Ensemble correction "${rawText}" → ${ensemblePrediction.suggestedAmount} ` +
+                                `(conf: ${(ensemblePrediction.confidence * 100).toFixed(0)}%, method: ${ensemblePrediction.method})`
+                            );
+                            finalAmount = ensemblePrediction.suggestedAmount;
+                            ensembleApplied = true;
+                        }
+                    } catch {
+                        // Ensemble not available, use standard OCR cleaning
+                    }
+                }
 
-            if (confidence < 0.6) {
-                lowConfidenceCount++;
-            }
+                // Calculate adaptive confidence with all factors
+                let confidence = calculateAmountConfidence(
+                    finalAmount,
+                    item.legibility,
+                    rawText,
+                    item.inkColor,
+                    item.cellCondition,
+                    item["No."]
+                );
 
-            // Warn if red ink detected in week column
-            if (item.inkColor === 'red' && cleanedAmount > 0) {
-                console.warn(`[TitheExtractor] Row ${item["No."]}: Red ink detected (${cleanedAmount}) - might be TOTAL column!`);
-            }
+                // Boost confidence if ensemble correction was applied
+                if (ensembleApplied) {
+                    confidence = Math.min(0.95, confidence + 0.1);
+                }
 
-            return {
-                "No.": item["No."] || index + 1,
-                "Transaction Type": "Individual Tithe-[Income]",
-                "Payment Source Type": "Registered Member",
-                "Membership Number": cleanedName,
-                "Transaction Date ('DD-MMM-YYYY')": targetDateString,
-                "Currency": "GHS",
-                "Exchange Rate": 1,
-                "Payment Method": "Cash",
-                "Transaction Amount": cleanedAmount,
-                "Narration/Description": `Tithe for ${targetDateString}`,
-                "Confidence": confidence
-            };
-        });
+                if (confidence < 0.6) {
+                    lowConfidenceCount++;
+                }
+
+                // Warn if red ink detected in week column
+                if (item.inkColor === 'red' && finalAmount > 0) {
+                    console.warn(`[TitheExtractor] Row ${item["No."]}: Red ink detected (${finalAmount}) - might be TOTAL column!`);
+                }
+
+                return {
+                    "No.": item["No."] || index + 1,
+                    "Transaction Type": "Individual Tithe-[Income]",
+                    "Payment Source Type": "Registered Member",
+                    "Membership Number": cleanedName,
+                    "Transaction Date ('DD-MMM-YYYY')": targetDateString,
+                    "Currency": "GHS",
+                    "Exchange Rate": 1,
+                    "Payment Method": "Cash",
+                    "Transaction Amount": finalAmount,
+                    "Narration/Description": `Tithe for ${targetDateString}`,
+                    "Confidence": confidence
+                };
+            })
+        );
 
         // Build SET info if page number is available
         const setInfo = rawResult.pageNumber
             ? inferMemberRangeFromPage(rawResult.pageNumber)
             : undefined;
+
+        // ============================================================
+        // ANOMALY DETECTION: Flag entries that deviate from member history
+        // ============================================================
+        const anomalyWarnings: Array<{
+            rowNo: number;
+            memberName: string;
+            extractedAmount: number;
+            expectedAmount: number;
+            reason: string;
+        }> = [];
+
+        if (transactionLogs && transactionLogs.length > 0) {
+            for (const entry of entries) {
+                const memberId = entry["Membership Number"];
+                const rawAmount = entry["Transaction Amount"];
+                const amount = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount)) || 0;
+
+                // Skip zero amounts (valid for "didn't tithe this week")
+                if (amount === 0) continue;
+
+                // Build history for this member
+                const history = buildMemberHistory(memberId, transactionLogs);
+
+                if (history && history.occurrences >= 3) {
+                    const { averageAmount, standardDeviation } = history;
+
+                    // Statistical anomaly detection: flag amounts >2σ from average
+                    if (standardDeviation > 0) {
+                        const zScore = Math.abs(amount - averageAmount) / standardDeviation;
+
+                        if (zScore > 2) {
+                            const direction = amount > averageAmount ? 'higher' : 'lower';
+                            anomalyWarnings.push({
+                                rowNo: Number(entry["No."]),
+                                memberName: memberId.split("(")[0].trim(),
+                                extractedAmount: amount,
+                                expectedAmount: Math.round(averageAmount),
+                                reason: `Amount is ${zScore.toFixed(1)}σ ${direction} than average (GHS ${Math.round(averageAmount)})`
+                            });
+                            console.warn(
+                                `[TitheExtractor] Anomaly: Row ${entry["No."]} - ${memberId.split("(")[0].trim()} ` +
+                                `paid GHS ${amount} but typically pays GHS ${Math.round(averageAmount)}`
+                            );
+                        }
+                    }
+                }
+            }
+        }
 
         return {
             isValidTitheBook: rawResult.isValidTitheBook ?? true,
@@ -316,7 +425,8 @@ export const processTitheImageWithValidation = async (
                 setNumber: setInfo.setNumber,
                 memberRangeStart: setInfo.startMember,
                 memberRangeEnd: setInfo.endMember
-            } : undefined
+            } : undefined,
+            anomalyWarnings: anomalyWarnings.length > 0 ? anomalyWarnings : undefined
         };
 
     } catch (error) {
