@@ -8,23 +8,47 @@ import { TitheRecordB, MemberRecordA } from "../../types";
 // TITHE IMAGE PROCESSING TYPES
 // ============================================================================
 
+export interface TargetColumnZone {
+    columnHeader: string;
+    monthHeader: string;
+    relativePosition: string;
+    columnsFromTotal?: number;
+    totalColumnHasRedInk?: boolean;
+}
+
+export interface SetInfo {
+    setNumber: number;
+    memberRangeStart: number;
+    memberRangeEnd: number;
+}
+
 export interface TitheImageExtractionResult {
     isValidTitheBook: boolean;
     detectedYear: string | null;
     pageNumber: number | null;
     entries: TitheRecordB[];
     lowConfidenceCount: number;
+    targetColumnZone?: TargetColumnZone;
+    setInfo?: SetInfo;
+}
+
+export interface EnhancedRawEntry {
+    "No.": number;
+    "Name": string;
+    "Amount": number;
+    "legibility"?: number;
+    "rawAmountText"?: string;
+    "inkColor"?: 'red' | 'blue' | 'black' | 'unknown';
+    "cellCondition"?: 'clean' | 'corrected' | 'smudged' | 'empty';
 }
 
 export interface EnhancedRawExtraction {
     isValidTitheBook: boolean;
     detectedYear?: string;
     pageNumber?: number;
-    entries: Array<{
-        "No.": number;
-        "Name": string;
-        "Amount": number;
-    }>;
+    targetColumnZone?: TargetColumnZone;
+    setInfo?: SetInfo;
+    entries: EnhancedRawEntry[];
 }
 
 // ============================================================================

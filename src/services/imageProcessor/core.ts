@@ -52,3 +52,89 @@ export function createGeminiModel(apiKey: string) {
     const genAI = new GoogleGenerativeAI(apiKey);
     return genAI.getGenerativeModel({ model: MODEL_NAME });
 }
+
+// ============================================================================
+// TITHE BOOK STRUCTURE UTILITIES
+// ============================================================================
+
+/** Months in order (0-indexed) */
+export const MONTHS = [
+    'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+    'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+];
+
+/** Members per SET in the tithe book */
+export const MEMBERS_PER_SET = 31;
+
+/**
+ * Infer the SET number and member range from a page number
+ * - Pages 1-2 → SET 1 → Members 1-31
+ * - Pages 3-4 → SET 2 → Members 32-62
+ * - Pages 5-6 → SET 3 → Members 63-93
+ */
+export function inferMemberRangeFromPage(pageNumber: number): {
+    setNumber: number;
+    startMember: number;
+    endMember: number;
+} {
+    // Guard against invalid page numbers
+    const validPageNumber = Math.max(1, pageNumber);
+    const setNumber = Math.ceil(validPageNumber / 2);
+    const startMember = (setNumber - 1) * MEMBERS_PER_SET + 1;
+    const endMember = setNumber * MEMBERS_PER_SET;
+    return { setNumber, startMember, endMember };
+}
+
+/**
+ * Validate that a month is visible on a given page
+ * - ODD pages (1, 3, 5...): January → May (months 0-4)
+ * - EVEN pages (2, 4, 6...): June → December (months 5-11)
+ *
+ * @returns Object with isValid flag and expected month range
+ */
+export function validateMonthOnPage(pageNumber: number, targetMonth: string): {
+    isValid: boolean;
+    expectedRange: string;
+    pageType: 'odd' | 'even';
+} {
+    const monthIndex = MONTHS.indexOf(targetMonth.toUpperCase());
+    if (monthIndex === -1) {
+        return { isValid: false, expectedRange: 'Unknown month', pageType: pageNumber % 2 === 1 ? 'odd' : 'even' };
+    }
+
+    const isOddPage = pageNumber % 2 === 1;
+
+    if (isOddPage) {
+        // Odd pages: January-May (indices 0-4)
+        return {
+            isValid: monthIndex <= 4,
+            expectedRange: 'January → May',
+            pageType: 'odd'
+        };
+    } else {
+        // Even pages: June-December (indices 5-11)
+        return {
+            isValid: monthIndex >= 5,
+            expectedRange: 'June → December',
+            pageType: 'even'
+        };
+    }
+}
+
+/**
+ * Get the column position of a week relative to TOTAL column
+ * TOTAL is always after 5th week, so:
+ * - 1st week = 5 columns left of TOTAL
+ * - 2nd week = 4 columns left of TOTAL
+ * - etc.
+ */
+export function getWeekColumnOffset(weekString: string): number {
+    const weekMap: Record<string, number> = {
+        '1st': 5, 'Week 1': 5,
+        '2nd': 4, 'Week 2': 4,
+        '3rd': 3, 'Week 3': 3,
+        '4th': 2, 'Week 4': 2,
+        '5th': 1, 'Week 5': 1,
+    };
+    return weekMap[weekString] || 0;
+}

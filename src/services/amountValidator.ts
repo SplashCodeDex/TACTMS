@@ -26,6 +26,136 @@ const OCR_NUMBER_CORRECTIONS: Record<string, number> = {
 };
 
 /**
+ * Common tithe amounts in Ghana (GHS)
+ * These are the most frequently observed tithe values.
+ * Used to "snap" OCR-extracted amounts when close to a known pattern.
+ */
+const COMMON_TITHE_AMOUNTS = [
+    5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 100,
+    120, 150, 200, 250, 300, 400, 500, 600, 700, 800, 1000,
+    1500, 2000, 3000, 5000, 10000
+];
+
+/** Assembly-specific learned patterns (in-memory cache) */
+const assemblyPatternCache: Map<string, number[]> = new Map();
+
+/**
+ * Learn assembly-specific common amounts from transaction history
+ * Returns the top 20 most common amounts for the assembly
+ */
+export const learnAssemblyPatterns = (
+    assemblyName: string,
+    transactionLogs: TransactionLogEntry[]
+): number[] => {
+    const freq: Record<number, number> = {};
+
+    for (const log of transactionLogs) {
+        if (!log || !log.titheListData) continue;
+        // Filter by assembly
+        if (log.assemblyName.toLowerCase() !== assemblyName.toLowerCase()) continue;
+
+        for (const record of log.titheListData) {
+            const amount = Number(record["Transaction Amount"]) || 0;
+            if (amount > 0) {
+                freq[amount] = (freq[amount] || 0) + 1;
+            }
+        }
+    }
+
+    // Return top 20 most common amounts
+    const patterns = Object.entries(freq)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 20)
+        .map(([amt]) => Number(amt));
+
+    // Cache for future use
+    if (patterns.length > 0) {
+        assemblyPatternCache.set(assemblyName, patterns);
+    }
+
+    return patterns;
+};
+
+/**
+ * Get a member's typical/signature amount if they have consistent payments
+ * Returns null if the member doesn't have a consistent pattern
+ */
+export const getMemberTypicalAmount = (history: MemberTitheHistory): number | null => {
+    if (history.occurrences < 3) return null;
+
+    // Guard against division by zero
+    if (history.averageAmount <= 0) return null;
+
+    // Low standard deviation relative to average = consistent payer
+    const coefficientOfVariation = history.standardDeviation / history.averageAmount;
+
+    if (coefficientOfVariation < 0.15) {
+        // Very consistent: always pays roughly the same
+        return Math.round(history.averageAmount);
+    }
+
+    // Check if min === max (always pays exact same)
+    if (history.minAmount === history.maxAmount) {
+        return history.minAmount;
+    }
+
+    return null;
+};
+
+/**
+ * Snap an amount to the nearest common tithe value if within tolerance
+ * @param amount - The extracted amount
+ * @param tolerancePercent - Maximum deviation (default 8%)
+ * @param assemblyPatterns - Optional assembly-specific patterns to prioritize
+ * @returns The snapped amount or null if no close match
+ */
+export const snapToCommonAmount = (
+    amount: number,
+    tolerancePercent: number = 8,
+    assemblyPatterns?: number[]
+): { snappedAmount: number; deviation: number; isAssemblyPattern: boolean } | null => {
+    if (amount <= 0) return null;
+
+    // Prioritize assembly patterns if available
+    const patterns = assemblyPatterns && assemblyPatterns.length > 0
+        ? [...new Set([...assemblyPatterns, ...COMMON_TITHE_AMOUNTS])]
+        : COMMON_TITHE_AMOUNTS;
+
+    let closestMatch: { amount: number; deviation: number; isAssemblyPattern: boolean } | null = null;
+
+    for (const common of patterns) {
+        if (common <= 0) continue; // Guard against division by zero
+        const deviation = Math.abs(amount - common) / common * 100;
+        if (deviation <= tolerancePercent) {
+            const isAssemblyPattern = assemblyPatterns?.includes(common) ?? false;
+            // Prefer assembly patterns (they get a boost)
+            const effectiveDeviation = isAssemblyPattern ? deviation * 0.7 : deviation;
+
+            if (!closestMatch || effectiveDeviation < (closestMatch.isAssemblyPattern ? closestMatch.deviation * 0.7 : closestMatch.deviation)) {
+                closestMatch = { amount: common, deviation, isAssemblyPattern };
+            }
+        }
+    }
+
+    if (closestMatch) {
+        return {
+            snappedAmount: closestMatch.amount,
+            deviation: closestMatch.deviation,
+            isAssemblyPattern: closestMatch.isAssemblyPattern
+        };
+    }
+
+    return null;
+};
+
+/**
+ * Get cached assembly patterns (or empty array if not learned yet)
+ */
+export const getAssemblyPatterns = (assemblyName: string): number[] => {
+    return assemblyPatternCache.get(assemblyName) || [];
+};
+
+/**
  * Validate an amount and suggest corrections if needed
  */
 export const validateAmount = (
@@ -99,6 +229,18 @@ export const validateAmount = (
                 message: `Amount seems low compared to usual min (${minAmount}). Typical: ${averageAmount}`
             };
         }
+    }
+
+    // Check if amount is close to a common tithe value (snap suggestion)
+    const snapResult = snapToCommonAmount(numAmount);
+    if (snapResult && snapResult.snappedAmount !== numAmount) {
+        return {
+            originalAmount: numAmount,
+            suggestedAmount: snapResult.snappedAmount,
+            confidence: 0.75,
+            reason: 'ocr_artifact',
+            message: `Amount ${numAmount} is close to common value ${snapResult.snappedAmount} (${snapResult.deviation.toFixed(1)}% off)`
+        };
     }
 
     // Amount looks valid

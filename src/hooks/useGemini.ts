@@ -63,7 +63,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     setIsGeneratingReport(true);
     try {
       // Use the enhanced processor with validation
-      const { processTitheImageWithValidation } = await import('../services/imageProcessor');
+      const { processTitheImageWithValidation, verifyLowConfidenceEntries } = await import('../services/imageProcessor');
       const { validateTitheBookImage: preValidate } = await import('../services/imageValidator');
 
       // Pre-validate the image
@@ -77,7 +77,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
       }
 
       // Process with enhanced function
-      const result = await processTitheImageWithValidation(
+      let result = await processTitheImageWithValidation(
         imageFile,
         apiKey,
         month,
@@ -94,11 +94,32 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
         addToast(`Detected year: ${result.detectedYear}`, 'info');
       }
 
+      // Auto-verify low-confidence entries with a second pass
       if (result.lowConfidenceCount > 0) {
         addToast(
-          `${result.lowConfidenceCount} entries have low confidence and may need review.`,
+          `${result.lowConfidenceCount} entries have low confidence. Running verification pass...`,
           'warning'
         );
+
+        // Run multi-pass verification
+        const verifiedEntries = await verifyLowConfidenceEntries(
+          imageFile,
+          apiKey,
+          result.entries,
+          month,
+          week
+        );
+
+        // Count how many were corrected
+        const correctedCount = result.entries.filter((e, i) =>
+          e["Transaction Amount"] !== verifiedEntries[i]["Transaction Amount"]
+        ).length;
+
+        if (correctedCount > 0) {
+          addToast(`AI corrected ${correctedCount} entries during verification.`, 'success');
+        }
+
+        result = { ...result, entries: verifiedEntries };
       }
 
       addToast(`Extracted ${result.entries.length} tithe records.`, 'success');

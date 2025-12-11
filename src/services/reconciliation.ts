@@ -328,9 +328,37 @@ export const findMemberByName = async (
   rawName: string,
   masterData: MemberRecordA[],
   threshold: number = OCR_CONFIDENCE_TIERS.MEDIUM,
-  apiKey?: string // Optional API key for AI fallback
+  apiKey?: string, // Optional API key for AI fallback
+  assemblyName?: string // Optional assembly name for alias lookup
 ): Promise<FuzzyMatchResult | null> => {
   if (!rawName || !masterData.length) return null;
+
+  // Strategy 0: Check learned name aliases first
+  if (assemblyName) {
+    try {
+      const { getNameAlias } = await import("./handwritingLearning");
+      const alias = await getNameAlias(assemblyName, rawName);
+      if (alias && alias.count >= 2) {
+        // Found a learned alias with 2+ occurrences
+        const member = masterData.find(m =>
+          String(m["Membership Number"]) === alias.memberId ||
+          String(m["Old Membership Number"]) === alias.memberId
+        );
+        if (member) {
+          console.log(`[Reconciliation] Using learned alias: "${rawName}" → ${alias.memberName} (seen ${alias.count}x)`);
+          return {
+            member,
+            score: 0.95,
+            matchedName: alias.memberName,
+            confidenceTier: 'high',
+            matchSource: 'fuzzy' // Could add 'alias' type in future
+          };
+        }
+      }
+    } catch {
+      // Alias lookup failed, continue with other strategies
+    }
+  }
 
   // Preprocess and strip titles from raw name
   const cleanedRaw = stripTitles(preprocessName(rawName));

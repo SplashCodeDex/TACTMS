@@ -20,8 +20,9 @@ export const GLOBAL_ASSEMBLY = '__GLOBAL__';
 // ============================================================================
 
 const DB_NAME = 'tactms-handwriting';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped for name alias support
 const STORE_NAME = 'corrections';
+const ALIAS_STORE_NAME = 'name_aliases';
 
 /**
  * Check if IndexedDB is available (fails in private mode on some browsers)
@@ -61,11 +62,20 @@ const openDB = (): Promise<IDBDatabase | null> => {
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
 
+                // Amount corrections store
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
                     const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
                     store.createIndex('assembly', 'assemblyName', { unique: false });
                     store.createIndex('original', 'originalValue', { unique: false });
                     store.createIndex('assembly_original', ['assemblyName', 'originalValue'], { unique: false });
+                }
+
+                // Name aliases store (for member name learning)
+                if (!db.objectStoreNames.contains(ALIAS_STORE_NAME)) {
+                    const aliasStore = db.createObjectStore(ALIAS_STORE_NAME, { keyPath: 'id' });
+                    aliasStore.createIndex('assembly', 'assemblyName', { unique: false });
+                    aliasStore.createIndex('extractedName', 'extractedName', { unique: false });
+                    aliasStore.createIndex('assembly_extracted', ['assemblyName', 'extractedName'], { unique: false });
                 }
             };
         } catch (err) {
@@ -465,4 +475,171 @@ export const importPatterns = async (
     }
 
     return { imported, skipped };
+};
+
+// ============================================================================
+// NAME ALIAS LEARNING
+// ============================================================================
+
+export interface NameAlias {
+    id: string;
+    assemblyName: string;
+    extractedName: string;       // What AI extracted (e.g., "PST ADDO J")
+    correctMemberId: string;     // The correct member ID
+    correctMemberName: string;   // Full name for display
+    timestamp: number;
+    source: 'verification' | 'manual';
+}
+
+/**
+ * Save a name alias correction
+ * When user links "PST ADDO J" to member "PASTOR JONATHAN ADDO MENSAH",
+ * we learn this alias for future matching.
+ */
+export const saveNameAlias = async (
+    assemblyName: string,
+    extractedName: string,
+    correctMemberId: string,
+    correctMemberName: string,
+    source: 'verification' | 'manual' = 'verification'
+): Promise<void> => {
+    const normalizedExtracted = extractedName.trim().toUpperCase();
+
+    const alias: NameAlias = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+        assemblyName: assemblyName.toLowerCase(),
+        extractedName: normalizedExtracted,
+        correctMemberId,
+        correctMemberName,
+        timestamp: Date.now(),
+        source
+    };
+
+    const db = await openDB();
+    if (!db) return;
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(ALIAS_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(ALIAS_STORE_NAME);
+        store.add(alias);
+
+        tx.oncomplete = () => {
+            db.close();
+            console.log(`[NameAlias] Learned: "${extractedName}" → ${correctMemberName}`);
+            resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+    });
+};
+
+/**
+ * Get a learned name alias for an extracted name
+ * Returns the most frequently corrected member for this alias
+ */
+export const getNameAlias = async (
+    assemblyName: string,
+    extractedName: string
+): Promise<{ memberId: string; memberName: string; count: number } | null> => {
+    const normalizedExtracted = extractedName.trim().toUpperCase();
+
+    const db = await openDB();
+    if (!db) return null;
+
+    const aliases: NameAlias[] = await new Promise((resolve, reject) => {
+        const tx = db.transaction(ALIAS_STORE_NAME, 'readonly');
+        const store = tx.objectStore(ALIAS_STORE_NAME);
+        const index = store.index('assembly_extracted');
+        const request = index.getAll([assemblyName.toLowerCase(), normalizedExtracted]);
+
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    });
+
+    db.close();
+
+    if (aliases.length === 0) return null;
+
+    // Count occurrences of each member ID
+    const memberCounts = new Map<string, { name: string; count: number }>();
+    for (const alias of aliases) {
+        const existing = memberCounts.get(alias.correctMemberId);
+        if (existing) {
+            existing.count++;
+        } else {
+            memberCounts.set(alias.correctMemberId, {
+                name: alias.correctMemberName,
+                count: 1
+            });
+        }
+    }
+
+    // Return the most common match
+    let bestMatch: { id: string; name: string; count: number } | null = null;
+    for (const [id, data] of memberCounts) {
+        if (!bestMatch || data.count > bestMatch.count) {
+            bestMatch = { id, name: data.name, count: data.count };
+        }
+    }
+
+    return bestMatch ? { memberId: bestMatch.id, memberName: bestMatch.name, count: bestMatch.count } : null;
+};
+
+// ============================================================================
+// AUTO-CORRECT STREAK DETECTION
+// ============================================================================
+
+/**
+ * Check if an OCR pattern should be auto-corrected
+ * Returns the suggested value if the pattern has been corrected 3+ times to the same value
+ */
+export const shouldAutoCorrect = async (
+    assemblyName: string,
+    originalValue: string
+): Promise<{ autoCorrect: boolean; suggestedValue: number; correctionCount: number } | null> => {
+    const suggestion = await suggestCorrection(assemblyName, originalValue);
+
+    if (!suggestion) return null;
+
+    // Auto-correct threshold: 3+ corrections with high agreement
+    if (suggestion.occurrences >= 3 && suggestion.confidence >= 0.7) {
+        return {
+            autoCorrect: true,
+            suggestedValue: suggestion.suggestedAmount,
+            correctionCount: suggestion.occurrences
+        };
+    }
+
+    return {
+        autoCorrect: false,
+        suggestedValue: suggestion.suggestedAmount,
+        correctionCount: suggestion.occurrences
+    };
+};
+
+/**
+ * Get total correction count for an assembly (for UI display)
+ */
+export const getCorrectionCount = async (assemblyName: string): Promise<number> => {
+    const corrections = await getCorrectionsForAssembly(assemblyName);
+    return corrections.length;
+};
+
+/**
+ * Get all aliases for an assembly (for debugging/display)
+ */
+export const getAliasesForAssembly = async (assemblyName: string): Promise<NameAlias[]> => {
+    const db = await openDB();
+    if (!db) return [];
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(ALIAS_STORE_NAME, 'readonly');
+        const store = tx.objectStore(ALIAS_STORE_NAME);
+        const index = store.index('assembly');
+        const request = index.getAll(assemblyName.toLowerCase());
+
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+
+        tx.oncomplete = () => db.close();
+    });
 };

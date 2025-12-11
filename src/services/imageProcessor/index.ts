@@ -18,11 +18,19 @@ export type {
     MatchResult
 } from './types';
 
-// Re-export constants from core
-export { LOW_CONFIDENCE_THRESHOLD, MODEL_NAME } from './core';
+// Re-export constants and utilities from core
+export {
+    LOW_CONFIDENCE_THRESHOLD,
+    MODEL_NAME,
+    MONTHS,
+    MEMBERS_PER_SET,
+    inferMemberRangeFromPage,
+    validateMonthOnPage,
+    getWeekColumnOffset
+} from './core';
 
 // Re-export main functions
-export { processTitheImageWithValidation } from './titheExtractor';
+export { processTitheImageWithValidation, verifyLowConfidenceEntries } from './titheExtractor';
 export { extractNamesFromTitheBook } from './nameExtractor';
 
 // Re-export matching utilities (for advanced use cases)
