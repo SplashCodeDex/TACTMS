@@ -395,7 +395,8 @@ export const getWonSouls = async (
 /**
  * Apply a new order atomically by reassigning positions sequentially 1..N
  * This is ideal for AI reorder where we want to match the physical tithe book exactly.
- * No collision possible since we assign positions in one clean pass.
+ * Members not in the ordered list are pushed to positions after the reordered set,
+ * preserving their relative order.
  *
  * @param orderedMemberIds - Array of member IDs in the desired order
  * @param assemblyName - Assembly name
@@ -411,10 +412,13 @@ export const applyNewOrder = async (
     const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
     const idByMemberId = new Map(entries.map(e => [e.memberId.toLowerCase(), e.id]));
 
+    // Track which members are in the reordered set
+    const reorderedSet = new Set(orderedMemberIds.map(id => id.toLowerCase()));
+
     const tx = db.transaction('memberOrders', 'readwrite');
     const store = tx.objectStore('memberOrders');
 
-    // Assign sequential indices 1..N based on the ordered list
+    // 1. Assign sequential indices 1..N based on the ordered list
     for (let i = 0; i < orderedMemberIds.length; i++) {
         const memberId = orderedMemberIds[i];
         const entryId = idByMemberId.get(memberId.toLowerCase());
@@ -426,6 +430,128 @@ export const applyNewOrder = async (
         entry.titheBookIndex = i + 1;  // 1-indexed like physical book
         entry.lastUpdated = now;
         await store.put(entry);
+    }
+
+    // 2. Push remaining members (not in reordered set) to positions after the reordered set
+    // Preserve their relative order based on their previous titheBookIndex
+    const remainingEntries = entries
+        .filter(e => e.isActive && !reorderedSet.has(e.memberId.toLowerCase()))
+        .sort((a, b) => a.titheBookIndex - b.titheBookIndex);
+
+    let nextPosition = orderedMemberIds.length + 1;
+    for (const entry of remainingEntries) {
+        const dbEntry = await store.get(entry.id);
+        if (!dbEntry) continue;
+
+        dbEntry.titheBookIndex = nextPosition;
+        dbEntry.lastUpdated = now;
+        await store.put(dbEntry);
+        nextPosition++;
+    }
+
+    await tx.done;
+};
+
+/**
+ * Apply order changes respecting the extracted positions from the image.
+ * This is for partial reorders (e.g., only SET2: positions 32-62).
+ *
+ * Logic:
+ * 1. Members BEFORE minPos: Keep their positions
+ * 2. Members AT extracted positions: Assign from positionedMembers
+ * 3. Displaced members (were in range but not in extracted): Push to end
+ *
+ * @param positionedMembers - Array of { memberId, position } from extraction
+ * @param assemblyName - Assembly name
+ */
+export const applyRangeAwareOrder = async (
+    positionedMembers: Array<{ memberId: string; position: number }>,
+    assemblyName: string
+): Promise<void> => {
+    if (positionedMembers.length === 0) return;
+
+    const db = await getDB();
+    const now = Date.now();
+
+    // Get all existing entries for this assembly
+    const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
+    const entryById = new Map(entries.map(e => [e.memberId.toLowerCase(), e]));
+
+    // Detect the range from extracted positions
+    const extractedPositions = positionedMembers.map(pm => pm.position);
+    const minPos = Math.min(...extractedPositions);
+    const maxPos = Math.max(...extractedPositions);
+
+    // Track which members are being placed by the extraction
+    const extractedMemberIds = new Set(positionedMembers.map(pm => pm.memberId.toLowerCase()));
+
+    // Map of position -> memberId for the extraction
+    const extractionPositionMap = new Map(
+        positionedMembers.map(pm => [pm.position, pm.memberId.toLowerCase()])
+    );
+
+    const tx = db.transaction('memberOrders', 'readwrite');
+    const store = tx.objectStore('memberOrders');
+
+    // Collect displaced members (were in range but not in extracted set)
+    const displacedMembers: MemberOrderEntry[] = [];
+
+    // Process all entries
+    for (const entry of entries) {
+        if (!entry.isActive) continue;
+
+        const memberId = entry.memberId.toLowerCase();
+        const currentPos = entry.titheBookIndex;
+
+        // Case 1: This member is in the extracted set -> assign their new extracted position
+        if (extractedMemberIds.has(memberId)) {
+            const newPos = positionedMembers.find(
+                pm => pm.memberId.toLowerCase() === memberId
+            )?.position;
+
+            if (newPos !== undefined) {
+                const dbEntry = await store.get(entry.id);
+                if (dbEntry) {
+                    dbEntry.titheBookIndex = newPos;
+                    dbEntry.lastUpdated = now;
+                    await store.put(dbEntry);
+                }
+            }
+        }
+        // Case 2: Member is IN the range but NOT in extracted set -> displaced
+        else if (currentPos >= minPos && currentPos <= maxPos) {
+            displacedMembers.push(entry);
+        }
+        // Case 3: Member is BEFORE minPos -> keep their position (no change needed)
+        // Case 4: Member is AFTER maxPos -> will be shifted if needed
+    }
+
+    // Push displaced members to positions after maxPos
+    // Sort them by their original position to preserve relative order
+    displacedMembers.sort((a, b) => a.titheBookIndex - b.titheBookIndex);
+
+    // Find the next available position after maxPos
+    // We need to check what positions are already taken after maxPos
+    const positionsAfterMax = entries
+        .filter(e => e.isActive && e.titheBookIndex > maxPos && !extractedMemberIds.has(e.memberId.toLowerCase()))
+        .map(e => e.titheBookIndex);
+
+    let nextPos = maxPos + 1;
+
+    // Assign displaced members to positions after maxPos
+    for (const displaced of displacedMembers) {
+        // Find next free position
+        while (positionsAfterMax.includes(nextPos)) {
+            nextPos++;
+        }
+
+        const dbEntry = await store.get(displaced.id);
+        if (dbEntry) {
+            dbEntry.titheBookIndex = nextPos;
+            dbEntry.lastUpdated = now;
+            await store.put(dbEntry);
+        }
+        nextPos++;
     }
 
     await tx.done;

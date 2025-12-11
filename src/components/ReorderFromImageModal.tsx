@@ -3,7 +3,7 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { Upload, Wand2, Check, X, AlertTriangle, RefreshCw, ArrowRight, Eye, RotateCcw, Zap, Download, FileUp, GitCompare } from "lucide-react";
 import { MemberRecordA } from "@/types";
-import { applyNewOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange, restoreSnapshot, getLatestSnapshot, exportOrderForAssembly, importOrderForAssembly, OrderExport } from "@/services/memberOrderService";
+import { applyNewOrder, applyRangeAwareOrder, createSnapshot, saveLearnedAlias, getAliasMap, logOrderChange, restoreSnapshot, getLatestSnapshot, exportOrderForAssembly, importOrderForAssembly, OrderExport } from "@/services/memberOrderService";
 import { extractNamesFromTitheBook } from "@/services/imageProcessor";
 
 interface ReorderFromImageModalProps {
@@ -319,10 +319,15 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
         setIsSaving(true);
         try {
-            // Extract ordered member IDs for atomic reorder
-            const orderedMemberIds = validRows.map((row) =>
-                row.matchedMember!["Membership Number"] || row.matchedMember!["Old Membership Number"] || ""
-            ).filter(Boolean);
+            // Extract positioned members with their extracted positions from the image
+            const positionedMembers = validRows.map((row) => ({
+                memberId: row.matchedMember!["Membership Number"] || row.matchedMember!["Old Membership Number"] || "",
+                position: row.position  // Use extracted position from image, not array index
+            })).filter(pm => pm.memberId);
+
+            // Detect if this is a full reorder (starts at 1) or partial reorder (starts at 32+)
+            const minPos = Math.min(...positionedMembers.map(pm => pm.position));
+            const isPartialReorder = minPos > 1;
 
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
@@ -330,18 +335,27 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
 
-            await applyNewOrder(orderedMemberIds, assemblyName);
+            // Use range-aware for partial reorders, standard for full reorders
+            if (isPartialReorder) {
+                await applyRangeAwareOrder(positionedMembers, assemblyName);
+            } else {
+                // Full reorder: fall back to original behavior for compatibility
+                const orderedMemberIds = positionedMembers
+                    .sort((a, b) => a.position - b.position)
+                    .map(pm => pm.memberId);
+                await applyNewOrder(orderedMemberIds, assemblyName);
+            }
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
                 assemblyName,
                 action: 'ai_reorder',
                 timestamp: Date.now(),
-                description: `AI reordered ${orderedMemberIds.length} members from tithe book image`,
-                affectedCount: orderedMemberIds.length,
+                description: `AI reordered ${positionedMembers.length} members from tithe book image${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`,
+                affectedCount: positionedMembers.length,
             }, historyId);
 
-            addToast(`Reordered ${orderedMemberIds.length} members to match tithe book`, "success");
+            addToast(`Reordered ${positionedMembers.length} members to match tithe book${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`, "success");
             onSaveComplete();
             handleClose();
         } catch (error) {
@@ -382,12 +396,17 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
         setIsSaving(true);
         try {
-            // Extract ordered member IDs for atomic reorder (only selected changes)
-            // Sort by newPosition to preserve the correct order
-            const orderedMemberIds = selectedChanges
-                .sort((a, b) => a.newPosition - b.newPosition)
-                .map(c => c.memberId)
-                .filter(Boolean);
+            // Extract positioned members with their new positions
+            const positionedMembers = selectedChanges
+                .map(c => ({
+                    memberId: c.memberId,
+                    position: c.newPosition
+                }))
+                .filter(pm => pm.memberId);
+
+            // Detect if this is a full reorder (starts at 1) or partial reorder (starts at 32+)
+            const minPos = Math.min(...positionedMembers.map(pm => pm.position));
+            const isPartialReorder = minPos > 1;
 
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
@@ -395,18 +414,27 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             // Create snapshot before reorder (for undo)
             await createSnapshot(assemblyName, historyId);
 
-            await applyNewOrder(orderedMemberIds, assemblyName);
+            // Use range-aware for partial reorders, standard for full reorders
+            if (isPartialReorder) {
+                await applyRangeAwareOrder(positionedMembers, assemblyName);
+            } else {
+                // Full reorder: fall back to original behavior for compatibility
+                const orderedMemberIds = positionedMembers
+                    .sort((a, b) => a.position - b.position)
+                    .map(pm => pm.memberId);
+                await applyNewOrder(orderedMemberIds, assemblyName);
+            }
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
                 assemblyName,
                 action: 'ai_reorder',
                 timestamp: Date.now(),
-                description: `AI reordered ${orderedMemberIds.length} members (selected from diff view)`,
-                affectedCount: orderedMemberIds.length,
+                description: `AI reordered ${positionedMembers.length} members (selected from diff view)${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`,
+                affectedCount: positionedMembers.length,
             }, historyId);
 
-            addToast(`Applied ${orderedMemberIds.length} order changes`, "success");
+            addToast(`Applied ${positionedMembers.length} order changes${isPartialReorder ? ` (positions ${minPos}-${Math.max(...positionedMembers.map(pm => pm.position))})` : ''}`, "success");
             onSaveComplete();
             handleClose();
         } catch (error) {
@@ -1107,7 +1135,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                                                 <div
                                                     key={`proposed-${change.memberId}-${idx}`}
                                                     className={`p-2 flex items-center gap-2 text-sm border-b border-[var(--border-color)] last:border-b-0 ${change.changeType === 'new' ? 'bg-blue-500/10' :
-                                                            change.changeType === 'moved' ? 'bg-green-500/10' : ''
+                                                        change.changeType === 'moved' ? 'bg-green-500/10' : ''
                                                         }`}
                                                 >
                                                     <span className="w-8 text-center font-mono text-[var(--primary-accent-start)] font-bold">
