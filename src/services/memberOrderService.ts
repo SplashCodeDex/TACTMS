@@ -202,6 +202,36 @@ const generateId = (memberId: string, assemblyName: string): string => {
 };
 
 /**
+ * Normalize any member ID format to raw membership ID (lowercase).
+ * Handles:
+ * - Raw ID: "TAC89JAM131001" → "tac89jam131001"
+ * - B.xlsx format: "ABENA OWUSU (TAC25AOW010101)" → "tac25aow010101"
+ * - Pipe format: "TAC25AOW010101|651101008" → "tac25aow010101"
+ * - Parens with pipe: "(TAC14AWI080101|570201887)" → "tac14awi080101"
+ */
+const normalizeToRawId = (memberId: string): string => {
+    if (!memberId) return '';
+
+    // Try to extract from parentheses: "NAME (ID)" or "NAME (ID|OLD_ID)"
+    const parenMatch = memberId.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+        const inside = parenMatch[1];
+        // Handle pipe format inside parens
+        const pipeIdx = inside.indexOf('|');
+        return (pipeIdx >= 0 ? inside.substring(0, pipeIdx) : inside).toLowerCase().trim();
+    }
+
+    // Handle pipe format without parens: "TAC25AOW010101|651101008"
+    const pipeIdx = memberId.indexOf('|');
+    if (pipeIdx >= 0) {
+        return memberId.substring(0, pipeIdx).toLowerCase().trim();
+    }
+
+    // Already raw ID
+    return memberId.toLowerCase().trim();
+};
+
+/**
  * Generate a simple hash of member data to detect changes
  */
 const generateMemberHash = (members: MemberRecordA[]): string => {
@@ -297,7 +327,8 @@ export const syncWithMasterList = async (
 
     // Get existing members for this assembly
     const existingEntries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
-    const existingIds = new Set(existingEntries.map(e => e.memberId.toLowerCase()));
+    // Normalize existing IDs to raw format for consistent comparison
+    const existingIds = new Set(existingEntries.map(e => normalizeToRawId(e.memberId)));
 
     // Find the highest tithe book index
     let maxIndex = existingEntries.length > 0
@@ -314,17 +345,18 @@ export const syncWithMasterList = async (
     const tx = db.transaction(['memberOrders', 'assemblyMeta'], 'readwrite');
 
     for (const member of newMembers) {
-        const memberId = member["Membership Number"] || member["Old Membership Number"] || '';
-        if (!memberId) continue;
+        // Extract raw membership ID (without pipe suffix)
+        const rawMemberId = member["Membership Number"] || member["Old Membership Number"] || '';
+        if (!rawMemberId) continue;
 
-        const normalizedId = memberId.toLowerCase();
+        const normalizedId = normalizeToRawId(rawMemberId);
 
         if (existingIds.has(normalizedId)) {
             // Existing member - mark as active, update lastUpdated
             result.existingMembers.push(member);
             result.duplicatesSkipped++;
 
-            const id = generateId(memberId, assemblyName);
+            const id = generateId(rawMemberId, assemblyName);
             const existing = await tx.objectStore('memberOrders').get(id);
             if (existing) {
                 existing.isActive = true;
@@ -344,9 +376,9 @@ export const syncWithMasterList = async (
             ].filter(Boolean).join(' ');
 
             const entry: MemberOrderEntry = {
-                id: generateId(memberId, assemblyName),
-                memberId,
-                displayName: displayName || memberId,
+                id: generateId(rawMemberId, assemblyName),
+                memberId: rawMemberId,  // Store RAW ID, not concatenated format
+                displayName: displayName || rawMemberId,
                 titheBookIndex: maxIndex,
                 assemblyName,
                 firstSeenDate: new Date().toISOString(),
@@ -408,12 +440,12 @@ export const applyNewOrder = async (
     const db = await getDB();
     const now = Date.now();
 
-    // Build a map of memberId (lowercase) -> db entry id
+    // Build a map of memberId (normalized to raw ID) -> db entry id
     const entries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
-    const idByMemberId = new Map(entries.map(e => [e.memberId.toLowerCase(), e.id]));
+    const idByMemberId = new Map(entries.map(e => [normalizeToRawId(e.memberId), e.id]));
 
     // Track which members are in the reordered set
-    const reorderedSet = new Set(orderedMemberIds.map(id => id.toLowerCase()));
+    const reorderedSet = new Set(orderedMemberIds.map(id => normalizeToRawId(id)));
 
     const tx = db.transaction('memberOrders', 'readwrite');
     const store = tx.objectStore('memberOrders');
@@ -421,7 +453,7 @@ export const applyNewOrder = async (
     // 1. Assign sequential indices 1..N based on the ordered list
     for (let i = 0; i < orderedMemberIds.length; i++) {
         const memberId = orderedMemberIds[i];
-        const entryId = idByMemberId.get(memberId.toLowerCase());
+        const entryId = idByMemberId.get(normalizeToRawId(memberId));
         if (!entryId) continue;
 
         const entry = await store.get(entryId);
@@ -434,8 +466,9 @@ export const applyNewOrder = async (
 
     // 2. Push remaining members (not in reordered set) to positions after the reordered set
     // Preserve their relative order based on their previous titheBookIndex
+    // Use normalizeToRawId to handle old B.xlsx format entries
     const remainingEntries = entries
-        .filter(e => e.isActive && !reorderedSet.has(e.memberId.toLowerCase()))
+        .filter(e => e.isActive && !reorderedSet.has(normalizeToRawId(e.memberId)))
         .sort((a, b) => a.titheBookIndex - b.titheBookIndex);
 
     let nextPosition = orderedMemberIds.length + 1;
@@ -482,23 +515,25 @@ export const applyRangeAwareOrder = async (
     const maxPos = Math.max(...extractedPositions);
 
     // Track which members are being placed by the extraction
-    const extractedMemberIds = new Set(positionedMembers.map(pm => pm.memberId.toLowerCase()));
+    // Use normalizeToRawId to ensure consistent comparison with DB entries
+    const extractedMemberIds = new Set(positionedMembers.map(pm => normalizeToRawId(pm.memberId)));
 
     // Build map: memberId -> their NEW position (from extraction)
     const newPositionByMemberId = new Map(
-        positionedMembers.map(pm => [pm.memberId.toLowerCase(), pm.position])
+        positionedMembers.map(pm => [normalizeToRawId(pm.memberId), pm.position])
     );
 
     // Build map: memberId -> their OLD position (before any changes)
+    // Use normalizeToRawId to handle both old B.xlsx format and new raw format
     const oldPositionByMemberId = new Map(
-        entries.filter(e => e.isActive).map(e => [e.memberId.toLowerCase(), e.titheBookIndex])
+        entries.filter(e => e.isActive).map(e => [normalizeToRawId(e.memberId), e.titheBookIndex])
     );
 
     // Collect vacated positions (where extracted members CAME FROM, outside the range)
     // These are positions that will become empty when extracted members move to their new positions
     const vacatedPositions: number[] = [];
     for (const pm of positionedMembers) {
-        const memberId = pm.memberId.toLowerCase();
+        const memberId = normalizeToRawId(pm.memberId);
         const oldPos = oldPositionByMemberId.get(memberId);
         // Only vacated if the old position is OUTSIDE the extraction range
         // (positions inside the range are handled by the extraction itself)
@@ -519,7 +554,8 @@ export const applyRangeAwareOrder = async (
     for (const entry of entries) {
         if (!entry.isActive) continue;
 
-        const memberId = entry.memberId.toLowerCase();
+        // Normalize stored memberId to raw format for comparison
+        const memberId = normalizeToRawId(entry.memberId);
         const currentPos = entry.titheBookIndex;
 
         // Case 1: This member is in the extracted set -> assign their new extracted position
@@ -714,7 +750,8 @@ export const importOrderForAssembly = async (
     const tx = db.transaction('memberOrders', 'readwrite');
 
     for (const member of data.members) {
-        const id = generateId(member.memberId, assemblyName);
+        // Use normalizeToRawId to handle old format exports
+        const id = generateId(normalizeToRawId(member.memberId), assemblyName);
         const existing = await tx.store.get(id);
 
         if (existing) {
@@ -790,8 +827,9 @@ export const resetOrderFromMasterList = async (
     const db = await getDB();
 
     // Get existing entries to preserve metadata
+    // Use normalizeToRawId to handle both old B.xlsx format and new raw format
     const existingEntries = await db.getAllFromIndex('memberOrders', 'by-assembly', assemblyName);
-    const existingMap = new Map(existingEntries.map(e => [e.memberId.toLowerCase(), e]));
+    const existingMap = new Map(existingEntries.map(e => [normalizeToRawId(e.memberId), e]));
 
     const tx = db.transaction('memberOrders', 'readwrite');
     const now = Date.now();
@@ -800,10 +838,11 @@ export const resetOrderFromMasterList = async (
 
     for (let i = 0; i < members.length; i++) {
         const member = members[i];
-        const memberId = member["Membership Number"] || member["Old Membership Number"] || "";
-        if (!memberId) continue;
+        // Extract raw membership ID
+        const rawMemberId = member["Membership Number"] || member["Old Membership Number"] || "";
+        if (!rawMemberId) continue;
 
-        const normalizedId = memberId.toLowerCase();
+        const normalizedId = normalizeToRawId(rawMemberId);
         const existing = existingMap.get(normalizedId);
 
         const displayName = [
@@ -813,8 +852,8 @@ export const resetOrderFromMasterList = async (
         ].filter(Boolean).join(" ");
 
         const entry: MemberOrderEntry = {
-            id: generateId(memberId, assemblyName),
-            memberId,
+            id: generateId(rawMemberId, assemblyName),
+            memberId: rawMemberId,  // Store RAW ID, not concatenated format
             displayName,
             titheBookIndex: i + 1, // Reset to sequential order
             assemblyName,
@@ -1112,7 +1151,8 @@ export const restoreSnapshot = async (
 
     // Apply snapshot order to current entries
     for (const snapshotEntry of snapshot.entries) {
-        const id = generateId(snapshotEntry.memberId, snapshot.assemblyName);
+        // Use normalizeToRawId to handle old format snapshots
+        const id = generateId(normalizeToRawId(snapshotEntry.memberId), snapshot.assemblyName);
         const existing = await store.get(id);
 
         if (existing) {
