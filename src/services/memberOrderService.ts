@@ -496,10 +496,13 @@ export const applyNewOrder = async (
  *
  * @param positionedMembers - Array of { memberId, position } from extraction
  * @param assemblyName - Assembly name
+ * @param originalRange - Optional original min/max range from when extraction first happened
+ *                        (before user skipped any positions). Used to ensure edge gaps are created.
  */
 export const applyRangeAwareOrder = async (
     positionedMembers: Array<{ memberId: string; position: number }>,
-    assemblyName: string
+    assemblyName: string,
+    originalRange?: { minPos: number; maxPos: number }
 ): Promise<void> => {
     if (positionedMembers.length === 0) return;
 
@@ -511,8 +514,9 @@ export const applyRangeAwareOrder = async (
 
     // Detect the range from extracted positions
     const extractedPositions = positionedMembers.map(pm => pm.position);
-    const minPos = Math.min(...extractedPositions);
-    const maxPos = Math.max(...extractedPositions);
+    // Use originalRange if provided (to handle skipped edge positions), otherwise compute from current
+    const minPos = originalRange?.minPos ?? Math.min(...extractedPositions);
+    const maxPos = originalRange?.maxPos ?? Math.max(...extractedPositions);
 
     // Track which members are being placed by the extraction
     // Use normalizeToRawId to ensure consistent comparison with DB entries
@@ -570,7 +574,8 @@ export const applyRangeAwareOrder = async (
                 }
             }
         }
-        // Case 2: Member is IN the range but NOT in extracted set -> displaced
+        // Case 2: Member is IN the reorder range but NOT in extracted set -> displaced
+        // This creates TRUE GAPS: if you skip position 127, whoever was at 127 gets moved out
         else if (currentPos >= minPos && currentPos <= maxPos) {
             displacedMembers.push(entry);
         }
@@ -582,20 +587,46 @@ export const applyRangeAwareOrder = async (
     // Sort displaced by their original position to preserve relative order
     displacedMembers.sort((a, b) => a.titheBookIndex - b.titheBookIndex);
 
+    // Build a set of ALL taken positions:
+    // 1. Positions outside the range (unchanged members)
+    // 2. Positions assigned to extracted members (from first pass)
+    const takenPositions = new Set<number>();
+
+    // Add positions of members OUTSIDE the range who are NOT being extracted
+    // (extracted members' old positions are vacated, not taken)
+    for (const entry of entries) {
+        if (!entry.isActive) continue;
+        const memberId = normalizeToRawId(entry.memberId);
+        const currentPos = entry.titheBookIndex;
+        // Only add if outside range AND not being extracted (truly keeping their position)
+        if ((currentPos < minPos || currentPos > maxPos) && !extractedMemberIds.has(memberId)) {
+            takenPositions.add(currentPos);
+        }
+    }
+
+    // Add new positions of extracted members
+    for (const pm of positionedMembers) {
+        takenPositions.add(pm.position);
+    }
+
+    // Filter vacated positions to remove any that are already taken
+    // (handles edge case of duplicate positions in database)
+    const safeVacatedPositions = vacatedPositions.filter(pos => !takenPositions.has(pos));
+
+    let vacatedIdx = 0;
     for (let i = 0; i < displacedMembers.length; i++) {
         const displaced = displacedMembers[i];
         const dbEntry = await store.get(displaced.id);
         if (!dbEntry) continue;
 
-        if (i < vacatedPositions.length) {
-            // SWAP: Assign to a vacated position
-            dbEntry.titheBookIndex = vacatedPositions[i];
+        // Try to use a safe vacated position
+        if (vacatedIdx < safeVacatedPositions.length) {
+            dbEntry.titheBookIndex = safeVacatedPositions[vacatedIdx];
+            takenPositions.add(safeVacatedPositions[vacatedIdx]);
+            vacatedIdx++;
         } else {
             // No more vacated positions - find next available after maxPos
             // This handles edge cases where there are more displaced than vacated
-            const takenPositions = new Set(
-                entries.filter(e => e.isActive).map(e => e.titheBookIndex)
-            );
             let nextPos = maxPos + 1;
             while (takenPositions.has(nextPos)) {
                 nextPos++;

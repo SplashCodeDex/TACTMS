@@ -55,6 +55,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
     const [searchTerm, setSearchTerm] = useState("");
     const [orderChanges, setOrderChanges] = useState<OrderChange[]>([]);
     const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+    // Track original extraction range (before user skips any positions) for edge gap handling
+    const [originalExtractionRange, setOriginalExtractionRange] = useState<{ minPos: number; maxPos: number } | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,6 +119,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
         setResolvingIndex(null);
         setSearchTerm("");
         setOrderChanges([]);  // Reset diff state
+        setOriginalExtractionRange(null);  // Reset original range
         onClose();
     }, [onClose, isSaving]);
 
@@ -264,6 +267,17 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             }
 
             setExtractedRows(finalRows);
+
+            // Store the original extraction range (before user skips any)
+            // This ensures edge position gaps (first/last) work correctly
+            if (finalRows.length > 0) {
+                const positions = finalRows.map(r => r.position);
+                setOriginalExtractionRange({
+                    minPos: Math.min(...positions),
+                    maxPos: Math.max(...positions)
+                });
+            }
+
             const unmatchedCount = finalRows.filter(r => !r.matchedMember).length;
 
             if (unmatchedCount > 0) {
@@ -328,6 +342,19 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             const minPos = Math.min(...positionedMembers.map(pm => pm.position));
             const maxPos = Math.max(...positionedMembers.map(pm => pm.position));
 
+            // Safeguard 1: Check for suspiciously large range
+            const rangeSize = maxPos - minPos + 1;
+            const extractedCount = positionedMembers.length;
+            const gapCount = rangeSize - extractedCount;
+
+            // If more than 50% of range are gaps (skipped/unmatched), warn user
+            if (rangeSize > 10 && gapCount > rangeSize * 0.5) {
+                addToast(
+                    `Warning: ${gapCount} positions in range ${minPos}-${maxPos} will become gaps. Consider using "Review Changes" first.`,
+                    "warning"
+                );
+            }
+
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
@@ -336,7 +363,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
 
             // ALWAYS use applyRangeAwareOrder to preserve extracted positions
             // This ensures declined positions (e.g., 1,2,3,5,6...) are preserved as gaps
-            await applyRangeAwareOrder(positionedMembers, assemblyName);
+            // Pass originalExtractionRange to handle edge position gaps (first/last skipped)
+            await applyRangeAwareOrder(positionedMembers, assemblyName, originalExtractionRange ?? undefined);
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
@@ -399,6 +427,18 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             const minPos = Math.min(...positionedMembers.map(pm => pm.position));
             const maxPos = Math.max(...positionedMembers.map(pm => pm.position));
 
+            // Safeguard: Check for suspiciously large range with many gaps
+            const rangeSize = maxPos - minPos + 1;
+            const extractedCount = positionedMembers.length;
+            const gapCount = rangeSize - extractedCount;
+
+            if (rangeSize > 10 && gapCount > rangeSize * 0.5) {
+                addToast(
+                    `Warning: ${gapCount} positions in range ${minPos}-${maxPos} will become gaps.`,
+                    "warning"
+                );
+            }
+
             // Generate a unique history ID to link snapshot and history entry
             const historyId = `ai-reorder-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
@@ -406,7 +446,8 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
             await createSnapshot(assemblyName, historyId);
 
             // ALWAYS use applyRangeAwareOrder to preserve extracted positions
-            await applyRangeAwareOrder(positionedMembers, assemblyName);
+            // Pass originalExtractionRange to handle edge position gaps (first/last skipped)
+            await applyRangeAwareOrder(positionedMembers, assemblyName, originalExtractionRange ?? undefined);
 
             // Log history entry with SAME ID so snapshot can be linked
             await logOrderChange({
