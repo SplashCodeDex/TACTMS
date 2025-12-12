@@ -1629,6 +1629,7 @@ const App: React.FC = () => {
             extractedData={extractedTitheData}
             masterData={imageVerificationMasterData}
             onConfirm={handleImageVerificationConfirm}
+            memberDatabase={memberDatabase}
           />
         )
       }

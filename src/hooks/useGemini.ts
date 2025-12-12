@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
-import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase } from '@/types';
+import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase, TransactionLogEntry } from '@/types';
 import { GEMINI_MODEL_NAME } from '@/constants';
+import { buildDataContext, buildPromptContext } from '@/services/queryTemplates';
 
 export const useGemini = (apiKey: string, addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void) => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -155,21 +156,31 @@ export const useGeminiChat = (apiKey: string) => {
   const initializeChat = useCallback((
     titheListData: TitheRecordB[],
     memberDatabase: MemberDatabase,
-    currentAssembly: string
+    currentAssembly: string,
+    transactionLogs?: TransactionLogEntry[]
   ) => {
-    // We store the full data in a ref or state to access it during tool execution
-    // For simplicity, we'll keep it in state here, but in a real app with huge data,
-    // we might want to use a ref or external store.
+    // Build enriched data context for AI using query templates
+    const enrichedContext = transactionLogs
+      ? buildDataContext(titheListData, transactionLogs, memberDatabase, currentAssembly)
+      : null;
+
     setDataContext({
       titheListData,
       memberDatabase,
-      currentAssembly
+      currentAssembly,
+      enrichedContext
     });
+
+    // Create a more informative initial message if we have enriched context
+    const initialMessage = enrichedContext && transactionLogs && transactionLogs.length > 0
+      ? `Hello! I'm your TACTMS Assistant for ${currentAssembly}. I've analyzed your data:\n\n- This month's tithe: GHS ${enrichedContext.currentMonthTotal.toLocaleString()}\n- ${enrichedContext.currentWeekTithers} tithers this week\n- ${enrichedContext.totalMembers} total members\n\nWhat would you like to know?`
+      : "Hello! I'm your TACTMS Assistant. I have access to your full database. You can ask me about specific members, tithe statistics, or trends. What would you like to know?";
 
     setChatHistory([
       {
         role: "model",
-        parts: [{ text: "Hello! I'm your TACTMS Assistant. I have access to your full database. You can ask me about specific members, tithe statistics, or trends. What would you like to know?" }],
+        parts: [{ text: initialMessage }],
+        summary: enrichedContext ? buildPromptContext(enrichedContext) : undefined
       }
     ]);
   }, []);

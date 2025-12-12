@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Modal from "./Modal";
-import { TitheRecordB, MemberRecordA } from "@/types";
+import { TitheRecordB, MemberRecordA, MemberDatabase } from "@/types";
 import { findMemberByName } from "@/services/reconciliation";
 import { validateAmountWithLearning } from "@/services/amountValidator";
 import type { AmountValidation } from "@/types";
 import Button from "./Button";
-import { Check, AlertTriangle, AlertCircle, Wand2, ArrowRight, Save, Sparkles } from "lucide-react";
+import { Check, AlertTriangle, AlertCircle, Wand2, ArrowRight, Save, Sparkles, MapPin } from "lucide-react";
 import MemberSelect from "./MemberSelect";
 import ParsingIndicator from "./ParsingIndicator";
 import { useWorkspaceContext, useAppConfigContext } from "@/context";
 import { trainEnsemble } from "@/services/ensembleOCR";
 import { saveAmountCorrection } from "@/services/handwritingLearning";
 import { trainFromVerifiedBatch } from "@/services/imageProcessor";
+import { detectAssemblyFromExtraction, getConfidenceBadgeColor, type DetectionSummary } from "@/services/assemblyDetector";
 
 interface ImageVerificationModalProps {
     isOpen: boolean;
@@ -19,6 +20,8 @@ interface ImageVerificationModalProps {
     extractedData: TitheRecordB[];
     masterData: MemberRecordA[];
     onConfirm: (verifiedData: TitheRecordB[]) => void;
+    /** Optional: Full member database for cross-assembly detection */
+    memberDatabase?: MemberDatabase;
 }
 
 interface VerificationRow {
@@ -42,6 +45,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     extractedData,
     masterData,
     onConfirm,
+    memberDatabase,
 }) => {
     const { currentAssembly } = useWorkspaceContext();
     const { enableAmountSnapping } = useAppConfigContext();
@@ -50,6 +54,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     const [editingRowId, setEditingRowId] = useState<number | null>(null);
     const [editingAmount, setEditingAmount] = useState<string>("");
     const [savedCorrections, setSavedCorrections] = useState<Set<number>>(new Set());
+    const [detectedAssembly, setDetectedAssembly] = useState<DetectionSummary | null>(null);
 
     useEffect(() => {
         const processMatches = async () => {
@@ -82,12 +87,18 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                 }));
                 setRows(newRows);
                 setIsProcessing(false);
-                setSavedCorrections(new Set()); // Reset on new extraction
+                setSavedCorrections(new Set());
+
+                // Run assembly detection if memberDatabase is available
+                if (memberDatabase && Object.keys(memberDatabase).length > 1) {
+                    const detection = detectAssemblyFromExtraction(extractedData, memberDatabase);
+                    setDetectedAssembly(detection);
+                }
             }
         };
 
         processMatches();
-    }, [isOpen, extractedData, masterData, currentAssembly, enableAmountSnapping]);
+    }, [isOpen, extractedData, masterData, currentAssembly, enableAmountSnapping, memberDatabase]);
 
     const handleConfirm = async () => {
         const verifiedData = rows.map((row) => {
@@ -307,6 +318,21 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                             }
                         </p>
                     </div>
+
+                    {/* Detected Assembly Badge */}
+                    {detectedAssembly?.topMatch && (
+                        <div className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 ${getConfidenceBadgeColor(detectedAssembly.topMatch.confidence)}`}>
+                            <MapPin size={12} />
+                            <span>
+                                {detectedAssembly.isConfident ? 'Detected:' : 'Possible:'}{' '}
+                                <strong>{detectedAssembly.topMatch.assemblyName}</strong>
+                            </span>
+                            <span className="opacity-60">
+                                ({Math.round(detectedAssembly.topMatch.confidence * 100)}%)
+                            </span>
+                        </div>
+                    )}
+
                     {/* Status Pill */}
                     <div className="px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-xs font-medium text-[var(--text-muted)]">
                         {isProcessing ? (
