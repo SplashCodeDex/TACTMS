@@ -24,9 +24,13 @@ export interface AppConfigContextValue {
     resetToDefaultAssemblies: () => void;
     isCustomAssembly: (name: string) => boolean;
 
-    // Future: Fuzzy match threshold, date format preferences, etc.
+    // Matching settings
     fuzzyMatchThreshold: number;
     setFuzzyMatchThreshold: (threshold: number) => void;
+
+    // Amount snapping - snaps extracted amounts to nearby common values (e.g., 59→60)
+    enableAmountSnapping: boolean;
+    setEnableAmountSnapping: (enabled: boolean) => void;
 }
 
 const AppConfigContext = createContext<AppConfigContextValue | null>(null);
@@ -50,6 +54,12 @@ export const AppConfigProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return saved ? parseFloat(saved) : 0.8;
     });
 
+    // Amount snapping: snaps 59→60 based on assembly patterns (opt-in, defaults off)
+    const [enableAmountSnapping, setEnableAmountSnapping] = useState<boolean>(() => {
+        const saved = localStorage.getItem("tactmsEnableAmountSnapping");
+        return saved === "true";
+    });
+
     // Persist custom assemblies to localStorage
     useEffect(() => {
         localStorage.setItem(CUSTOM_ASSEMBLIES_STORAGE_KEY, JSON.stringify(customAssemblies));
@@ -59,6 +69,11 @@ export const AppConfigProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     useEffect(() => {
         localStorage.setItem("tactmsFuzzyMatchThreshold", String(fuzzyMatchThreshold));
     }, [fuzzyMatchThreshold]);
+
+    // Persist amount snapping setting
+    useEffect(() => {
+        localStorage.setItem("tactmsEnableAmountSnapping", String(enableAmountSnapping));
+    }, [enableAmountSnapping]);
 
     // Combine default + custom assemblies (unique, sorted)
     const assemblies = useMemo(() => {
@@ -105,6 +120,8 @@ export const AppConfigProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             isCustomAssembly,
             fuzzyMatchThreshold,
             setFuzzyMatchThreshold,
+            enableAmountSnapping,
+            setEnableAmountSnapping,
         }),
         [
             assemblies,
@@ -113,6 +130,7 @@ export const AppConfigProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             resetToDefaultAssemblies,
             isCustomAssembly,
             fuzzyMatchThreshold,
+            enableAmountSnapping,
         ]
     );
 

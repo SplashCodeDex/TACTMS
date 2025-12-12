@@ -30,7 +30,7 @@ export {
 } from './core';
 
 // Re-export main functions
-export { processTitheImageWithValidation, verifyLowConfidenceEntries } from './titheExtractor';
+export { processTitheImageWithValidation, verifyLowConfidenceEntries, applyNeighborContext } from './titheExtractor';
 export { extractNamesFromTitheBook } from './nameExtractor';
 
 // Re-export matching utilities (for advanced use cases)
@@ -43,3 +43,6 @@ export {
 } from './matching';
 
 export type { ExtractedNameInput, OptimalMatchResult } from './matching';
+
+// Re-export training utilities
+export { trainFromVerifiedBatch, trainSingleCorrection } from './trainFromVerification';

@@ -30,7 +30,9 @@ interface SubstitutionResult {
 const STORAGE_KEY = 'tactms-char-substitutions';
 
 // Common OCR substitutions as baseline (pre-seeded)
+// Extended with Ghanaian handwriting digit confusions
 const BASELINE_SUBSTITUTIONS: Record<string, string> = {
+    // Letter → Digit substitutions
     'O': '0', 'o': '0',
     'I': '1', 'l': '1', 'i': '1',
     'S': '5', 's': '5',
@@ -38,6 +40,16 @@ const BASELINE_SUBSTITUTIONS: Record<string, string> = {
     'G': '6', 'g': '6',
     'Z': '2', 'z': '2',
     'T': '7',
+    // Extended Ghanaian handwriting patterns
+    'D': '0',  // Capital D often looks like 0
+    'C': '0',  // Open loop C → 0
+    'U': '0',  // U-loop can look like 0
+    'Q': '0',  // Q with tail → 0
+    '&': '8',  // Ampersand often looks like 8
+    'E': '3',  // E → 3 confusion
+    'A': '4',  // A → 4 confusion
+    'q': '9',  // Lowercase q → 9
+    'h': '4',  // Lowercase h → 4 in some scripts
 };
 
 // Learned substitutions with frequency tracking

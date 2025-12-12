@@ -98,7 +98,9 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
     const addToast = useToast();
     const {
         fuzzyMatchThreshold,
-        setFuzzyMatchThreshold
+        setFuzzyMatchThreshold,
+        enableAmountSnapping,
+        setEnableAmountSnapping
     } = useAppConfigContext();
 
     const dataAssemblies = Object.keys(memberDatabase);
@@ -106,6 +108,15 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
     const handleThresholdChange = (value: number) => {
         setFuzzyMatchThreshold(value);
         addToast(`Fuzzy match threshold set to ${(value * 100).toFixed(0)}%`, "info", 2000);
+    };
+
+    const handleAmountSnappingToggle = (enabled: boolean) => {
+        setEnableAmountSnapping(enabled);
+        addToast(
+            enabled ? "Amount snapping enabled (59→60)" : "Amount snapping disabled",
+            "info",
+            2000
+        );
     };
 
     // Reset Order State
@@ -174,6 +185,37 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
                         <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
                             <span>More Tolerant (50%)</span>
                             <span>Exact Match (100%)</span>
+                        </div>
+                    </div>
+
+                    {/* Amount Snapping Toggle */}
+                    <div className="pt-4 border-t border-[var(--border-color)]">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--text-primary)]">
+                                    Amount Snapping
+                                </label>
+                                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                                    Snap OCR amounts to common tithe values (e.g., 59→60, 98→100)
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => handleAmountSnappingToggle(!enableAmountSnapping)}
+                                className={`
+                                    relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                                    ${enableAmountSnapping
+                                        ? 'bg-[var(--primary-accent-start)]'
+                                        : 'bg-[var(--bg-elevated)] border border-[var(--border-color)]'
+                                    }
+                                `}
+                            >
+                                <span
+                                    className={`
+                                        inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform
+                                        ${enableAmountSnapping ? 'translate-x-6' : 'translate-x-1'}
+                                    `}
+                                />
+                            </button>
                         </div>
                     </div>
                 </div>

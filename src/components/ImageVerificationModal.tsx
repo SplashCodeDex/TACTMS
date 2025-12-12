@@ -8,7 +8,7 @@ import Button from "./Button";
 import { Check, AlertTriangle, AlertCircle, Wand2, ArrowRight, Save, Sparkles } from "lucide-react";
 import MemberSelect from "./MemberSelect";
 import ParsingIndicator from "./ParsingIndicator";
-import { useWorkspaceContext } from "@/context";
+import { useWorkspaceContext, useAppConfigContext } from "@/context";
 import { trainEnsemble } from "@/services/ensembleOCR";
 import { saveAmountCorrection } from "@/services/handwritingLearning";
 
@@ -43,6 +43,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     onConfirm,
 }) => {
     const { currentAssembly } = useWorkspaceContext();
+    const { enableAmountSnapping } = useAppConfigContext();
     const [rows, setRows] = useState<VerificationRow[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [editingRowId, setEditingRowId] = useState<number | null>(null);
@@ -70,7 +71,9 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                         confidenceTier: match?.confidenceTier || 'low',
                         amountWarning: await validateAmountWithLearning(
                             record["Transaction Amount"],
-                            currentAssembly || 'default'
+                            currentAssembly || 'default',
+                            undefined, // memberHistory
+                            enableAmountSnapping // Pass the setting from context
                         ),
                         matchSource: match?.matchSource,
                         originalAmount: record["Transaction Amount"]
@@ -83,7 +86,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         };
 
         processMatches();
-    }, [isOpen, extractedData, masterData, currentAssembly]);
+    }, [isOpen, extractedData, masterData, currentAssembly, enableAmountSnapping]);
 
     const handleConfirm = () => {
         const verifiedData = rows.map((row) => {

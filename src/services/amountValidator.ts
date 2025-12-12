@@ -157,10 +157,12 @@ export const getAssemblyPatterns = (assemblyName: string): number[] => {
 
 /**
  * Validate an amount and suggest corrections if needed
+ * @param enableSnapping - If true, suggest snapping to common values (default: true)
  */
 export const validateAmount = (
     amount: number | string,
-    memberHistory?: MemberTitheHistory
+    memberHistory?: MemberTitheHistory,
+    enableSnapping: boolean = true
 ): AmountValidation => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
 
@@ -232,15 +234,18 @@ export const validateAmount = (
     }
 
     // Check if amount is close to a common tithe value (snap suggestion)
-    const snapResult = snapToCommonAmount(numAmount);
-    if (snapResult && snapResult.snappedAmount !== numAmount) {
-        return {
-            originalAmount: numAmount,
-            suggestedAmount: snapResult.snappedAmount,
-            confidence: 0.75,
-            reason: 'ocr_artifact',
-            message: `Amount ${numAmount} is close to common value ${snapResult.snappedAmount} (${snapResult.deviation.toFixed(1)}% off)`
-        };
+    // Only suggest if snapping is enabled
+    if (enableSnapping) {
+        const snapResult = snapToCommonAmount(numAmount);
+        if (snapResult && snapResult.snappedAmount !== numAmount) {
+            return {
+                originalAmount: numAmount,
+                suggestedAmount: snapResult.snappedAmount,
+                confidence: 0.75,
+                reason: 'ocr_artifact',
+                message: `Amount ${numAmount} is close to common value ${snapResult.snappedAmount} (${snapResult.deviation.toFixed(1)}% off)`
+            };
+        }
     }
 
     // Amount looks valid
@@ -255,11 +260,13 @@ export const validateAmount = (
  * Validate with learned corrections (async version)
  * Checks handwriting learning database first for known patterns
  * Uses member history to weight suggestions (context-aware)
+ * @param enableSnapping - If true, suggest snapping to common values (default: true)
  */
 export const validateAmountWithLearning = async (
     amount: number | string,
     assemblyName: string,
-    memberHistory?: MemberTitheHistory
+    memberHistory?: MemberTitheHistory,
+    enableSnapping: boolean = true
 ): Promise<AmountValidation> => {
     const { suggestCorrection } = await import('./handwritingLearning');
 
@@ -347,7 +354,7 @@ export const validateAmountWithLearning = async (
     }
 
     // Fall back to standard validation
-    return validateAmount(amount, memberHistory);
+    return validateAmount(amount, memberHistory, enableSnapping);
 };
 
 /**

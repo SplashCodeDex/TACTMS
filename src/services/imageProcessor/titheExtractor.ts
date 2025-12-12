@@ -110,6 +110,52 @@ const calculateAmountConfidence = (
     return Math.min(0.98, Math.max(0.1, confidence));
 };
 
+/**
+ * Apply neighbor context to detect patterns
+ * If 60%+ of nearby rows have similar amounts, that's a pattern hint
+ *
+ * @param entries - All extracted entries
+ * @param currentIndex - Index of the entry to analyze
+ * @param windowSize - Number of neighbors on each side to check (default: 3)
+ * @returns Similarity ratio (0-1) indicating pattern strength
+ *
+ * @example
+ * // After extraction, boost confidence for entries that match neighbor patterns
+ * const patternStrength = applyNeighborContext(entries, 5);
+ * if (patternStrength > 0.6) confidence += 0.1;
+ */
+export const applyNeighborContext = (
+    entries: TitheRecordB[],
+    currentIndex: number,
+    windowSize: number = 3
+): number => {
+    const currentAmount = entries[currentIndex]["Transaction Amount"] as number;
+
+    // No context boost for zero amounts
+    if (currentAmount === 0) return 0;
+
+    // Get neighbors (excluding self)
+    const startIdx = Math.max(0, currentIndex - windowSize);
+    const endIdx = Math.min(entries.length, currentIndex + windowSize + 1);
+
+    const neighbors = [];
+    for (let i = startIdx; i < endIdx; i++) {
+        if (i !== currentIndex) {
+            const na = entries[i]["Transaction Amount"] as number;
+            if (na > 0) neighbors.push(na);
+        }
+    }
+
+    if (neighbors.length === 0) return 0;
+
+    // Count neighbors with similar amounts (within 10%)
+    const similar = neighbors.filter(na =>
+        Math.abs(na - currentAmount) / Math.max(na, currentAmount) < 0.1
+    );
+
+    return similar.length / neighbors.length;
+};
+
 // ============================================================================
 // MAIN EXTRACTION
 // ============================================================================
@@ -359,6 +405,24 @@ export const processTitheImageWithValidation = async (
                 };
             })
         );
+
+        // ============================================================
+        // POST-EXTRACTION: Apply neighbor context to boost confidence
+        // ============================================================
+        for (let i = 0; i < entries.length; i++) {
+            const patternStrength = applyNeighborContext(entries, i);
+            if (patternStrength >= 0.6) {
+                // 60%+ nearby rows have similar amounts - boost confidence
+                const currentConf = entries[i].Confidence ?? 0;
+                entries[i].Confidence = Math.min(0.95, currentConf + (patternStrength * 0.08));
+            } else if (patternStrength === 0 && entries[i]["Transaction Amount"] !== 0) {
+                // This entry breaks a pattern - slightly reduce confidence
+                const currentConf = entries[i].Confidence ?? 0;
+                if (currentConf > 0.7) {
+                    entries[i].Confidence = currentConf - 0.05;
+                }
+            }
+        }
 
         // Build SET info if page number is available
         const setInfo = rawResult.pageNumber
