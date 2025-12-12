@@ -21,7 +21,9 @@ import {
     fileToGenerativePart,
     inferMemberRangeFromPage,
     getWeekColumnOffset,
-    MEMBERS_PER_SET
+    MEMBERS_PER_SET,
+    checkGeminiRateLimit,
+    recordGeminiCall
 } from "./core";
 import { TITHE_EXTRACTION_SCHEMA } from "./schemas";
 import { TITHE_BOOK_HTML_TEMPLATE } from "./templates";
@@ -179,9 +181,15 @@ export const processTitheImageWithValidation = async (
         throw new Error("Month, Week, and Date are required for extraction.");
     }
 
+    // Check rate limit before making API call
+    checkGeminiRateLimit();
+
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
     const imageParts = await fileToGenerativePart(imageFile);
+
+    // Record API call for rate limiting
+    recordGeminiCall();
 
     const weekColumnOffset = getWeekColumnOffset(targetWeek);
 

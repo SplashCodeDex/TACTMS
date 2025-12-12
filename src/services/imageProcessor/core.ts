@@ -4,6 +4,7 @@
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GEMINI_MODEL_NAME } from "@/constants";
+import { canMakeRequest, recordRequest, RATE_LIMITS, RateLimitError, getTimeUntilReset } from "@/utils/rateLimiter";
 
 // ============================================================================
 // CONFIGURATION
@@ -12,8 +13,32 @@ import { GEMINI_MODEL_NAME } from "@/constants";
 /** Gemini model for image processing - uses centralized constant */
 export const MODEL_NAME = GEMINI_MODEL_NAME;
 
+/** Rate limit key for Gemini API calls */
+export const GEMINI_RATE_LIMIT_KEY = 'gemini_api';
+
 /** Confidence threshold for flagging entries that need review */
 export const LOW_CONFIDENCE_THRESHOLD = 0.8;
+
+/**
+ * Check if Gemini API request can be made (rate limit check)
+ * @throws RateLimitError if limit exceeded
+ */
+export function checkGeminiRateLimit(): void {
+    if (!canMakeRequest(GEMINI_RATE_LIMIT_KEY, RATE_LIMITS.GEMINI)) {
+        const waitTime = getTimeUntilReset(GEMINI_RATE_LIMIT_KEY, RATE_LIMITS.GEMINI);
+        throw new RateLimitError(
+            `Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`,
+            waitTime
+        );
+    }
+}
+
+/**
+ * Record a successful Gemini API call for rate limiting
+ */
+export function recordGeminiCall(): void {
+    recordRequest(GEMINI_RATE_LIMIT_KEY);
+}
 
 // ============================================================================
 // FILE UTILITIES

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   TransactionLogEntry,
@@ -13,6 +13,7 @@ import { useOutletContext } from "react-router-dom";
 import ChatInterface from "@/components/ChatInterface";
 import { useGeminiChat } from "@/hooks/useGemini";
 import { useModal } from "@/hooks/useModal";
+import { detectSmartDate } from "@/utils/smartDateDetection";
 import {
   RecentMembersList,
   RecentActivityList,
@@ -184,15 +185,33 @@ const DashboardSection: React.FC = () => {
     imageInputRef.current?.click();
   };
 
-  const handleImageUploadChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUploadChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     if (file) {
       setPendingScanFile(file);
       setScanAssembly(selectedAssembly || "");
+
+      // Smart date detection from image metadata/filename
+      try {
+        const detected = await detectSmartDate(file);
+        if (detected.month !== undefined) {
+          const months = ['January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'];
+          setScanMonth(months[detected.month]);
+        }
+        if (detected.week) {
+          setScanWeek(`Week ${detected.week}`);
+        }
+        console.log('[SmartDate] Auto-detected:', detected);
+      } catch (e) {
+        // Fallback to current month if detection fails
+        console.warn('[SmartDate] Detection failed:', e);
+      }
+
       scanAssemblyModal.open({ file, assembly: selectedAssembly || "" });
     }
     if (event.target) event.target.value = "";
-  };
+  }, [selectedAssembly, scanAssemblyModal]);
 
   const handleConfirmScanAssembly = () => {
     if (!scanAssembly) {

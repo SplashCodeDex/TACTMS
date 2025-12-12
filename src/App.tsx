@@ -36,6 +36,7 @@ import FullTithePreviewModal from "@/components/FullTithePreviewModal";
 import AddNewMemberModal from "@/components/AddNewMemberModal";
 import CreateTitheListModal from "@/components/CreateTitheListModal";
 import ImageVerificationModal from "@/components/ImageVerificationModal";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { WifiOff, Save, Trash2 } from "lucide-react";
 import { parseExcelFile, detectExcelFileType } from "@/lib/excelUtils";
 import { useThemePreferences } from "@/hooks/useThemePreferences";
@@ -43,6 +44,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useCommandPaletteHotkeys } from "@/hooks/useCommandPaletteHotkeys";
 import { useModalsPhase2 as useModals } from "@/hooks/useModals";
 import { useModal } from "@/hooks/useModal";
+import { useGlobalShortcuts } from "@/hooks/useKeyboardShortcuts";
 // Context hooks - shared state across app
 import { useWorkspaceContext, useDatabaseContext, useToast, useAppConfigContext } from "@/context";
 import { useFavorites } from "./hooks/useFavorites";
@@ -143,6 +145,16 @@ const App: React.FC = () => {
   const [favoriteNameInput, setFavoriteNameInput] = useState("");
   const saveFavorite = useModal("saveFavorite");
   const deleteFavoriteModal = useModal("deleteFavorite");
+
+  // Global keyboard shortcuts: Ctrl+S (save), Ctrl+K (search/command palette)
+  useGlobalShortcuts({
+    onSave: () => {
+      if (titheListData.length > 0 && currentAssembly) {
+        saveFavorite.open();
+      }
+    },
+    onSearch: () => setIsCommandPaletteOpen(true),
+  });
 
 
 
@@ -1228,164 +1240,166 @@ const App: React.FC = () => {
         <DesktopNotifications globalNotifications={globalNotifications} accentColor={accentColor} />
 
         <main className="p-6 lg:p-8 max-w-[1600px] mx-auto">
-          <Outlet
-            context={{
-              transactionLog,
-              memberDatabase,
-              favorites,
-              onStartNewWeek: appActions.members.startNewWeek,
-              userProfile: driveUserProfile,
-              onUploadFile: handleFileAccepted,
-              onScanImage: async (file: File, assemblyName?: string, month?: string, week?: string) => {
-                // Use provided assembly name or fall back to current context
-                const targetAssembly = assemblyName || currentAssembly;
+          <ErrorBoundary showRetry onError={(e) => console.error('[App] Section crashed:', e)}>
+            <Outlet
+              context={{
+                transactionLog,
+                memberDatabase,
+                favorites,
+                onStartNewWeek: appActions.members.startNewWeek,
+                userProfile: driveUserProfile,
+                onUploadFile: handleFileAccepted,
+                onScanImage: async (file: File, assemblyName?: string, month?: string, week?: string) => {
+                  // Use provided assembly name or fall back to current context
+                  const targetAssembly = assemblyName || currentAssembly;
 
-                if (!targetAssembly) {
-                  addToast("Please select an assembly first.", "warning");
-                  return;
-                }
-
-                // If a specific assembly was selected (and it's different), update the context
-                if (assemblyName && assemblyName !== currentAssembly) {
-                  setCurrentAssembly(assemblyName);
-                  // Note: We don't necessarily need to "startNewWeek" here if we just want to add to existing data
-                  // But if we want to ensure the view updates, setting currentAssembly is key.
-                }
-
-                const masterList = memberDatabase[targetAssembly];
-                if (!masterList || !masterList.data) {
-                  addToast(`No member data found for ${targetAssembly} Assembly.`, "warning");
-                  return;
-                }
-
-                setIsImageScanning(true);
-                // Generate a date string for the transaction
-                const currentYear = new Date().getFullYear();
-                let dateString = "";
-                let targetDateObj = new Date();
-
-                if (month && week) {
-                  targetDateObj = calculateSundayDate(month, week, currentYear);
-                  dateString = formatDateDDMMMYYYY(targetDateObj);
-
-                  // Update App State for Persistence
-                  setSelectedDate(targetDateObj);
-                  setFileNameToSave(`${targetAssembly.toUpperCase()}-${dateString}-TITHERS`);
-                } else {
-                  targetDateObj = selectedDate;
-                  dateString = formatDateDDMMMYYYY(selectedDate);
-                }
-
-                try {
-                  const data = await analyzeImage(file, month, week, dateString);
-                  if (data) {
-                    setExtractedTitheData(data);
-                    // Ensure we use the master data for the TARGET assembly
-                    setImageVerificationMasterData(masterList.data);
-                    setIsImageVerificationModalOpen(true);
+                  if (!targetAssembly) {
+                    addToast("Please select an assembly first.", "warning");
+                    return;
                   }
-                } finally {
-                  setIsImageScanning(false);
-                }
-              },
-              // Processor Props
-              uploadedFile,
-              originalData,
-              processedDataA,
-              setProcessedDataA,
-              favoritesSearchTerm,
-              setFavoritesSearchTerm,
-              loadFavorite: appActions.favorites.loadFavorite,
-              deleteFavorite: handleDeleteFavorite,
-              viewFavoriteDetails,
-              updateFavoriteName,
-              addToast,
-              // Analytics
-              titheListData,
-              currentAssembly,
-              selectedDate,
-              // Reports
-              // MemberDatabase
-              onUploadMasterList: (file: File, assembly: string) =>
-                handleFileAccepted(file, true, assembly),
-              onCreateTitheList: (
-                members: MemberRecordA[],
-                assembly: string,
-              ) => {
-                setPendingTitheListMembers(members);
-                setPendingTitheListAssembly(assembly);
-                setIsCreateTitheListModalOpen(true); // TODO: move into useModalsPhase2 later
-              },
-              onEditMember: (member: MemberRecordA, assemblyName: string) => {
-                setMemberToEdit({ member, assemblyName });
-                editMember.open({ target: memberToEdit! });
-              },
-              onDeleteAssembly: appActions.members.handleDeleteAssembly,
-              onAddAssembly: (assemblyName: string) => {
-                if (memberDatabase[assemblyName]) {
-                  addToast(`Assembly "${assemblyName}" already exists.`, "warning");
-                  return;
-                }
-                // Add to memberDatabase
-                setMemberDatabase((prev) => ({
-                  ...prev,
-                  [assemblyName]: {
-                    data: [],
-                    lastUpdated: Date.now(),
-                    fileName: "",
-                  },
-                }));
-                // Also add to AppConfigContext so it appears in dropdowns
-                addAssembly(assemblyName);
-                addToast(`Assembly "${assemblyName}" created. Upload a master list to populate it.`, "success");
-              },
-              // ListOverviewActions
-              currentTotalTithe: totalTitheAmount,
-              hasUnsavedChanges,
-              tithersCount,
-              nonTithersCount: processedDataA.length - tithersCount,
-              tithersPercentage:
-                processedDataA.length > 0
-                  ? (tithersCount / processedDataA.length) * 100
-                  : 0,
-              setIsFullPreviewModalOpen,
-              setIsAmountEntryModalOpen,
-              fileNameToSave,
-              setFileNameToSave,
-              inputErrors,
-              setInputErrors,
-              handleDownloadExcel: appActions.download.handleDownloadExcel,
-              openSaveFavoriteModal: () => saveFavorite.open(),
-              onClearWorkspace: () => clearWorkspaceModal.open(),
-              soulsWonCount,
-              // Configuration
-              isLoggedIn: isDriveLoggedIn,
-              syncStatus: driveSyncStatus,
-              signIn: driveSignIn,
-              signOut: driveSignOut,
-              isConfigured: isDriveConfigured,
-              ageRangeMin,
-              setAgeRangeMin,
-              ageRangeMax,
-              setAgeRangeMax,
-              isAgeFilterActive,
-              handleApplyAgeFilter: appActions.titheProcessing.handleApplyAgeFilter,
-              handleRemoveAgeFilter: appActions.titheProcessing.handleRemoveAgeFilter,
-              concatenationConfig,
-              handleConcatenationConfigChange: appActions.titheProcessing.handleConcatenationConfigChange,
-              descriptionText,
-              handleDescriptionChange: appActions.titheProcessing.handleDescriptionChange,
-              amountMappingColumn,
-              setAmountMappingColumn,
-              theme,
-              setTheme,
-              accentColor,
-              setAccentColor,
-              isSubscribed,
-              requestNotificationPermission,
-              onDateChange: appActions.titheProcessing.handleDateChange,
-            }}
-          />
+
+                  // If a specific assembly was selected (and it's different), update the context
+                  if (assemblyName && assemblyName !== currentAssembly) {
+                    setCurrentAssembly(assemblyName);
+                    // Note: We don't necessarily need to "startNewWeek" here if we just want to add to existing data
+                    // But if we want to ensure the view updates, setting currentAssembly is key.
+                  }
+
+                  const masterList = memberDatabase[targetAssembly];
+                  if (!masterList || !masterList.data) {
+                    addToast(`No member data found for ${targetAssembly} Assembly.`, "warning");
+                    return;
+                  }
+
+                  setIsImageScanning(true);
+                  // Generate a date string for the transaction
+                  const currentYear = new Date().getFullYear();
+                  let dateString = "";
+                  let targetDateObj = new Date();
+
+                  if (month && week) {
+                    targetDateObj = calculateSundayDate(month, week, currentYear);
+                    dateString = formatDateDDMMMYYYY(targetDateObj);
+
+                    // Update App State for Persistence
+                    setSelectedDate(targetDateObj);
+                    setFileNameToSave(`${targetAssembly.toUpperCase()}-${dateString}-TITHERS`);
+                  } else {
+                    targetDateObj = selectedDate;
+                    dateString = formatDateDDMMMYYYY(selectedDate);
+                  }
+
+                  try {
+                    const data = await analyzeImage(file, month, week, dateString);
+                    if (data) {
+                      setExtractedTitheData(data);
+                      // Ensure we use the master data for the TARGET assembly
+                      setImageVerificationMasterData(masterList.data);
+                      setIsImageVerificationModalOpen(true);
+                    }
+                  } finally {
+                    setIsImageScanning(false);
+                  }
+                },
+                // Processor Props
+                uploadedFile,
+                originalData,
+                processedDataA,
+                setProcessedDataA,
+                favoritesSearchTerm,
+                setFavoritesSearchTerm,
+                loadFavorite: appActions.favorites.loadFavorite,
+                deleteFavorite: handleDeleteFavorite,
+                viewFavoriteDetails,
+                updateFavoriteName,
+                addToast,
+                // Analytics
+                titheListData,
+                currentAssembly,
+                selectedDate,
+                // Reports
+                // MemberDatabase
+                onUploadMasterList: (file: File, assembly: string) =>
+                  handleFileAccepted(file, true, assembly),
+                onCreateTitheList: (
+                  members: MemberRecordA[],
+                  assembly: string,
+                ) => {
+                  setPendingTitheListMembers(members);
+                  setPendingTitheListAssembly(assembly);
+                  setIsCreateTitheListModalOpen(true); // TODO: move into useModalsPhase2 later
+                },
+                onEditMember: (member: MemberRecordA, assemblyName: string) => {
+                  setMemberToEdit({ member, assemblyName });
+                  editMember.open({ target: memberToEdit! });
+                },
+                onDeleteAssembly: appActions.members.handleDeleteAssembly,
+                onAddAssembly: (assemblyName: string) => {
+                  if (memberDatabase[assemblyName]) {
+                    addToast(`Assembly "${assemblyName}" already exists.`, "warning");
+                    return;
+                  }
+                  // Add to memberDatabase
+                  setMemberDatabase((prev) => ({
+                    ...prev,
+                    [assemblyName]: {
+                      data: [],
+                      lastUpdated: Date.now(),
+                      fileName: "",
+                    },
+                  }));
+                  // Also add to AppConfigContext so it appears in dropdowns
+                  addAssembly(assemblyName);
+                  addToast(`Assembly "${assemblyName}" created. Upload a master list to populate it.`, "success");
+                },
+                // ListOverviewActions
+                currentTotalTithe: totalTitheAmount,
+                hasUnsavedChanges,
+                tithersCount,
+                nonTithersCount: processedDataA.length - tithersCount,
+                tithersPercentage:
+                  processedDataA.length > 0
+                    ? (tithersCount / processedDataA.length) * 100
+                    : 0,
+                setIsFullPreviewModalOpen,
+                setIsAmountEntryModalOpen,
+                fileNameToSave,
+                setFileNameToSave,
+                inputErrors,
+                setInputErrors,
+                handleDownloadExcel: appActions.download.handleDownloadExcel,
+                openSaveFavoriteModal: () => saveFavorite.open(),
+                onClearWorkspace: () => clearWorkspaceModal.open(),
+                soulsWonCount,
+                // Configuration
+                isLoggedIn: isDriveLoggedIn,
+                syncStatus: driveSyncStatus,
+                signIn: driveSignIn,
+                signOut: driveSignOut,
+                isConfigured: isDriveConfigured,
+                ageRangeMin,
+                setAgeRangeMin,
+                ageRangeMax,
+                setAgeRangeMax,
+                isAgeFilterActive,
+                handleApplyAgeFilter: appActions.titheProcessing.handleApplyAgeFilter,
+                handleRemoveAgeFilter: appActions.titheProcessing.handleRemoveAgeFilter,
+                concatenationConfig,
+                handleConcatenationConfigChange: appActions.titheProcessing.handleConcatenationConfigChange,
+                descriptionText,
+                handleDescriptionChange: appActions.titheProcessing.handleDescriptionChange,
+                amountMappingColumn,
+                setAmountMappingColumn,
+                theme,
+                setTheme,
+                accentColor,
+                setAccentColor,
+                isSubscribed,
+                requestNotificationPermission,
+                onDateChange: appActions.titheProcessing.handleDateChange,
+              }}
+            />
+          </ErrorBoundary>
         </main>
 
         {/* Mobile Bottom Navigation */}

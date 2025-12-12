@@ -13,6 +13,7 @@ import { trainEnsemble } from "@/services/ensembleOCR";
 import { saveAmountCorrection } from "@/services/handwritingLearning";
 import { trainFromVerifiedBatch } from "@/services/imageProcessor";
 import { detectAssemblyFromExtraction, getConfidenceBadgeColor, type DetectionSummary } from "@/services/assemblyDetector";
+import { useModalShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 interface ImageVerificationModalProps {
     isOpen: boolean;
@@ -125,6 +126,9 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         onConfirm(verifiedData);
         onClose();
     };
+
+    // Keyboard shortcuts: Ctrl+Enter to confirm, Escape handled by Modal
+    useModalShortcuts(() => handleConfirm(), undefined, isOpen && !isProcessing);
 
     const handleMemberSelect = async (rowId: number, member: MemberRecordA | null) => {
         const row = rows.find(r => r.id === rowId);
