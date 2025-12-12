@@ -367,4 +367,4 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     );
 };
 
-export default ReportGenerator;
+export default React.memo(ReportGenerator);

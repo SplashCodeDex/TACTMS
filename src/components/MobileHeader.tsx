@@ -37,4 +37,4 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({ onMenuClick, title, globalN
   );
 };
 
-export default MobileHeader;
+export default React.memo(MobileHeader);
