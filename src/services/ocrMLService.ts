@@ -189,6 +189,12 @@ export const addTrainingExample = (
         output: correctedAmount
     });
 
+    // Cap training data to prevent unbounded growth
+    // Remove oldest examples when limit is reached
+    if (trainingData.length > MAX_TRAINING_EXAMPLES) {
+        trainingData = trainingData.slice(-MAX_TRAINING_EXAMPLES);
+    }
+
     // Auto-train if we have enough new examples
     if (trainingData.length % 10 === 0 && trainingData.length >= 10) {
         trainModel().catch(console.warn);

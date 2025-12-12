@@ -49,7 +49,7 @@ const openDB = (): Promise<IDBDatabase | null> => {
         return Promise.resolve(null);
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
         try {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
 
