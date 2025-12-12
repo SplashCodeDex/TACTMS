@@ -3,6 +3,8 @@
  * Stores AI-driven member reconciliation decisions to minimize API costs and latency.
  */
 
+import { SEMANTIC_CACHE_EXPIRY_MS } from "@/constants";
+
 export interface SemanticCacheEntry {
     rawName: string;
     matchedMemberId: string | null; // null means "no match found by AI"
@@ -12,7 +14,6 @@ export interface SemanticCacheEntry {
 }
 
 const CACHE_KEY = 'tactms_semantic_cache_v1';
-const CACHE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 class SemanticCacheService {
     private cache: Map<string, SemanticCacheEntry>;
@@ -63,7 +64,7 @@ class SemanticCacheService {
         if (!entry) return null;
 
         // Check expiry
-        if (Date.now() - entry.timestamp > CACHE_EXPIRY_MS) {
+        if (Date.now() - entry.timestamp > SEMANTIC_CACHE_EXPIRY_MS) {
             this.cache.delete(key);
             this.saveToStorage();
             return null;

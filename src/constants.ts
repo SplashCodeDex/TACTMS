@@ -46,7 +46,6 @@ export const DRIVE_SCOPES = [
 export const FAVORITES_DRIVE_FILENAME = "tactms.app.favorites.json";
 export const TRANSACTION_LOG_DRIVE_FILENAME = "tactms.app.transactions.json";
 
-// Theme Options
 export const THEME_OPTIONS = [
   { name: "Default Purple", key: "purple", values: { h: 262, s: 83, l: 58 } },
   { name: "Ocean Blue", key: "blue", values: { h: 217, s: 91, l: 60 } },
@@ -54,3 +53,16 @@ export const THEME_OPTIONS = [
   { name: "Sunset Gold", key: "gold", values: { h: 45, s: 93, l: 47 } },
   { name: "Crimson Red", key: "red", values: { h: 347, s: 89, l: 48 } },
 ];
+
+// ============================================================================
+// AI MODEL CONFIGURATION
+// ============================================================================
+
+/** Primary Gemini model for all AI operations (consistent across codebase) */
+export const GEMINI_MODEL_NAME = "gemini-2.5-flash";
+
+/** Semantic cache expiry in milliseconds (default: 30 days) */
+export const SEMANTIC_CACHE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Max training examples for OCR ML model (prevents unbounded growth) */
+export const MAX_OCR_TRAINING_EXAMPLES = 500;

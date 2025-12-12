@@ -5,7 +5,7 @@
  * Tests core business logic for member ordering in the physical tithe book
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Since memberOrderService uses IndexedDB, we'll mock the idb module
 // and test the pure logic functions that can be extracted

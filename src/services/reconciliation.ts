@@ -214,6 +214,7 @@ import { getOCRAwareSimilarity, getTokenSimilarity, OCR_CONFIDENCE_TIERS } from 
 import { FuzzyMatchResult } from "../types";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { semanticCache } from "./semanticCache";
+import { GEMINI_MODEL_NAME } from "@/constants";
 import {
   stripTitles,
   ghanaianTokenSimilarity,
@@ -252,7 +253,7 @@ const findMemberByAI = async (
 
   try {
     const ai = new GoogleGenerativeAI(apiKey);
-    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = ai.getGenerativeModel({ model: GEMINI_MODEL_NAME });
 
     // Prepare candidates list for prompt (limit to top 20 to save tokens if list is huge)
     // In practice, we might want to filter candidates first, but for now we send a subset
@@ -293,7 +294,7 @@ const findMemberByAI = async (
 
     if (response.matchFound && response.memberId && response.confidence > 0.6) {
       // Cache the positive result
-      semanticCache.set(rawName, response.memberId, response.confidence, "gemini-2.5-flash");
+      semanticCache.set(rawName, response.memberId, response.confidence, GEMINI_MODEL_NAME);
 
       const member = candidates.find(m => String(m["Membership Number"]) === response.memberId);
       if (member) {
@@ -307,7 +308,7 @@ const findMemberByAI = async (
       }
     } else {
       // Cache the negative result to avoid re-querying
-      semanticCache.set(rawName, null, 0, "gemini-2.5-flash");
+      semanticCache.set(rawName, null, 0, GEMINI_MODEL_NAME);
     }
 
   } catch (e) {

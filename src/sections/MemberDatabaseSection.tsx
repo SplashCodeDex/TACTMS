@@ -666,7 +666,7 @@ const MemberDatabaseSection: React.FC = () => {
                     className="bg-[var(--bg-card)] p-4 relative z-10 flex items-center gap-4"
                     drag="x"
                     dragConstraints={{ left: -100, right: 0 }}
-                    onDragEnd={(e, info) => {
+                    onDragEnd={(_e, info) => {
                       if (info.offset.x < -60) {
                         hapticSelect();
                         onEditMember(member, selectedAssembly || "");

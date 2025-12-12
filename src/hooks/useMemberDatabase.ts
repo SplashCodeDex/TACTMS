@@ -43,14 +43,29 @@ export function useMemberDatabase(
             return parsed;
         } catch (e) {
             console.error("Failed to parse member database from storage:", e);
+            // Backup the corrupted data and notify user on next render
+            try {
+                localStorage.setItem(`${MEMBER_DATABASE_STORAGE_KEY}_backup_${Date.now()}`, saved);
+            } catch (_backupError) {
+                // If backup fails too, we can't do much
+            }
+            // Use setTimeout to show toast after component mounts
+            setTimeout(() => {
+                addToast("Member database was corrupted and has been reset. A backup was saved.", "error");
+            }, 100);
             return {};
         }
     });
 
-    // Persist to localStorage on change
+    // Persist to localStorage on change with error handling
     useEffect(() => {
-        localStorage.setItem(MEMBER_DATABASE_STORAGE_KEY, JSON.stringify(memberDatabase));
-    }, [memberDatabase]);
+        try {
+            localStorage.setItem(MEMBER_DATABASE_STORAGE_KEY, JSON.stringify(memberDatabase));
+        } catch (e) {
+            console.error("Failed to save member database:", e);
+            addToast("Failed to save member database. Storage may be full.", "error");
+        }
+    }, [memberDatabase, addToast]);
 
     const updateMember = useCallback(
         (member: MemberRecordA, assemblyName: string) => {

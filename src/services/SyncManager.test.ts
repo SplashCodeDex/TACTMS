@@ -5,7 +5,7 @@
  * Tests queue management, retry logic, and state management
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock the idb module before importing
 vi.mock('idb', () => ({
@@ -21,29 +21,29 @@ function createMockDB() {
     let nextId = 1;
 
     return {
-        add: vi.fn((storeName: string, value: any) => {
+        add: vi.fn((_storeName: string, value: any) => {
             const id = nextId++;
             pendingActions.set(id, { ...value, id });
             return Promise.resolve(id);
         }),
-        delete: vi.fn((storeName: string, id: number) => {
+        delete: vi.fn((_storeName: string, id: number) => {
             pendingActions.delete(id);
             return Promise.resolve();
         }),
-        put: vi.fn((storeName: string, value: any) => {
+        put: vi.fn((_storeName: string, value: any) => {
             if (value.id) {
                 pendingActions.set(value.id, value);
             }
             return Promise.resolve();
         }),
-        clear: vi.fn((storeName: string) => {
+        clear: vi.fn((_storeName: string) => {
             pendingActions.clear();
             return Promise.resolve();
         }),
-        getAllFromIndex: vi.fn((storeName: string, indexName: string) => {
+        getAllFromIndex: vi.fn((_storeName: string, _indexName: string) => {
             return Promise.resolve(Array.from(pendingActions.values()));
         }),
-        getAll: vi.fn((storeName: string) => {
+        getAll: vi.fn((_storeName: string) => {
             return Promise.resolve(Array.from(pendingActions.values()));
         }),
     };
@@ -275,7 +275,6 @@ describe('SyncManager sync result handling', () => {
      * Determine final status based on sync results
      */
     function determineFinalStatus(
-        successCount: number,
         failedCount: number
     ): { status: SyncStatus; lastError: string | null } {
         if (failedCount > 0) {
@@ -291,21 +290,21 @@ describe('SyncManager sync result handling', () => {
     }
 
     it('returns idle status when all actions succeed', () => {
-        const result = determineFinalStatus(5, 0);
+        const result = determineFinalStatus(0);
 
         expect(result.status).toBe('idle');
         expect(result.lastError).toBeNull();
     });
 
     it('returns error status when some actions fail', () => {
-        const result = determineFinalStatus(3, 2);
+        const result = determineFinalStatus(2);
 
         expect(result.status).toBe('error');
         expect(result.lastError).toBe('2 action(s) failed to sync');
     });
 
     it('returns error status when all actions fail', () => {
-        const result = determineFinalStatus(0, 5);
+        const result = determineFinalStatus(5);
 
         expect(result.status).toBe('error');
         expect(result.lastError).toBe('5 action(s) failed to sync');

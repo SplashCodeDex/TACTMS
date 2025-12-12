@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity, User } from "lucide-react";
+import { Activity } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TransactionLogEntry } from "../../types";
 import { formatDateDDMMMYYYY } from "../../lib/dataTransforms";

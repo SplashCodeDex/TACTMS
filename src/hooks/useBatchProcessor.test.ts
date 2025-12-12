@@ -5,8 +5,8 @@
  * Tests the pure functions used in batch tithe book image processing
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { MemberDatabase, TransactionLogEntry, MemberRecordA } from '@/types';
+import { describe, it, expect } from 'vitest';
+import type { MemberDatabase, MemberRecordA } from '@/types';
 
 // ============================================================================
 // HELPER TYPES AND MOCKS
@@ -42,27 +42,6 @@ const createMockMemberDatabase = (): MemberDatabase => ({
         lastUpdated: Date.now(),
     }
 });
-
-const createMockTransactionLog = (): TransactionLogEntry[] => [
-    {
-        date: '2025-11-03',
-        memberName: 'ADDO JONATHAN MENSAH (TAC89JAM131001|651101008)',
-        amount: 150,
-        assembly: 'Central',
-    },
-    {
-        date: '2025-10-06',
-        memberName: 'ADDO JONATHAN MENSAH (TAC89JAM131001|651101008)',
-        amount: 150,
-        assembly: 'Central',
-    },
-    {
-        date: '2025-11-03',
-        memberName: 'MENSAH AGNES (TAC89JAM131002|651101009)',
-        amount: 50,
-        assembly: 'Central',
-    },
-];
 
 
 // ============================================================================

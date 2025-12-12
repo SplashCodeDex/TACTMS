@@ -11,6 +11,7 @@ import ParsingIndicator from "./ParsingIndicator";
 import { useWorkspaceContext, useAppConfigContext } from "@/context";
 import { trainEnsemble } from "@/services/ensembleOCR";
 import { saveAmountCorrection } from "@/services/handwritingLearning";
+import { trainFromVerifiedBatch } from "@/services/imageProcessor";
 
 interface ImageVerificationModalProps {
     isOpen: boolean;
@@ -88,7 +89,7 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
         processMatches();
     }, [isOpen, extractedData, masterData, currentAssembly, enableAmountSnapping]);
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         const verifiedData = rows.map((row) => {
             const finalMember = row.matchedMember;
             const memberId = finalMember
@@ -101,6 +102,15 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                 memberDetails: finalMember || undefined,
             };
         });
+
+        // Train ensemble from any corrections made during verification
+        // This helps the OCR model learn from user feedback
+        try {
+            await trainFromVerifiedBatch(extractedData, verifiedData);
+        } catch (e) {
+            console.warn('[ImageVerificationModal] Training from verified batch failed:', e);
+        }
+
         onConfirm(verifiedData);
         onClose();
     };

@@ -5,6 +5,7 @@
 
 import { TransactionLogEntry, MemberDatabase } from "../types";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODEL_NAME } from "@/constants";
 
 export interface Prediction {
     id: string;
@@ -228,7 +229,7 @@ const generateAIPredictions = async (
     apiKey: string
 ): Promise<Prediction[]> => {
     const ai = new GoogleGenerativeAI(apiKey);
-    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = ai.getGenerativeModel({ model: GEMINI_MODEL_NAME });
 
     // Prepare summary data for AI
     const summary = logs.slice(-8).map(l => ({

@@ -3,13 +3,14 @@
  * Extracted from imageProcessor.ts
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODEL_NAME } from "@/constants";
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
-/** Gemini model for image processing */
-export const MODEL_NAME = "gemini-2.5-flash";
+/** Gemini model for image processing - uses centralized constant */
+export const MODEL_NAME = GEMINI_MODEL_NAME;
 
 /** Confidence threshold for flagging entries that need review */
 export const LOW_CONFIDENCE_THRESHOLD = 0.8;

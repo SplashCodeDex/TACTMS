@@ -4,7 +4,6 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   MemberRecordA,
@@ -88,7 +87,7 @@ export interface Notification {
   icon?: React.ReactNode;
 }
 
-const MotionDiv = motion.div;
+// animation helper available: motion.div from framer-motion
 
 
 

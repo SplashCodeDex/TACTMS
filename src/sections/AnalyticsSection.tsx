@@ -32,6 +32,7 @@ import { FileText } from "lucide-react";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useOutletContext } from "react-router-dom";
 import DOMPurify from "dompurify";
+import { GEMINI_MODEL_NAME } from "@/constants";
 
 interface AnalyticsSectionProps {
   titheListData: TitheRecordB[];
@@ -178,7 +179,7 @@ const AIOutreachAssistant: React.FC<{
 
       const ai = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = ai.getGenerativeModel({ model: GEMINI_MODEL_NAME });
 
       const memberNames = newMembers
 

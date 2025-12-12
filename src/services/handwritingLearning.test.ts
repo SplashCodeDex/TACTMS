@@ -13,7 +13,7 @@ const mockIndexedDB = {
     open: vi.fn().mockImplementation(() => {
         const request = {
             result: {
-                transaction: vi.fn().mockImplementation((storeName, mode) => ({
+                transaction: vi.fn().mockImplementation((_storeName, _mode) => ({
                     objectStore: vi.fn().mockImplementation(() => ({
                         add: vi.fn().mockImplementation((value) => {
                             mockDB.corrections.set(value.id, value);
@@ -60,7 +60,6 @@ import {
     saveAmountCorrection,
     suggestCorrection,
     getMostCommonCorrections,
-    clearCorrections,
     type AmountCorrection
 } from './handwritingLearning';
 

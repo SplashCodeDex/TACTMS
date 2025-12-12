@@ -5,6 +5,7 @@
 
 import { TransactionLogEntry } from "../types";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODEL_NAME } from "@/constants";
 
 export type ReportType = 'weekly_summary' | 'monthly_pdf' | 'year_end' | 'custom';
 
@@ -317,7 +318,7 @@ const generateCustomReport = async (
     if (apiKey) {
         try {
             const ai = new GoogleGenerativeAI(apiKey);
-            const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });  // Consistent with rest of codebase
+            const model = ai.getGenerativeModel({ model: GEMINI_MODEL_NAME });
 
             const summary = {
                 period: config.startDate && config.endDate
