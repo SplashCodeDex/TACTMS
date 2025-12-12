@@ -1108,7 +1108,7 @@ const ReorderFromImageModal: React.FC<ReorderFromImageModalProps> = ({
                                 Side-by-Side Order Comparison
                             </p>
                             <span className="text-xs text-[var(--text-muted)]">
-                                {diffStats.moved} moves, {diffStats.newMembers} new
+                                {diffStats.moved} moves, {diffStats.new} new
                             </span>
                         </div>
 
