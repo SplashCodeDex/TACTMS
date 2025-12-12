@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase, TransactionLogEntry } from '@/types';
+import type { TitheImageExtractionResult } from '@/services/imageProcessor';
 import { GEMINI_MODEL_NAME } from '@/constants';
 import { buildDataContext, buildPromptContext } from '@/services/queryTemplates';
 
@@ -50,7 +51,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
     }
   };
 
-  const analyzeImage = async (imageFile: File, month?: string, week?: string, dateString?: string): Promise<TitheRecordB[] | null> => {
+  const analyzeImage = async (imageFile: File, month?: string, week?: string, dateString?: string): Promise<TitheImageExtractionResult | null> => {
     if (!apiKey) {
       addToast('AI features are not configured. Please contact support.', 'error');
       return null;
@@ -88,8 +89,13 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
       );
 
       // Provide feedback based on validation
-      if (!result.isValidTitheBook) {
+      if (!result.isValidTitheBook && !result.isNotebookFormat) {
         addToast('Warning: Image may not match expected Tithe Book format.', 'warning');
+      }
+
+      // Notify if notebook format was detected
+      if (result.isNotebookFormat) {
+        addToast(`📓 Notebook format detected with ${result.entries.length} entries.`, 'info');
       }
 
       if (result.detectedYear) {
@@ -125,7 +131,7 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
       }
 
       addToast(`Extracted ${result.entries.length} tithe records.`, 'success');
-      return result.entries;
+      return result;  // Return full result including isNotebookFormat and notebookMetadata
 
     } catch (error: any) {
       console.error('Error analyzing image:', error);

@@ -265,6 +265,9 @@ const App: React.FC = () => {
   const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
   const [extractedTitheData, setExtractedTitheData] = useState<TitheRecordB[]>([]);
   const [imageVerificationMasterData, setImageVerificationMasterData] = useState<MemberRecordA[]>([]);
+  // Notebook format detection state
+  const [isNotebookFormat, setIsNotebookFormat] = useState(false);
+  const [notebookMetadata, setNotebookMetadata] = useState<{ detectedDate?: string; attendance?: number } | undefined>(undefined);
 
   // Favorites hook - provides saveFavorite, deleteFavorite, updateFavoriteName, etc.
   const favoritesHook = useFavorites(addToast);
@@ -1290,9 +1293,12 @@ const App: React.FC = () => {
                   }
 
                   try {
-                    const data = await analyzeImage(file, month, week, dateString);
-                    if (data) {
-                      setExtractedTitheData(data);
+                    const result = await analyzeImage(file, month, week, dateString);
+                    if (result) {
+                      setExtractedTitheData(result.entries);
+                      // Store notebook format info
+                      setIsNotebookFormat(result.isNotebookFormat ?? false);
+                      setNotebookMetadata(result.notebookMetadata);
                       // Ensure we use the master data for the TARGET assembly
                       setImageVerificationMasterData(masterList.data);
                       setIsImageVerificationModalOpen(true);
@@ -1644,6 +1650,8 @@ const App: React.FC = () => {
             masterData={imageVerificationMasterData}
             onConfirm={handleImageVerificationConfirm}
             memberDatabase={memberDatabase}
+            isNotebookFormat={isNotebookFormat}
+            notebookMetadata={notebookMetadata}
           />
         )
       }
