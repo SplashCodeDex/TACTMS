@@ -11,6 +11,7 @@
  */
 
 import * as tf from '@tensorflow/tfjs';
+import { MAX_OCR_TRAINING_EXAMPLES } from '@/constants';
 
 // ============================================================================
 // TYPES
@@ -35,7 +36,7 @@ interface PredictionResult {
 const CHAR_VOCAB = '0123456789OoIilSsBbGg. ';
 const VOCAB_SIZE = CHAR_VOCAB.length;
 const MAX_INPUT_LENGTH = 10;  // Max characters in amount string
-const MAX_TRAINING_EXAMPLES = 500; // Limit to prevent unbounded growth
+const MAX_TRAINING_EXAMPLES = MAX_OCR_TRAINING_EXAMPLES; // Use centralized constant
 const MODEL_SAVE_KEY = 'tactms-ocr-ml-model';
 const TRAINING_DATA_KEY = 'tactms-ocr-training-data';
 
