@@ -28,6 +28,8 @@ import {
 import { TITHE_EXTRACTION_SCHEMA } from "./schemas";
 import { TITHE_BOOK_HTML_TEMPLATE } from "./templates";
 import { TitheImageExtractionResult, EnhancedRawExtraction, EnhancedRawEntry } from "./types";
+import { detectNotebookFormat } from "./notebookDetector";
+import { processNotebookImage } from "./notebookExtractor";
 
 // ============================================================================
 // CONFIDENCE CALCULATION
@@ -163,10 +165,21 @@ export const applyNeighborContext = (
 // ============================================================================
 
 /**
+ * Processing mode options for tithe image extraction
+ * - 'auto': Auto-detect notebook vs tithe book (default)
+ * - 'tithe_book': Force tithe book processing
+ * - 'notebook': Force notebook processing
+ */
+export type ProcessingMode = 'auto' | 'tithe_book' | 'notebook';
+
+/**
  * Enhanced tithe image processor using gemini-2.5-flash
  * With advanced zone detection, SET inference, and multi-factor confidence
  *
+ * Now with auto-detection for notebook format!
+ *
  * @param transactionLogs - Optional transaction logs for member history anomaly detection
+ * @param forceMode - Optional mode override: 'auto' (default), 'tithe_book', or 'notebook'
  */
 export const processTitheImageWithValidation = async (
     imageFile: File,
@@ -174,12 +187,64 @@ export const processTitheImageWithValidation = async (
     targetMonth: string,
     targetWeek: string,
     targetDateString: string,
-    transactionLogs?: TransactionLogEntry[]
+    transactionLogs?: TransactionLogEntry[],
+    forceMode: ProcessingMode = 'auto'
 ): Promise<TitheImageExtractionResult> => {
     if (!apiKey) throw new Error("API Key is missing");
     if (!targetMonth || !targetWeek || !targetDateString) {
         throw new Error("Month, Week, and Date are required for extraction.");
     }
+
+    // ============================================================
+    // NOTEBOOK AUTO-DETECTION (unless overridden)
+    // ============================================================
+    if (forceMode === 'notebook') {
+        // Force notebook processing
+        console.log('[TitheExtractor] Forced notebook mode');
+        const notebookResult = await processNotebookImage(imageFile, apiKey, targetDateString);
+        return {
+            isValidTitheBook: false,
+            isNotebookFormat: true,
+            detectedYear: null,
+            pageNumber: null,
+            entries: notebookResult.entries,
+            lowConfidenceCount: notebookResult.lowConfidenceCount,
+            notebookMetadata: {
+                detectedDate: notebookResult.detectedDate,
+                attendance: notebookResult.attendance,
+            },
+        };
+    }
+
+    if (forceMode === 'auto') {
+        // Auto-detect notebook format
+        const detection = await detectNotebookFormat(imageFile, apiKey);
+
+        if (detection.isNotebook && detection.confidence >= 0.7) {
+            console.log(`[TitheExtractor] Notebook detected (confidence: ${(detection.confidence * 100).toFixed(0)}%)`);
+            console.log(`[TitheExtractor] Routing to notebook extractor...`);
+
+            const notebookResult = await processNotebookImage(imageFile, apiKey, targetDateString);
+            return {
+                isValidTitheBook: false,
+                isNotebookFormat: true,
+                detectedYear: null,
+                pageNumber: null,
+                entries: notebookResult.entries,
+                lowConfidenceCount: notebookResult.lowConfidenceCount,
+                notebookMetadata: {
+                    detectedDate: notebookResult.detectedDate || detection.detectedDate,
+                    attendance: notebookResult.attendance || detection.extractedAttendance,
+                },
+            };
+        } else if (detection.isNotebook) {
+            console.log(`[TitheExtractor] Notebook detected but low confidence (${(detection.confidence * 100).toFixed(0)}%), proceeding with tithe book processing`);
+        }
+    }
+
+    // ============================================================
+    // STANDARD TITHE BOOK PROCESSING
+    // ============================================================
 
     // Check rate limit before making API call
     checkGeminiRateLimit();
@@ -258,6 +323,9 @@ export const processTitheImageWithValidation = async (
     - Letter "O" → "0" (zero)
     - Letter "l" or "I" → "1"
     - Letter "S" → "5"
+    - Letter "B" → "8"
+    - Letter "Z" → "2"
+    - Letter "w" → "00"
     - Crossed-out/strikethrough amounts → **0**
     - RED INK amounts in week columns → Flag as suspicious (might be reading TOTAL column by mistake)
 

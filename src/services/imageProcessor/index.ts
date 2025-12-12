@@ -4,6 +4,7 @@
  * This module provides AI-powered image processing for:
  * 1. Tithe book OCR extraction
  * 2. Name extraction and matching
+ * 3. Notebook format detection and extraction
  *
  * @module imageProcessor
  */
@@ -15,7 +16,12 @@ export type {
     NameExtractionResult,
     EnhancedRawExtraction,
     ScoredMember,
-    MatchResult
+    MatchResult,
+    // Notebook types
+    NotebookDetectionResult,
+    NotebookExtractionResult,
+    NotebookDetectionSignals,
+    NotebookRawEntry
 } from './types';
 
 // Re-export constants and utilities from core
@@ -31,7 +37,12 @@ export {
 
 // Re-export main functions
 export { processTitheImageWithValidation, verifyLowConfidenceEntries, applyNeighborContext } from './titheExtractor';
+export type { ProcessingMode } from './titheExtractor';
 export { extractNamesFromTitheBook } from './nameExtractor';
+
+// Re-export notebook functions
+export { detectNotebookFormat } from './notebookDetector';
+export { processNotebookImage } from './notebookExtractor';
 
 // Re-export matching utilities (for advanced use cases)
 export {

@@ -5,7 +5,7 @@ import { findMemberByName } from "@/services/reconciliation";
 import { validateAmountWithLearning } from "@/services/amountValidator";
 import type { AmountValidation } from "@/types";
 import Button from "./Button";
-import { Check, AlertTriangle, AlertCircle, Wand2, ArrowRight, Save, Sparkles, MapPin } from "lucide-react";
+import { Check, AlertTriangle, AlertCircle, Wand2, ArrowRight, Save, Sparkles, MapPin, BookOpen } from "lucide-react";
 import MemberSelect from "./MemberSelect";
 import ParsingIndicator from "./ParsingIndicator";
 import { useWorkspaceContext, useAppConfigContext } from "@/context";
@@ -23,6 +23,13 @@ interface ImageVerificationModalProps {
     onConfirm: (verifiedData: TitheRecordB[]) => void;
     /** Optional: Full member database for cross-assembly detection */
     memberDatabase?: MemberDatabase;
+    /** Optional: True if the image was detected as a notebook format */
+    isNotebookFormat?: boolean;
+    /** Optional: Notebook-specific metadata */
+    notebookMetadata?: {
+        detectedDate?: string;
+        attendance?: number;
+    };
 }
 
 interface VerificationRow {
@@ -47,6 +54,8 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
     masterData,
     onConfirm,
     memberDatabase,
+    isNotebookFormat = false,
+    notebookMetadata,
 }) => {
     const { currentAssembly } = useWorkspaceContext();
     const { enableAmountSnapping } = useAppConfigContext();
@@ -357,6 +366,28 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                     message="Verifying members..."
                     subMessage="The AI is cross-referencing names with your database."
                 />
+
+                {/* Notebook Format Detection Banner */}
+                {isNotebookFormat && (
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                            <BookOpen size={20} className="text-amber-400" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-amber-300 flex items-center gap-2">
+                                📓 Notebook Format Detected
+                            </h4>
+                            <p className="text-xs text-amber-200/70 mt-0.5">
+                                This appears to be a makeshift notebook entry, not the official Tithe Book.
+                                {notebookMetadata?.attendance && (
+                                    <span className="ml-2 px-2 py-0.5 bg-amber-500/20 rounded text-amber-300 font-medium">
+                                        Attendance: {notebookMetadata.attendance}
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                     {rows.map((row, idx) => (

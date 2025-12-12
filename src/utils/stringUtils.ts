@@ -142,6 +142,65 @@ export const cleanOCRAmount = (rawAmount: string | number | null | undefined): n
     return isNaN(parsed) ? 0 : parsed;
 };
 
+/**
+ * Cleans notebook-style amount notation where "w" or ".w" represents "00"
+ * This handles fast handwriting where writers use "w" as shorthand for "00"
+ *
+ * @param rawAmount - The raw amount string from notebook (e.g., "10.w", "5w", "100.W")
+ * @returns The cleaned numeric amount
+ *
+ * @example
+ * cleanNotebookAmount("10.w") // Returns 1000
+ * cleanNotebookAmount("5.w") // Returns 500
+ * cleanNotebookAmount("100.w") // Returns 10000
+ * cleanNotebookAmount("5w") // Returns 500
+ * cleanNotebookAmount("20") // Returns 20 (no w, standard processing)
+ */
+export const cleanNotebookAmount = (rawAmount: string | number | null | undefined): number => {
+    // Handle null/undefined
+    if (rawAmount === null || rawAmount === undefined) {
+        return 0;
+    }
+
+    // If already a number, return it
+    if (typeof rawAmount === 'number' && !isNaN(rawAmount)) {
+        return rawAmount;
+    }
+
+    if (typeof rawAmount !== 'string') {
+        return 0;
+    }
+
+    let cleaned = rawAmount.trim();
+
+    // Handle empty
+    if (cleaned === '') {
+        return 0;
+    }
+
+    // Check for ".w" or "w" suffix patterns (case insensitive)
+    // Pattern: "10.w", "10.W", "5w", "5W", "100.w"
+    const notebookPattern = /^(\d+)[.\s]*[wW]$/;
+    const match = cleaned.match(notebookPattern);
+
+    if (match) {
+        // "w" means "00", so multiply by 100
+        const baseNumber = parseInt(match[1], 10);
+        return isNaN(baseNumber) ? 0 : baseNumber * 100;
+    }
+
+    // Also handle ":w" pattern which might appear in some handwriting
+    const colonPattern = /^(\d+)[:\s]*[wW]$/;
+    const colonMatch = cleaned.match(colonPattern);
+
+    if (colonMatch) {
+        const baseNumber = parseInt(colonMatch[1], 10);
+        return isNaN(baseNumber) ? 0 : baseNumber * 100;
+    }
+
+    // No "w" pattern found, fall back to standard OCR cleaning
+    return cleanOCRAmount(cleaned);
+};
 
 
 /**

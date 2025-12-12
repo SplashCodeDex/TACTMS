@@ -38,7 +38,58 @@ export interface TitheImageExtractionResult {
         expectedAmount: number;
         reason: string;
     }>;
+    /** True if detected as notebook format (not official tithe book) */
+    isNotebookFormat?: boolean;
+    /** Notebook-specific metadata when isNotebookFormat is true */
+    notebookMetadata?: {
+        detectedDate?: string;
+        attendance?: number;
+    };
 }
+
+// ============================================================================
+// NOTEBOOK DETECTION TYPES
+// ============================================================================
+
+/** Signals used to detect notebook vs tithe book format */
+export interface NotebookDetectionSignals {
+    hasStructuredGrid: boolean;
+    hasPageNumber: boolean;
+    hasMonthHeaders: boolean;
+    hasChurchBranding: boolean;
+    hasSimpleNameAmountFormat: boolean;
+    hasAttendanceHeader: boolean;
+    hasLinedPaperPattern: boolean;
+}
+
+/** Result of notebook format detection */
+export interface NotebookDetectionResult {
+    isNotebook: boolean;
+    confidence: number;
+    detectedDate?: string;
+    extractedAttendance?: number;
+    signals: NotebookDetectionSignals;
+    detectionReasons: string[];
+}
+
+/** Raw entry extracted from notebook format */
+export interface NotebookRawEntry {
+    name: string;
+    rawAmountText: string;
+    amount: number;
+    legibility?: number;
+}
+
+/** Result of notebook image extraction */
+export interface NotebookExtractionResult {
+    isValidNotebook: boolean;
+    detectedDate?: string;
+    attendance?: number;
+    entries: TitheRecordB[];
+    lowConfidenceCount: number;
+    rawEntries: NotebookRawEntry[];
+}
+
 
 export interface EnhancedRawEntry {
     "No.": number;
