@@ -6,11 +6,15 @@ import { formatDateDDMMMYYYY } from "../../lib/dataTransforms";
 
 interface RecentMembersListProps {
     members: MemberRecordA[];
+    embedded?: boolean;
 }
 
-const RecentMembersList: React.FC<RecentMembersListProps> = ({ members }) => {
+const RecentMembersList: React.FC<RecentMembersListProps> = ({ members, embedded = false }) => {
+    const Container = embedded ? "div" : "section";
+    const containerClasses = embedded ? "mt-6" : "content-card";
+
     return (
-        <section className="content-card">
+        <Container className={containerClasses}>
             <h2 className="section-heading">
                 <User size={22} className="mr-3 icon-primary" />
                 Recently Added Members
@@ -51,7 +55,7 @@ const RecentMembersList: React.FC<RecentMembersListProps> = ({ members }) => {
                     No new members recorded recently.
                 </p>
             )}
-        </section>
+        </Container>
     );
 };
 

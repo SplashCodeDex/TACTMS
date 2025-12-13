@@ -293,7 +293,7 @@ const DashboardSection: React.FC = () => {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <motion.div variants={itemVariants} className="lg:col-span-2">
+        <motion.div variants={itemVariants} className="lg:col-span-2 space-y-8">
           <QuickActionsGrid
             selectedAssembly={selectedAssembly}
             setSelectedAssembly={setSelectedAssembly}
@@ -303,7 +303,13 @@ const DashboardSection: React.FC = () => {
             onScanClick={handleScanClick}
             imageInputRef={imageInputRef}
             onImageChange={handleImageUploadChange}
-          />
+          >
+            <div className="border-t border-[var(--border-color)] my-2" />
+            <div className="grid grid-cols-2 gap-6">
+              <RecentMembersList members={recentlyAddedMembers} embedded />
+              <RecentActivityList activities={stats.recentActivities} embedded />
+            </div>
+          </QuickActionsGrid>
         </motion.div>
 
         <div className="space-y-8">
@@ -314,14 +320,6 @@ const DashboardSection: React.FC = () => {
               memberDatabase={memberDatabase}
               apiKey={import.meta.env.VITE_GEMINI_API_KEY}
             />
-          </motion.div>
-
-          <motion.div variants={itemVariants}>
-            <RecentMembersList members={recentlyAddedMembers} />
-          </motion.div>
-
-          <motion.div variants={itemVariants}>
-            <RecentActivityList activities={stats.recentActivities} />
           </motion.div>
         </div>
 

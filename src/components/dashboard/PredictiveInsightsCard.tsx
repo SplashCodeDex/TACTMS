@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, Sparkles } from "lucide-react";
 import { generatePredictions, Prediction, AnalyticsSummary } from "@/services/predictiveAnalytics";
 import { TransactionLogEntry, MemberDatabase } from "@/types";
@@ -127,40 +128,42 @@ const PredictiveInsightsCard: React.FC<PredictiveInsightsCardProps> = ({
             </div>
 
             {/* Predictions List */}
-            <div className="space-y-2">
-                {analytics.predictions.map((prediction) => (
-                    <div
-                        key={prediction.id}
-                        className={`p-3 rounded-lg border transition-all ${prediction.actionable
-                            ? 'border-yellow-500/50 bg-yellow-500/5'
-                            : 'border-border-color bg-hover-bg/50'
-                            }`}
-                    >
-                        <div className="flex items-start gap-2">
-                            {getTrendIcon(prediction.trend)}
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm text-text-primary">
-                                        {prediction.title}
-                                    </span>
-                                    {prediction.actionable && (
-                                        <AlertTriangle size={12} className="text-yellow-500" />
+            <ScrollArea className="h-[500px] pr-4">
+                <div className="space-y-2">
+                    {analytics.predictions.map((prediction) => (
+                        <div
+                            key={prediction.id}
+                            className={`p-3 rounded-lg border transition-all ${prediction.actionable
+                                ? 'border-yellow-500/50 bg-yellow-500/5'
+                                : 'border-border-color bg-hover-bg/50'
+                                }`}
+                        >
+                            <div className="flex items-start gap-2">
+                                {getTrendIcon(prediction.trend)}
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-medium text-sm text-text-primary">
+                                            {prediction.title}
+                                        </span>
+                                        {prediction.actionable && (
+                                            <AlertTriangle size={12} className="text-yellow-500" />
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-text-secondary mt-0.5">
+                                        {prediction.message}
+                                    </p>
+                                    {prediction.action && (
+                                        <p className="text-xs text-purple-400 mt-1 flex items-center gap-1">
+                                            <Sparkles size={10} />
+                                            {prediction.action}
+                                        </p>
                                     )}
                                 </div>
-                                <p className="text-xs text-text-secondary mt-0.5">
-                                    {prediction.message}
-                                </p>
-                                {prediction.action && (
-                                    <p className="text-xs text-purple-400 mt-1 flex items-center gap-1">
-                                        <Sparkles size={10} />
-                                        {prediction.action}
-                                    </p>
-                                )}
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            </ScrollArea>
         </div>
     );
 };

@@ -6,13 +6,18 @@ import { formatDateDDMMMYYYY } from "../../lib/dataTransforms";
 
 interface RecentActivityListProps {
     activities: TransactionLogEntry[];
+    embedded?: boolean;
 }
 
 const RecentActivityList: React.FC<RecentActivityListProps> = ({
     activities,
+    embedded = false,
 }) => {
+    const Container = embedded ? "div" : "section";
+    const containerClasses = embedded ? "mt-6" : "content-card";
+
     return (
-        <section className="content-card">
+        <Container className={containerClasses}>
             <h2 className="section-heading">
                 <Activity size={22} className="mr-3 icon-primary" />
                 Recent Activity
@@ -80,7 +85,7 @@ const RecentActivityList: React.FC<RecentActivityListProps> = ({
                     No recent transactions logged.
                 </p>
             )}
-        </section>
+        </Container>
     );
 };
 

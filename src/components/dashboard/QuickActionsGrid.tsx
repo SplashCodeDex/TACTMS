@@ -26,6 +26,7 @@ interface QuickActionsGridProps {
     onScanClick: () => void;
     imageInputRef: React.RefObject<HTMLInputElement>;
     onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    children?: React.ReactNode;
 }
 
 const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
@@ -37,6 +38,7 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     onScanClick,
     imageInputRef,
     onImageChange,
+    children
 }) => {
     const { assemblies } = useAppConfigContext();
 
@@ -49,7 +51,7 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     }, [assemblies, assembliesWithData]);
 
     return (
-        <section className="lg:col-span-2 content-card flex flex-col h-full gap-6">
+        <section className="content-card flex flex-col gap-6">
             <h2 className="section-heading mb-0 pb-3 border-b border-[var(--border-color)]">
                 <FilePlus size={22} className="mr-3 icon-primary" />
                 Quick Actions
@@ -171,6 +173,7 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             </div>
 
 
+            {children}
         </section>
     );
 };
