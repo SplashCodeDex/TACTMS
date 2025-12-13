@@ -205,7 +205,7 @@ export interface PendingMasterListUpdate {
 
 export interface ChatMessage {
   role: "user" | "model";
-  parts: { text: string }[];
+  parts: { text?: string; functionCall?: any; functionResponse?: any }[];
   summary?: string;
   isLoading?: boolean;
 }

@@ -9,7 +9,7 @@
  * - Simple Name-Amount pair extraction
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { TitheRecordB } from "../../types";
+import { TitheRecordB, MemberRecordA } from "../../types";
 import { cleanNotebookAmount } from "@/utils/stringUtils";
 import { cleanOCRName } from "../imageValidator";
 import {
@@ -20,6 +20,7 @@ import {
 } from "./core";
 import { NOTEBOOK_EXTRACTION_SCHEMA } from "./notebookSchemas";
 import type { NotebookExtractionResult, NotebookRawEntry } from "./types";
+import { findOptimalMatches, OptimalMatchResult } from "./matching";
 
 // ============================================================================
 // COMMON TITHE AMOUNTS (for confidence calculation)
@@ -118,7 +119,10 @@ function calculateNotebookConfidence(
 export async function processNotebookImage(
     imageFile: File,
     apiKey: string,
-    targetDateString: string
+    targetDateString: string,
+    memberDatabase?: MemberRecordA[],
+    aliasMap?: Map<string, string>,
+    memberOrderMap?: Map<string, number>
 ): Promise<NotebookExtractionResult> {
     if (!apiKey) throw new Error("API Key is missing");
     if (!targetDateString) throw new Error("Target date is required");
@@ -147,24 +151,33 @@ export async function processNotebookImage(
 
         // Log extraction summary
         console.log(`[NotebookExtractor] Valid: ${extraction.isValidNotebook}, Entries: ${extraction.entries?.length || 0}`);
-        if (extraction.detectedDate) {
-            console.log(`[NotebookExtractor] Detected date: ${extraction.detectedDate}`);
-        }
-        if (extraction.attendance) {
-            console.log(`[NotebookExtractor] Attendance: ${extraction.attendance}`);
-        }
 
-        // Track low confidence entries
-        let lowConfidenceCount = 0;
+        // Prepare inputs for optimal matching
+        const rawEntriesList = extraction.entries || [];
+        const extractedNamesInput = rawEntriesList.map((item: any, index: number) => ({
+            name: item.name,
+            position: index + 1
+        }));
+
+        // Perform Optimal Matching if DB is provided
+        let matchedResults: OptimalMatchResult[] = [];
+        if (memberDatabase && memberDatabase.length > 0) {
+            console.log(`[NotebookExtractor] Running optimal matching against ${memberDatabase.length} members...`);
+            matchedResults = findOptimalMatches(
+                extractedNamesInput,
+                memberDatabase,
+                memberOrderMap,
+                aliasMap
+            );
+        }
 
         // Store raw entries for debugging
         const rawEntries: NotebookRawEntry[] = [];
+        let lowConfidenceCount = 0;
 
         // Map entries to TitheRecordB format
-        const entries: TitheRecordB[] = (extraction.entries || []).map(
+        const entries: TitheRecordB[] = rawEntriesList.map(
             (item: { name: string; rawAmountText: string; amount: number; legibility?: number }, index: number) => {
-                // Clean the name
-                const cleanedName = cleanOCRName(item.name);
 
                 // Store raw entry
                 rawEntries.push({
@@ -174,39 +187,59 @@ export async function processNotebookImage(
                     legibility: item.legibility,
                 });
 
+                // Resolve Name
+                let finalName = cleanOCRName(item.name); // Default to clean OCR name
+                let memberDetails: MemberRecordA | undefined;
+                let matchConfidence = 0;
+                let matchMethod = "ocr";
+
+                // If we have match results, use them
+                if (matchedResults.length > index) {
+                    const match = matchedResults[index];
+                    if (match.matchedMember) {
+                        // Construct standard ID format: "Surname FirstName (ID)"
+                        finalName = `${match.matchedMember.Surname} ${match.matchedMember["First Name"]} ${match.matchedMember["Other Names"] || ""} (${match.matchedMember["Membership Number"]})`.trim();
+                        memberDetails = match.matchedMember;
+                        matchConfidence = match.confidence;
+                        matchMethod = "database_match";
+                    }
+                }
+
                 // Clean the amount using notebook-specific cleaner
-                // This handles ".w" → "00" conversion
                 const rawText = item.rawAmountText || String(item.amount);
                 const finalAmount = cleanNotebookAmount(rawText);
 
                 // Calculate confidence
-                const confidence = calculateNotebookConfidence(
+                const baseConfidence = calculateNotebookConfidence(
                     finalAmount,
                     item.legibility,
                     rawText
                 );
 
-                if (confidence < 0.6) {
-                    lowConfidenceCount++;
+                // Combine base confidence with match confidence if available
+                let finalConfidence = baseConfidence;
+                if (memberDetails) {
+                    // Weighted average: 60% match quality, 40% legibility/amount confidence
+                    finalConfidence = (matchConfidence * 0.6) + (baseConfidence * 0.4);
                 }
 
-                // Log any ".w" conversions
-                if (rawText && /[wW]$/.test(rawText)) {
-                    console.log(`[NotebookExtractor] Converted "${rawText}" → ${finalAmount}`);
+                if (finalConfidence < 0.6) {
+                    lowConfidenceCount++;
                 }
 
                 return {
                     "No.": index + 1,
                     "Transaction Type": "Individual Tithe-[Income]",
                     "Payment Source Type": "Registered Member",
-                    "Membership Number": cleanedName,
+                    "Membership Number": finalName,
                     "Transaction Date ('DD-MMM-YYYY')": targetDateString,
                     "Currency": "GHS",
                     "Exchange Rate": 1,
                     "Payment Method": "Cash",
                     "Transaction Amount": finalAmount,
-                    "Narration/Description": `Tithe for ${targetDateString}`,
-                    "Confidence": confidence,
+                    "Narration/Description": `Notebook Entry`,
+                    "Confidence": parseFloat(finalConfidence.toFixed(2)),
+                    memberDetails: memberDetails
                 };
             }
         );

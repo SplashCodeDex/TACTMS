@@ -69,17 +69,18 @@ const DashboardSection: React.FC = () => {
   } = useGeminiChat(import.meta.env.VITE_GEMINI_API_KEY);
 
   // Initialize chat with latest data when available
+  // Initialize chat with latest data when available
   useEffect(() => {
-    if (transactionLog.length > 0 || Object.keys(memberDatabase).length > 0) {
-      const latestLog = transactionLog.length > 0
-        ? transactionLog.sort((a, b) => b.timestamp - a.timestamp)[0]
-        : null;
+    // Always initialize, even with empty data, so the chat works for general questions or "no data" states
+    const latestLog = transactionLog.length > 0
+      ? [...transactionLog].sort((a, b) => b.timestamp - a.timestamp)[0]
+      : null;
 
-      const currentTitheData = latestLog ? latestLog.titheListData : [];
-      const currentAssembly = latestLog ? latestLog.assemblyName : "General";
+    const currentTitheData = latestLog ? latestLog.titheListData : [];
+    const currentAssembly = latestLog ? latestLog.assemblyName : "General";
 
-      initializeChat(currentTitheData, memberDatabase, currentAssembly);
-    }
+    initializeChat(currentTitheData, memberDatabase, currentAssembly);
+
   }, [transactionLog, memberDatabase, initializeChat]);
 
   const stats = useMemo(() => {

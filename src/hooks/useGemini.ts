@@ -4,10 +4,12 @@ import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase, Tr
 import type { TitheImageExtractionResult } from '@/services/imageProcessor';
 import { GEMINI_MODEL_NAME } from '@/constants';
 import { buildDataContext, buildPromptContext } from '@/services/queryTemplates';
+import { useToast } from '@/context';
 
-export const useGemini = (apiKey: string, addToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void) => {
+export const useGemini = (apiKey: string) => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [validationReportContent, setValidationReportContent] = useState('');
+  const addToast = useToast();
 
   const generateValidationReport = async (originalData: MemberRecordA[]) => {
     if (!originalData || originalData.length === 0) {
@@ -147,25 +149,24 @@ export const useGemini = (apiKey: string, addToast: (message: string, type: 'suc
 
 export const useGeminiChat = (apiKey: string) => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  // We keep chartData separated but also integrate it into messages for the new UI
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataContext, setDataContext] = useState<any>(null);
-  const dataContextRef = useRef(dataContext);  // Bug 17 fix: ref for latest dataContext
+  const dataContextRef = useRef(dataContext);
+  const addToast = useToast();
 
-  // Keep ref in sync with state (Bug 17 fix)
   useEffect(() => {
     dataContextRef.current = dataContext;
   }, [dataContext]);
 
-  // Initialize the chat with data context
   const initializeChat = useCallback((
     titheListData: TitheRecordB[],
     memberDatabase: MemberDatabase,
     currentAssembly: string,
     transactionLogs?: TransactionLogEntry[]
   ) => {
-    // Build enriched data context for AI using query templates
     const enrichedContext = transactionLogs
       ? buildDataContext(titheListData, transactionLogs, memberDatabase, currentAssembly)
       : null;
@@ -177,7 +178,6 @@ export const useGeminiChat = (apiKey: string) => {
       enrichedContext
     });
 
-    // Create a more informative initial message if we have enriched context
     const initialMessage = enrichedContext && transactionLogs && transactionLogs.length > 0
       ? `Hello! I'm your TACTMS Assistant for ${currentAssembly}. I've analyzed your data:\n\n- This month's tithe: GHS ${enrichedContext.currentMonthTotal.toLocaleString()}\n- ${enrichedContext.currentWeekTithers} tithers this week\n- ${enrichedContext.totalMembers} total members\n\nWhat would you like to know?`
       : "Hello! I'm your TACTMS Assistant. I have access to your full database. You can ask me about specific members, tithe statistics, or trends. What would you like to know?";
@@ -191,39 +191,42 @@ export const useGeminiChat = (apiKey: string) => {
     ]);
   }, []);
 
-  const sendMessage = useCallback(
+  const sendMessageStream = useCallback(
     async (message: string) => {
-      // Use ref to access latest dataContext (Bug 17 fix)
       const currentDataContext = dataContextRef.current;
       if (!currentDataContext) {
-        setError("Chat not initialized with data.");
+        const msg = "I'm not connected to your data yet. Please try refreshing the page or loading a file.";
+        setError(msg);
+        addToast(msg, "error");
         return;
       }
-
       if (!apiKey) {
-        setError("AI features are not configured. Please contact support.");
+        const msg = "AI features are not configured. Please contact support.";
+        setError(msg);
+        addToast(msg, "error");
         return;
       }
 
       setIsLoading(true);
       setError(null);
+      setChartData([]); // Clear previous chart data
 
-      // Optimistically add user message
-      const newHistory = [...chatHistory, { role: "user" as const, parts: [{ text: message }] }];
+      // Add user message to history
+      const userMessage: ChatMessage = { role: "user", parts: [{ text: message }] };
+      const newHistory = [...chatHistory, userMessage];
       setChatHistory(newHistory);
 
       try {
         const ai = new GoogleGenerativeAI(apiKey);
-        // Use Gemini 2.5 Pro for better tool use capabilities
         const model = ai.getGenerativeModel({
           model: GEMINI_MODEL_NAME,
           systemInstruction: `
             You are an intelligent data analyst for The Apostolic Church Tithe Management System (TACTMS).
             Your Goal: Answer the user's question based *strictly* on the provided data via tools.
-
             Guidelines:
             - Be concise and professional.
             - Format numbers as currency (GHS).
+            - Use Markdown for tables and lists.
             - You can generate simple charts if asked. If the user asks for a chart, include a JSON block at the end of your response like this:
               \`\`\`json
               { "chartData": [{ "label": "A", "count": 10 }, ...] }
@@ -270,127 +273,197 @@ export const useGeminiChat = (apiKey: string) => {
           ]
         });
 
-        const chat = model.startChat({
-          history: newHistory.map(msg => ({ role: msg.role, parts: msg.parts }))
-        });
+        // Prepare history for API (Use the FIX: remove first model message)
+        const apiHistory = chatHistory
+          .filter((msg, index) => !(index === 0 && msg.role === 'model'))
+          .map(msg => ({ role: msg.role, parts: msg.parts }));
 
-        let result = await chat.sendMessage(message);
-        let response = await result.response;
-        let functionCalls = response.functionCalls();
+        const chat = model.startChat({ history: apiHistory });
 
-        // Loop to handle multiple function calls if needed
-        while (functionCalls && functionCalls.length > 0) {
-          const call = functionCalls[0]; // Handle first call
-          const { name, args } = call;
+        const result = await chat.sendMessageStream(message);
 
-          let toolResult = {};
+        let accumulatedText = "";
+        let finalResponse = "";
 
-          // Execute tools locally
-          if (name === "get_member_details") {
-            const searchTerm = (args as any).search_term.toLowerCase();
-            // Search in member database
-            let foundMember = null;
-            let memberId = "";
+        // Create a placeholder for the model's response
+        setChatHistory(prev => [...prev, { role: "model", parts: [{ text: "" }] }]);
 
-            // Search logic
-            for (const [, list] of Object.entries(currentDataContext.memberDatabase as MemberDatabase)) {
-              const match = list.data.find((m: MemberRecordA) =>
-                String(m["Membership Number"]).toLowerCase().includes(searchTerm) ||
-                `${m["First Name"]} ${m.Surname}`.toLowerCase().includes(searchTerm)
-              );
-              if (match) {
-                foundMember = match;
-                memberId = String(match["Membership Number"]);
-                break;
-              }
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          accumulatedText += chunkText;
+
+          setChatHistory(prev => {
+            const newHist = [...prev];
+            // Update the last message (the model's response)
+            // Note: In streaming, we might get multiple chunks.
+            // We blindly update the last message which we just added.
+            if (newHist.length > 0) {
+              newHist[newHist.length - 1] = {
+                role: "model",
+                parts: [{ text: accumulatedText }]
+              };
             }
-
-            if (foundMember) {
-              // Get recent tithes
-              const tithes = (dataContext.titheListData as TitheRecordB[])
-                .filter(t => String(t["Membership Number"]).includes(memberId))
-                .slice(0, 5);
-
-              toolResult = { member: foundMember, recent_tithes: tithes };
-            } else {
-              toolResult = { error: "Member not found" };
-            }
-          } else if (name === "get_tithe_stats") {
-            const month = (args as any).month;
-            const year = (args as any).year;
-
-            let filtered = dataContext.titheListData as TitheRecordB[];
-            if (year) {
-              filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
-            }
-            if (month) {
-              filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).toLowerCase().includes(month.toLowerCase()));
-            }
-
-            const total = filtered.reduce((sum, t) => sum + Number(t["Transaction Amount"] || 0), 0);
-            const count = filtered.length;
-            toolResult = { total_amount: total, transaction_count: count, period: `${month || 'All'} ${year || 'All'}` };
-
-          } else if (name === "find_top_tithers") {
-            const limit = (args as any).limit || 5;
-            const year = (args as any).year;
-
-            let filtered = dataContext.titheListData as TitheRecordB[];
-            if (year) {
-              filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
-            }
-
-            // Group by member
-            const totals: Record<string, number> = {};
-            filtered.forEach(t => {
-              const id = String(t["Membership Number"]);
-              totals[id] = (totals[id] || 0) + Number(t["Transaction Amount"] || 0);
-            });
-
-            const sorted = Object.entries(totals)
-              .sort(([, a], [, b]) => b - a)
-              .slice(0, limit)
-              .map(([id, amount]) => ({ id, amount }));
-
-            toolResult = { top_tithers: sorted };
-          }
-
-          // Send tool result back to model
-          result = await chat.sendMessage([
-            {
-              functionResponse: {
-                name: name,
-                response: toolResult
-              }
-            }
-          ]);
-          response = await result.response;
-          functionCalls = response.functionCalls();
+            return newHist;
+          });
         }
 
-        const text = response.text();
+        // Wait for the full response to complete to check for function calls
+        // Note: sendMessageStream doesn't easily support function calling in the same flow
+        // effectively without some complexity.
+        // However, the standard JS SDK handles function calls in the result object *after* streaming if configured,
+        // or we might need to use standard sendMessage if we expect tools.
+        // LIMITATION: Streaming with tools is tricky.
+        // For now, let's Stick to standard sendMessage for TOOLS execution, but maybe we can simulate streaming?
+        // Or, we use sendMessage for logic and assume tools are quick, then stream the *text* response?
+        // Actually, let's revert to sendMessage for robust tool support but update UI to 'simulate' typing if we can't easily stream tools.
+        // WAIT. The prompt said "much better" = streaming.
+        // Let's try to check if we can get function calls from the stream response.
+        // The SDK docs say `result.response` (awaitable) will contain function calls.
 
-        // Check for chart data in the response
-        const chartMatch = text.match(/```json\s*({[\s\S]*?})\s*```/);
-        let cleanText = text;
+        const response = await result.response;
+        const functionCalls = response.functionCalls();
 
+        // If function calls exist, we need to handle them.
+        // If we handled them, we might need to send another message to get the text result.
+        // This makes streaming the *initial* response slightly disjointed if it's just a tool call.
+
+        if (functionCalls && functionCalls.length > 0) {
+          // ... handle function calls (logic copied from previous) ...
+          // Since we are in streaming mode, the 'text' might be empty or partial.
+          // We need to execute tools and then ask model to generate response based on tools.
+          // This SECOND response should be streamed.
+
+          // Loop to handle multiple function calls
+          let currentFunctionCalls = functionCalls;
+          while (currentFunctionCalls && currentFunctionCalls.length > 0) {
+            const call = currentFunctionCalls[0];
+            const { name, args } = call;
+            let toolResult = {};
+
+            // Execute tools locally (logic reused)
+            if (name === "get_member_details") {
+              const searchTerm = (args as any).search_term?.toLowerCase() || "";
+              let foundMember = null;
+              let memberId = "";
+              if (currentDataContext.memberDatabase) {
+                for (const [, list] of Object.entries(currentDataContext.memberDatabase as MemberDatabase)) {
+                  if (!list?.data) continue;
+                  const match = list.data.find((m: MemberRecordA) => {
+                    const id = String(m["Membership Number"] || "").toLowerCase();
+                    const fullName = `${m["First Name"] || ""} ${m.Surname || ""} ${m["Other Names"] || ""}`.toLowerCase();
+                    return id.includes(searchTerm) || fullName.includes(searchTerm);
+                  });
+                  if (match) {
+                    foundMember = match;
+                    memberId = String(match["Membership Number"]);
+                    break;
+                  }
+                }
+              }
+              if (foundMember) {
+                const tithes = (dataContext.titheListData as TitheRecordB[])
+                  .filter(t => String(t["Membership Number"]).includes(memberId))
+                  .slice(0, 5);
+                toolResult = { member: foundMember, recent_tithes: tithes };
+              } else {
+                toolResult = { error: "Member not found" };
+              }
+            } else if (name === "get_tithe_stats") {
+              const month = (args as any).month;
+              const year = (args as any).year;
+              let filtered = dataContext.titheListData as TitheRecordB[];
+              if (year) filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
+              if (month) filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).toLowerCase().includes(month.toLowerCase()));
+
+              const totalAmount = filtered.reduce((sum, t) => {
+                const val = t["Transaction Amount"];
+                // Handle string numbers like "1,200.00" safely
+                const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, '')) || 0;
+                return sum + num;
+              }, 0);
+
+              toolResult = { total_amount: totalAmount, transaction_count: filtered.length, period: `${month || 'All'} ${year || 'All'}` };
+            } else if (name === "find_top_tithers") {
+              const limit = Number((args as any).limit) || 5;
+              const year = (args as any).year;
+              let filtered = dataContext.titheListData as TitheRecordB[];
+              if (year) filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
+
+              const totals: Record<string, number> = {};
+              filtered.forEach(t => {
+                const id = String(t["Membership Number"]);
+                const val = t["Transaction Amount"];
+                const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, '')) || 0;
+                totals[id] = (totals[id] || 0) + num;
+              });
+
+              const sorted = Object.entries(totals)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, limit)
+                .map(([id, amount]) => ({ id, amount }));
+
+              toolResult = { top_tithers: sorted };
+            }
+
+            // Send tool result back to model and STREAM the response
+            const toolResultStream = await chat.sendMessageStream([
+              {
+                functionResponse: {
+                  name: name,
+                  response: toolResult
+                }
+              }
+            ]);
+
+            // Clear the "accumulated" text from the *tool call* generation step if any (usually empty for tool calls)
+            // Actually, we want to start a NEW stream for the answer.
+            // The previous 'response' (which was just a function call) might have had no text.
+
+            accumulatedText = "";
+            for await (const chunk of toolResultStream.stream) {
+              const chunkText = chunk.text();
+              accumulatedText += chunkText;
+              setChatHistory(prev => {
+                const newHist = [...prev];
+                if (newHist.length > 0) {
+                  newHist[newHist.length - 1] = { role: "model", parts: [{ text: accumulatedText }] };
+                }
+                return newHist;
+              });
+            }
+
+            const toolResponse = await toolResultStream.response;
+            currentFunctionCalls = toolResponse.functionCalls();
+          }
+        }
+
+        // Final pass for charts (on the accumulated text)
+        const chartMatch = accumulatedText.match(/```json\s*({[\s\S]*?})\s*```/);
         if (chartMatch) {
           try {
             const json = JSON.parse(chartMatch[1]);
             if (json.chartData) {
               setChartData(json.chartData);
-              cleanText = text.replace(chartMatch[0], "").trim();
+              // Clean the text in the message
+              const cleanText = accumulatedText.replace(chartMatch[0], "").trim();
+              setChatHistory(prev => {
+                const newHist = [...prev];
+                if (newHist.length > 0) {
+                  newHist[newHist.length - 1] = { role: "model", parts: [{ text: cleanText }] };
+                }
+                return newHist;
+              });
             }
           } catch (e) {
             console.error("Failed to parse chart data", e);
           }
         }
 
-        setChatHistory(prev => [...prev, { role: "model", parts: [{ text: cleanText }] }]);
-
       } catch (e: any) {
         console.error("Chat Error:", e);
-        setError(e.message || "Failed to get a response.");
+        const msg = e.message || "Failed to get a response.";
+        setError(msg);
+        addToast(msg, "error");
         setChatHistory(prev => [...prev, { role: "model", parts: [{ text: "I encountered an error processing your request. Please try again." }] }]);
       } finally {
         setIsLoading(false);
@@ -399,5 +472,5 @@ export const useGeminiChat = (apiKey: string) => {
     [chatHistory, dataContext, apiKey],
   );
 
-  return { chatHistory, chartData, isLoading, error, initializeChat, sendMessage };
+  return { chatHistory, chartData, isLoading, error, initializeChat, sendMessage: sendMessageStream };
 };

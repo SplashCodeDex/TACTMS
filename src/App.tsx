@@ -276,7 +276,6 @@ const App: React.FC = () => {
 
   const { analyzeImage } = useGemini(
     import.meta.env.VITE_GEMINI_API_KEY,
-    addToast,
   );
 
   const {
@@ -1293,7 +1292,7 @@ const App: React.FC = () => {
                   }
 
                   try {
-                    const result = await analyzeImage(file, month, week, dateString);
+                    const result = await analyzeImage(file, month, week, dateString, masterList.data);
                     if (result) {
                       setExtractedTitheData(result.entries);
                       // Store notebook format info

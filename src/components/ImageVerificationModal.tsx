@@ -73,6 +73,27 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
                 const newRows = await Promise.all(extractedData.map(async (record, index) => {
+                    // CHECK FOR PRE-EXISTING OPTIMAL MATCH (from Notebook/Tithe Extractor)
+                    if (record.memberDetails) {
+                        return {
+                            id: index,
+                            extractedRecord: record,
+                            matchedMember: record.memberDetails,
+                            matchConfidence: 1.0, // High confidence for optimal matches
+                            aiConfidence: record.Confidence || 0,
+                            manualOverride: false,
+                            confidenceTier: 'high',
+                            amountWarning: await validateAmountWithLearning(
+                                record["Transaction Amount"],
+                                currentAssembly || 'default',
+                                undefined,
+                                enableAmountSnapping
+                            ),
+                            matchSource: 'ai_semantic', // It counts as AI semantic match
+                            originalAmount: record["Transaction Amount"]
+                        };
+                    }
+
                     const rawName = record["Membership Number"];
                     // Use async version with AI fallback
                     const match = await findMemberByName(rawName, masterData, undefined, apiKey);

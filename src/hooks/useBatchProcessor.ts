@@ -31,6 +31,7 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
 
             let completed = 0;
             const total = files.length;
+            const assemblyMembers = memberDatabase[assembly]?.data || [];
 
             for (const file of files) {
                 try {
@@ -46,7 +47,10 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
                         apiKey,
                         month,
                         week,
-                        dateStr
+                        dateStr,
+                        transactionLog,
+                        'auto',
+                        assemblyMembers
                     );
 
                     // Validate extracted rows structurally
@@ -117,22 +121,55 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
                 let anomalyCount = 0;
 
                 const matchedResults = await Promise.all(potentialMerged.map(async record => {
-                    const rawName = record["Membership Number"]; // This contains the OCR-extracted name
-                    const match = findMemberByNameSync(rawName, assemblyMembers);
-
                     let resultRecord = { ...record };
+                    let memberId = "";
+                    let memberDetails = record.memberDetails;
 
-                    if (match) {
+                    // If not already matched (e.g. by notebook extractor), try greedy match
+                    if (!memberDetails) {
+                        const rawName = record["Membership Number"]; // This contains the OCR-extracted name
+                        const match = findMemberByNameSync(rawName, assemblyMembers);
+
+                        if (match) {
+                            memberDetails = match.member;
+                            // Format matched member ID like ImageVerificationModal does
+                            memberId = `${match.member.Surname} ${match.member["First Name"]} ${match.member["Other Names"] || ""} (${match.member["Membership Number"]}|${match.member["Old Membership Number"] || ""})`.trim();
+                            resultRecord = {
+                                ...resultRecord,
+                                "Membership Number": memberId,
+                                memberDetails: match.member
+                            };
+                        } else {
+                            unmatchedCount++;
+                            // Get top 3 fuzzy suggestions for unmatched names
+                            const suggestions = getTopFuzzyMatches(rawName, assemblyMembers, 3);
+                            const suggestionsList = suggestions
+                                .map(s => `${s.member.Surname} ${s.member["First Name"]} (${Math.round(s.score * 100)}%)`)
+                                .join("; ");
+
+                            // Keep raw OCR name but mark as unmatched with suggestions
+                            return {
+                                ...resultRecord,
+                                "Membership Number": `[UNMATCHED] ${rawName}`,
+                                "Narration/Description": suggestions.length > 0
+                                    ? `[SUGGESTIONS: ${suggestionsList}] ${resultRecord["Narration/Description"] || ''}`
+                                    : resultRecord["Narration/Description"] || ''
+                            };
+                        }
+                    } else {
                         matchedCount++;
-                        // Format matched member ID like ImageVerificationModal does
-                        const memberId = `${match.member.Surname} ${match.member["First Name"]} ${match.member["Other Names"] || ""} (${match.member["Membership Number"]}|${match.member["Old Membership Number"] || ""})`.trim();
-                        resultRecord = {
-                            ...resultRecord,
-                            "Membership Number": memberId,
-                            memberDetails: match.member
-                        };
+                        memberId = record["Membership Number"];
+                    }
 
-                        // Validate amount with learned corrections + anomaly detection
+                    // Validate amount with learned corrections + anomaly detection (for both pre-matched and greedy-matched)
+                    if (memberDetails) {
+                        const memberKey = memberDetails["Membership Number"]; // Use clean ID for history lookup needed? buildMemberHistory usually takes the full string or ID?
+                        // buildMemberHistory logic in amountValidator usually expects the full ID string or cleans it itself.
+                        // Let's rely on memberId which is formatted or from record.
+
+                        // Ensure memberId is formatted if pre-matched
+                        if (!memberId) memberId = record["Membership Number"];
+
                         const memberHistory = buildMemberHistory(memberId, transactionLog);
                         const amountValidation = await validateAmountWithLearning(
                             record["Transaction Amount"],
@@ -154,22 +191,6 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
                                 "Narration/Description": `[OCR CORRECTED: ${amountValidation.message}] ${resultRecord["Narration/Description"] || ''}`
                             };
                         }
-                    } else {
-                        unmatchedCount++;
-                        // Get top 3 fuzzy suggestions for unmatched names
-                        const suggestions = getTopFuzzyMatches(rawName, assemblyMembers, 3);
-                        const suggestionsList = suggestions
-                            .map(s => `${s.member.Surname} ${s.member["First Name"]} (${Math.round(s.score * 100)}%)`)
-                            .join("; ");
-
-                        // Keep raw OCR name but mark as unmatched with suggestions
-                        resultRecord = {
-                            ...resultRecord,
-                            "Membership Number": `[UNMATCHED] ${rawName}`,
-                            "Narration/Description": suggestions.length > 0
-                                ? `[SUGGESTIONS: ${suggestionsList}] ${resultRecord["Narration/Description"] || ''}`
-                                : resultRecord["Narration/Description"] || ''
-                        };
                     }
 
                     return resultRecord;

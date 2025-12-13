@@ -11,7 +11,7 @@
  * - Row context validation
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { TitheRecordB, TransactionLogEntry } from "../../types";
+import { TitheRecordB, TransactionLogEntry, MemberRecordA } from "../../types";
 import { cleanOCRName } from "../imageValidator";
 import { cleanOCRAmount } from "../../utils/stringUtils";
 import { predictEnsemble } from "../ensembleOCR";
@@ -25,6 +25,7 @@ import {
     checkGeminiRateLimit,
     recordGeminiCall
 } from "./core";
+import { findOptimalMatches, ExtractedNameInput, OptimalMatchResult } from "./matching";
 import { TITHE_EXTRACTION_SCHEMA } from "./schemas";
 import { TITHE_BOOK_HTML_TEMPLATE } from "./templates";
 import { TitheImageExtractionResult, EnhancedRawExtraction, EnhancedRawEntry } from "./types";
@@ -188,7 +189,10 @@ export const processTitheImageWithValidation = async (
     targetWeek: string,
     targetDateString: string,
     transactionLogs?: TransactionLogEntry[],
-    forceMode: ProcessingMode = 'auto'
+    forceMode: ProcessingMode = 'auto',
+    memberDatabase?: MemberRecordA[],
+    aliasMap?: Map<string, string>,
+    memberOrderMap?: Map<string, number>
 ): Promise<TitheImageExtractionResult> => {
     if (!apiKey) throw new Error("API Key is missing");
     if (!targetMonth || !targetWeek || !targetDateString) {
@@ -201,7 +205,7 @@ export const processTitheImageWithValidation = async (
     if (forceMode === 'notebook') {
         // Force notebook processing
         console.log('[TitheExtractor] Forced notebook mode');
-        const notebookResult = await processNotebookImage(imageFile, apiKey, targetDateString);
+        const notebookResult = await processNotebookImage(imageFile, apiKey, targetDateString, memberDatabase, aliasMap, memberOrderMap);
         return {
             isValidTitheBook: false,
             isNotebookFormat: true,
@@ -224,7 +228,7 @@ export const processTitheImageWithValidation = async (
             console.log(`[TitheExtractor] Notebook detected (confidence: ${(detection.confidence * 100).toFixed(0)}%)`);
             console.log(`[TitheExtractor] Routing to notebook extractor...`);
 
-            const notebookResult = await processNotebookImage(imageFile, apiKey, targetDateString);
+            const notebookResult = await processNotebookImage(imageFile, apiKey, targetDateString, memberDatabase, aliasMap, memberOrderMap);
             return {
                 isValidTitheBook: false,
                 isNotebookFormat: true,
@@ -412,6 +416,39 @@ export const processTitheImageWithValidation = async (
         // Count low confidence entries
         let lowConfidenceCount = 0;
 
+        // ============================================================
+        // OPTIMAL NAME MATCHING (Standard Tithe Book)
+        // ============================================================
+        const optimalResultMap = new Map<number, OptimalMatchResult>();
+
+        if (memberDatabase && memberDatabase.length > 0 && rawResult.entries && rawResult.entries.length > 0) {
+            try {
+                // Prepare input for optimal matching
+                const extractedNamesInput: ExtractedNameInput[] = rawResult.entries.map((item, index) => ({
+                    name: cleanOCRName(item.Name),
+                    position: item["No."] || index + 1
+                }));
+
+                // Run Hungarian algorithm
+                const optimalMatches = findOptimalMatches(
+                    extractedNamesInput,
+                    memberDatabase,
+                    memberOrderMap,
+                    aliasMap
+                );
+
+                // Create lookup mapByKey: index -> result
+                // Note: findOptimalMatches preserves input order, so optimalMatches[i] corresponds to extractedNamesInput[i]
+                optimalMatches.forEach((match, i) => {
+                    optimalResultMap.set(i, match);
+                });
+
+                console.log(`[TitheExtractor] Optimal matching complete. Found ${optimalMatches.filter(m => m.matchedMember).length} matches.`);
+            } catch (err) {
+                console.warn("[TitheExtractor] Optimal matching failed, falling back to basic extraction:", err);
+            }
+        }
+
         // Map entries to TitheRecordB format with adaptive confidence
         // Uses async for ensemble OCR integration
         const entries: TitheRecordB[] = await Promise.all(
@@ -457,6 +494,24 @@ export const processTitheImageWithValidation = async (
                     confidence = Math.min(0.95, confidence + 0.1);
                 }
 
+                // Apply Optimal Match Results
+                const optimalMatch = optimalResultMap.get(index);
+                let memberId = cleanedName;
+                let memberDetails: MemberRecordA | undefined;
+
+                if (optimalMatch && optimalMatch.matchedMember) {
+                    const m = optimalMatch.matchedMember;
+                    // Format: Surname Firstname (ID)
+                    memberId = `${m.Surname} ${m["First Name"]} (${m["Membership Number"] || m["Old Membership Number"]})`;
+                    memberDetails = m;
+
+                    // Boost confidence significantly if we have a strong semantic match
+                    // This accounts for "Confidence" in the overall record (Name + Amount validity)
+                    if (optimalMatch.confidence > 0.8) {
+                        confidence = Math.max(confidence, 0.85);
+                    }
+                }
+
                 if (confidence < 0.6) {
                     lowConfidenceCount++;
                 }
@@ -470,14 +525,15 @@ export const processTitheImageWithValidation = async (
                     "No.": item["No."] || index + 1,
                     "Transaction Type": "Individual Tithe-[Income]",
                     "Payment Source Type": "Registered Member",
-                    "Membership Number": cleanedName,
+                    "Membership Number": memberId,
                     "Transaction Date ('DD-MMM-YYYY')": targetDateString,
                     "Currency": "GHS",
                     "Exchange Rate": 1,
                     "Payment Method": "Cash",
                     "Transaction Amount": finalAmount,
                     "Narration/Description": `Tithe for ${targetDateString}`,
-                    "Confidence": confidence
+                    "Confidence": confidence,
+                    memberDetails: memberDetails
                 };
             })
         );
