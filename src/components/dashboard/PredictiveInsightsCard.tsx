@@ -13,12 +13,14 @@ interface PredictiveInsightsCardProps {
     transactionLogs: TransactionLogEntry[];
     memberDatabase: MemberDatabase;
     apiKey?: string;
+    className?: string;
 }
 
 const PredictiveInsightsCard: React.FC<PredictiveInsightsCardProps> = ({
     transactionLogs,
     memberDatabase,
-    apiKey
+    apiKey,
+    className = ""
 }) => {
     const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -63,32 +65,34 @@ const PredictiveInsightsCard: React.FC<PredictiveInsightsCardProps> = ({
 
     if (isLoading) {
         return (
-            <div className="content-card animate-pulse">
+            <div className={`content-card animate-pulse flex flex-col ${className}`}>
                 <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="text-purple-500" size={18} />
                     <h3 className="section-heading text-base !mb-0">AI Insights</h3>
                 </div>
-                <div className="h-24 bg-hover-bg rounded-lg"></div>
+                <div className="flex-1 bg-hover-bg rounded-lg min-h-[200px]"></div>
             </div>
         );
     }
 
     if (!analytics) {
         return (
-            <div className="content-card">
+            <div className={`content-card flex flex-col ${className}`}>
                 <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="text-purple-500" size={18} />
                     <h3 className="section-heading text-base !mb-0">AI Insights</h3>
                 </div>
-                <p className="text-text-secondary text-sm">
-                    Upload tithe data to see AI-powered predictions
-                </p>
+                <div className="flex-1 flex items-center justify-center">
+                    <p className="text-text-secondary text-sm">
+                        Upload tithe data to see AI-powered predictions
+                    </p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="content-card">
+        <div className={`content-card flex flex-col ${className}`}>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Sparkles className="text-purple-500" size={18} />
@@ -128,7 +132,7 @@ const PredictiveInsightsCard: React.FC<PredictiveInsightsCardProps> = ({
             </div>
 
             {/* Predictions List */}
-            <ScrollArea className="h-[500px] pr-4">
+            <ScrollArea className="flex-1 min-h-[300px] pr-4">
                 <div className="space-y-2">
                     {analytics.predictions.map((prediction) => (
                         <div

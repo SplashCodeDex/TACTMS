@@ -303,25 +303,24 @@ const DashboardSection: React.FC = () => {
             onScanClick={handleScanClick}
             imageInputRef={imageInputRef}
             onImageChange={handleImageUploadChange}
-          >
-            <div className="border-t border-[var(--border-color)] my-2" />
-            <div className="grid grid-cols-2 gap-6">
-              <RecentMembersList members={recentlyAddedMembers} embedded />
-              <RecentActivityList activities={stats.recentActivities} embedded />
-            </div>
-          </QuickActionsGrid>
+          />
+
+          {/* Side-by-side: Recently Added Members & Recent Activity */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RecentMembersList members={recentlyAddedMembers} />
+            <RecentActivityList activities={stats.recentActivities} />
+          </div>
         </motion.div>
 
-        <div className="space-y-8">
-          {/* AI Predictions Card */}
-          <motion.div variants={itemVariants}>
-            <PredictiveInsightsCard
-              transactionLogs={transactionLog}
-              memberDatabase={memberDatabase}
-              apiKey={import.meta.env.VITE_GEMINI_API_KEY}
-            />
-          </motion.div>
-        </div>
+        {/* AI Predictions Card - Stretches to match left column */}
+        <motion.div variants={itemVariants} className="h-full">
+          <PredictiveInsightsCard
+            transactionLogs={transactionLog}
+            memberDatabase={memberDatabase}
+            apiKey={import.meta.env.VITE_GEMINI_API_KEY}
+            className="h-full"
+          />
+        </motion.div>
 
         <motion.div variants={itemVariants} className="lg:col-span-3">
           <WeeklyTrendChart data={weeklyTitheData} />
