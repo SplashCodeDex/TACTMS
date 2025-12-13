@@ -37,7 +37,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onDateChange }) =
 
   return (
     <div className="relative" ref={popoverRef}>
-      <Button variant="outline" onClick={() => setIsOpen(!isOpen)}>
+      <Button variant="outline" onClick={() => setIsOpen(!isOpen)} className="rounded-lg">
         <CalendarIcon className="mr-2 h-4 w-4" />
         <span>{formatDateDDMMMYYYY(selectedDate)}</span>
       </Button>
