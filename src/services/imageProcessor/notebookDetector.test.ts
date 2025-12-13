@@ -10,39 +10,39 @@ import { cleanNotebookAmount } from "@/utils/stringUtils";
 // ============================================================================
 
 describe("cleanNotebookAmount", () => {
-    describe("w notation handling", () => {
-        it("converts '10.w' to 1000", () => {
-            expect(cleanNotebookAmount("10.w")).toBe(1000);
+    describe("w notation handling - 'w' = '00' after decimal (e.g., 10.w = 10.00 = 10)", () => {
+        it("converts '10.w' to 10 (meaning 10.00 cedis)", () => {
+            expect(cleanNotebookAmount("10.w")).toBe(10);
         });
 
-        it("converts '5.w' to 500", () => {
-            expect(cleanNotebookAmount("5.w")).toBe(500);
+        it("converts '5.w' to 5 (meaning 5.00 cedis)", () => {
+            expect(cleanNotebookAmount("5.w")).toBe(5);
         });
 
-        it("converts '100.w' to 10000", () => {
-            expect(cleanNotebookAmount("100.w")).toBe(10000);
+        it("converts '100.w' to 100 (meaning 100.00 cedis)", () => {
+            expect(cleanNotebookAmount("100.w")).toBe(100);
         });
 
-        it("converts '20.w' to 2000", () => {
-            expect(cleanNotebookAmount("20.w")).toBe(2000);
+        it("converts '20.w' to 20 (meaning 20.00 cedis)", () => {
+            expect(cleanNotebookAmount("20.w")).toBe(20);
         });
 
         it("handles uppercase 'W'", () => {
-            expect(cleanNotebookAmount("10.W")).toBe(1000);
-            expect(cleanNotebookAmount("5.W")).toBe(500);
+            expect(cleanNotebookAmount("10.W")).toBe(10);
+            expect(cleanNotebookAmount("5.W")).toBe(5);
         });
 
         it("handles 'w' without dot", () => {
-            expect(cleanNotebookAmount("10w")).toBe(1000);
-            expect(cleanNotebookAmount("5w")).toBe(500);
+            expect(cleanNotebookAmount("10w")).toBe(10);
+            expect(cleanNotebookAmount("5w")).toBe(5);
         });
 
         it("handles space before w", () => {
-            expect(cleanNotebookAmount("10 w")).toBe(1000);
+            expect(cleanNotebookAmount("10 w")).toBe(10);
         });
 
         it("handles colon before w", () => {
-            expect(cleanNotebookAmount("10:w")).toBe(1000);
+            expect(cleanNotebookAmount("10:w")).toBe(10);
         });
     });
 

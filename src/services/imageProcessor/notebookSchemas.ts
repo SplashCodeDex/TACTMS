@@ -86,11 +86,11 @@ export const NOTEBOOK_EXTRACTION_SCHEMA: Schema = {
                     },
                     "rawAmountText": {
                         type: SchemaType.STRING,
-                        description: "Exact characters you see for the amount (e.g., '10.w', '100.w', '5', '-'). IMPORTANT: 'w' or '.w' means '00' in fast handwriting."
+                        description: "Exact characters you see for the amount (e.g., '10.w', '100.w', '5', '-'). IMPORTANT: 'w' or '.w' is shorthand for '00' pesewas (the decimal portion)."
                     },
                     "amount": {
                         type: SchemaType.NUMBER,
-                        description: "Interpreted amount. Convert '.w' or 'w' to '00' (e.g., '10.w' = 1000, '5.w' = 500). Dash or empty = 0."
+                        description: "Interpreted amount. 'w' = '00' after decimal (e.g., '10.w' = 10.00 = 10, '5.w' = 5.00 = 5, '100.w' = 100.00 = 100). Dash or empty = 0."
                     },
                     "legibility": {
                         type: SchemaType.NUMBER,

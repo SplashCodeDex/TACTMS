@@ -143,17 +143,20 @@ export const cleanOCRAmount = (rawAmount: string | number | null | undefined): n
 };
 
 /**
- * Cleans notebook-style amount notation where "w" or ".w" represents "00"
- * This handles fast handwriting where writers use "w" as shorthand for "00"
+ * Cleans notebook-style amount notation where "w" represents "00" after the decimal point.
+ * This handles fast handwriting where writers use "w" as shorthand for pesewas/cents "00".
+ *
+ * The "w" is a stylized handwritten "00" that represents the decimal portion.
+ * Example: "10.w" means "10.00" (10 cedis, 00 pesewas) = 10
  *
  * @param rawAmount - The raw amount string from notebook (e.g., "10.w", "5w", "100.W")
  * @returns The cleaned numeric amount
  *
  * @example
- * cleanNotebookAmount("10.w") // Returns 1000
- * cleanNotebookAmount("5.w") // Returns 500
- * cleanNotebookAmount("100.w") // Returns 10000
- * cleanNotebookAmount("5w") // Returns 500
+ * cleanNotebookAmount("10.w") // Returns 10 (meaning GHS 10.00)
+ * cleanNotebookAmount("5.w") // Returns 5 (meaning GHS 5.00)
+ * cleanNotebookAmount("100.w") // Returns 100 (meaning GHS 100.00)
+ * cleanNotebookAmount("25w") // Returns 25 (meaning GHS 25.00)
  * cleanNotebookAmount("20") // Returns 20 (no w, standard processing)
  */
 export const cleanNotebookAmount = (rawAmount: string | number | null | undefined): number => {
@@ -180,13 +183,15 @@ export const cleanNotebookAmount = (rawAmount: string | number | null | undefine
 
     // Check for ".w" or "w" suffix patterns (case insensitive)
     // Pattern: "10.w", "10.W", "5w", "5W", "100.w"
+    // The "w" represents "00" after decimal - so "10.w" = "10.00" = 10
     const notebookPattern = /^(\d+)[.\s]*[wW]$/;
     const match = cleaned.match(notebookPattern);
 
     if (match) {
-        // "w" means "00", so multiply by 100
-        const baseNumber = parseInt(match[1], 10);
-        return isNaN(baseNumber) ? 0 : baseNumber * 100;
+        // "w" = "00" after decimal point (e.g., "10.w" = "10.00" = 10)
+        // Just return the number as-is since ".00" doesn't change the value
+        const baseNumber = parseFloat(match[1]);
+        return isNaN(baseNumber) ? 0 : baseNumber;
     }
 
     // Also handle ":w" pattern which might appear in some handwriting
@@ -194,8 +199,9 @@ export const cleanNotebookAmount = (rawAmount: string | number | null | undefine
     const colonMatch = cleaned.match(colonPattern);
 
     if (colonMatch) {
-        const baseNumber = parseInt(colonMatch[1], 10);
-        return isNaN(baseNumber) ? 0 : baseNumber * 100;
+        // Same logic: "w" = ".00", so "10:w" = "10.00" = 10
+        const baseNumber = parseFloat(colonMatch[1]);
+        return isNaN(baseNumber) ? 0 : baseNumber;
     }
 
     // No "w" pattern found, fall back to standard OCR cleaning

@@ -54,10 +54,11 @@ Your task is to determine if this image shows:
 - Portrait orientation typically
 
 ## AMOUNT NOTATION:
-In notebooks, "w" or ".w" after a number means "00" (shorthand for fast writing):
-- "10.w" = 1000
-- "5.w" = 500
-- "20.w" = 2000
+In notebooks, "w" or ".w" after a number means "00" pesewas (the decimal portion for fast writing):
+- "10.w" = 10.00 = 10 cedis (NOT 1000!)
+- "5.w" = 5.00 = 5 cedis
+- "20.w" = 20.00 = 20 cedis
+- "100.w" = 100.00 = 100 cedis
 
 Analyze the image and classify it.
 `;
