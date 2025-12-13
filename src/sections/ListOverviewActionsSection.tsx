@@ -33,6 +33,7 @@ import { useBatchProcessor } from "@/hooks/useBatchProcessor";
 import { useModal } from "@/hooks/useModal";
 import { useWorkspaceContext, useDatabaseContext } from "@/context";
 import { springTransitions } from "@/lib/animations";
+import { showToast } from "@/lib/toast";
 
 interface ListOverviewActionsSectionProps {
   currentAssembly: string | null;
@@ -166,7 +167,12 @@ const ListOverviewActionsSection = React.memo(
       week: string,
       onProgress?: (completed: number, total: number) => void
     ) => {
-      const results = await processBatch(files, assembly, month, week, onProgress);
+      // Toast callback to surface processing warnings to the user
+      const handleWarning = (message: string, type: 'info' | 'warning' | 'error') => {
+        showToast({ message, type, duration: 6000 });
+      };
+
+      const results = await processBatch(files, assembly, month, week, onProgress, handleWarning);
       if (results.length > 0) {
         setTitheListData(prev => [...prev, ...results]);
         setHasUnsavedChanges(true);

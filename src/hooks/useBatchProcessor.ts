@@ -19,7 +19,8 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
         assembly: string,
         month: string,
         week: string,
-        onProgress?: (completed: number, total: number) => void
+        onProgress?: (completed: number, total: number) => void,
+        onWarning?: (message: string, type: 'info' | 'warning' | 'error') => void
     ): Promise<TitheRecordB[]> => {
         setIsProcessing(true);
         try {
@@ -31,7 +32,18 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
 
             let completed = 0;
             const total = files.length;
-            const assemblyMembers = memberDatabase[assembly]?.data || [];
+            // Robust assembly member lookup with informative warnings
+            const assemblyData = memberDatabase[assembly];
+            if (!assemblyData) {
+                const warningMsg = `Assembly "${assembly}" not found. Available: [${Object.keys(memberDatabase).join(', ') || 'none'}]. Member matching skipped.`;
+                console.warn(`⚠️ ${warningMsg}`);
+                onWarning?.(warningMsg, 'warning');
+            } else if (!assemblyData.data || assemblyData.data.length === 0) {
+                const warningMsg = `Assembly "${assembly}" has no members loaded. Import member data to enable matching.`;
+                console.warn(`⚠️ ${warningMsg}`);
+                onWarning?.(warningMsg, 'warning');
+            }
+            const assemblyMembers = assemblyData?.data || [];
 
             for (const file of files) {
                 try {
@@ -114,7 +126,6 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
 
 
             // Match extracted names against assembly member database
-            const assemblyMembers = memberDatabase[assembly]?.data || [];
             if (assemblyMembers.length > 0) {
                 let matchedCount = 0;
                 let unmatchedCount = 0;
