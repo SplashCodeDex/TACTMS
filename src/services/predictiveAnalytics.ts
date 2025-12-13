@@ -142,7 +142,7 @@ const calculateMetrics = (
         totalMembers += ml.data.length;
     });
     const uniqueTithers = new Set(sortedLogs.flatMap(l =>
-        l.titheListData.map(t => t["Membership Number"])
+        (l.titheListData || []).map(t => t["Membership Number"])
     )).size;
     const activeMemberRate = totalMembers > 0 ? (uniqueTithers / totalMembers) * 100 : 0;
 

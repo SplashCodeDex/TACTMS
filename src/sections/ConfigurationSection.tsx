@@ -10,6 +10,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "../components/Button";
 import SyncStatusIndicator from "../components/SyncStatusIndicator";
+import { springTransitions } from "@/lib/animations";
 
 import AgeFilterSection from "./AgeFilterSection";
 import ConcatenationConfigSection from "./ConcatenationConfigSection";
@@ -81,7 +82,7 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
     <MotionDiv
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      transition={springTransitions.panelExpand}
     >
       <section className="content-card" aria-labelledby="configuration-heading">
         <div
@@ -104,7 +105,7 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
           </h2>
           <motion.div
             animate={{ rotate: isOpen ? 0 : -180 }}
-            transition={{ duration: 0.3 }}
+            transition={springTransitions.snappy}
           >
             {isOpen ? (
               <ChevronUp
@@ -131,7 +132,7 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = (props) => {
                 open: { opacity: 1, height: "auto", marginTop: "1rem" },
                 collapsed: { opacity: 0, height: 0, marginTop: 0 },
               }}
-              transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
+              transition={springTransitions.panelExpand}
               style={{ overflow: "hidden" }}
             >
               <div className="pt-6 border-t border-[var(--border-color)]/50">

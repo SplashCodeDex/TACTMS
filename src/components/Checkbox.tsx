@@ -1,6 +1,7 @@
 import React from "react";
 import { Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { springTransitions } from "@/lib/animations";
 
 interface CheckboxProps {
     checked: boolean;
@@ -38,7 +39,7 @@ const Checkbox: React.FC<CheckboxProps> = ({
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "backOut" }}
+                        transition={springTransitions.bouncy}
                     >
                         <Check size={14} className="text-white stroke-[3]" />
                     </motion.div>

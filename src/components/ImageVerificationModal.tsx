@@ -82,14 +82,14 @@ const ImageVerificationModal: React.FC<ImageVerificationModalProps> = ({
                             matchConfidence: 1.0, // High confidence for optimal matches
                             aiConfidence: record.Confidence || 0,
                             manualOverride: false,
-                            confidenceTier: 'high',
+                            confidenceTier: 'high' as const,
                             amountWarning: await validateAmountWithLearning(
                                 record["Transaction Amount"],
                                 currentAssembly || 'default',
                                 undefined,
                                 enableAmountSnapping
                             ),
-                            matchSource: 'ai_semantic', // It counts as AI semantic match
+                            matchSource: 'ai_semantic' as const, // It counts as AI semantic match
                             originalAmount: record["Transaction Amount"]
                         };
                     }

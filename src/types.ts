@@ -206,6 +206,14 @@ export interface PendingMasterListUpdate {
 export interface ChatMessage {
   role: "user" | "model";
   parts: { text?: string; functionCall?: any; functionResponse?: any }[];
+  suggestions?: string[];
+  entityCard?: {
+    type: "member";
+    title: string;
+    subtitle?: string;
+    details: { label: string; value: string }[];
+    id: string; // Formatting essential for actions
+  };
   summary?: string;
   isLoading?: boolean;
 }

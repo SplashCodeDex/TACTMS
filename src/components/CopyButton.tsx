@@ -6,6 +6,7 @@ import { CheckIcon, CopyIcon } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
+import { springTransitions, hoverScaleSmall, tapScale } from '@/lib/animations';
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center cursor-pointer rounded-md transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive',
@@ -96,8 +97,8 @@ function CopyButton({
   return (
     <motion.button
       data-slot="copy-button"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={hoverScaleSmall}
+      whileTap={tapScale}
       className={cn(buttonVariants({ variant, size }), className)}
       onClick={handleCopy}
       {...props}
@@ -109,7 +110,7 @@ function CopyButton({
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           exit={{ scale: 0 }}
-          transition={{ duration: 0.15 }}
+          transition={springTransitions.micro}
         >
           <Icon />
         </motion.span>

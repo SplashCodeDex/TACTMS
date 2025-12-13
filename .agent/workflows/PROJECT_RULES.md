@@ -20,6 +20,7 @@ description: Strict project rules for TACTMS contributors - reusable components,
 7. [Type Definitions](#type-definitions)
 8. [Coding Standards](#coding-standards)
 9. [Import Conventions](#import-conventions)
+10. [Animation Standards](#animation-standards)
 
 ---
 
@@ -61,6 +62,7 @@ import { AppProviders } from '@/context';
 
 | Utility Module | Purpose | Key Functions |
 |----------------|---------|---------------|
+| `animations.ts` | Framer Motion presets | Spring transitions, motion presets |
 | `excelUtils.ts` | Excel file operations | Parsing, formatting |
 | `exportUtils.ts` | Data export helpers | CSV, Excel exports |
 | `pdfGenerator.ts` | PDF generation | Report PDFs |
@@ -257,5 +259,60 @@ Before committing ANY code, verify:
 
 ---
 
-*Last Updated: December 5, 2025*
+## 🎬 Animation Standards
+
+> [!IMPORTANT]
+> **ALWAYS use standardized animations from `src/lib/animations.ts`!**
+> Never create inline spring configurations.
+
+### Import Convention
+```typescript
+import { springTransitions, motionPresets } from '@/lib/animations';
+```
+
+### Spring Transitions
+| Transition | Config | Use Case |
+|------------|--------|----------|
+| `panelExpand` | `spring, damping: 25, stiffness: 300` | Modals, panels, dialogs, drawers |
+| `snappy` | `spring, damping: 20, stiffness: 400` | Buttons, cards, dropdowns, tooltips |
+| `gentle` | `spring, damping: 30, stiffness: 200` | Page transitions, hero sections |
+| `micro` | `spring, damping: 15, stiffness: 500` | Icons, badges, small hover states |
+| `bouncy` | `spring, damping: 10, stiffness: 300` | Success states, celebrations |
+
+### Motion Presets
+| Preset | Effect | Use Case |
+|--------|--------|----------|
+| `fadeSlideUp` | Fade + slide up | Content reveals, list items |
+| `fadeSlideDown` | Fade + slide down | Dropdowns, menus |
+| `scaleIn` | Fade + scale | Modals, dialogs, popovers |
+| `panelSlideUp` | Slide up + scale | Bottom sheets, chat panels |
+| `slideFromRight` | Slide from right | Sidebars, drawers |
+| `slideFromLeft` | Slide from left | Navigation drawers |
+| `fade` | Simple fade | Overlays, backdrops |
+| `rotateScale` | Rotate + scale | FABs, spinning elements |
+
+### Usage Examples
+```typescript
+// Use transition config
+<motion.div transition={springTransitions.panelExpand} />
+
+// Spread full preset
+<motion.div {...motionPresets.fadeSlideUp} />
+
+// Hover/tap animations
+import { hoverScale, tapScale } from '@/lib/animations';
+<motion.button whileHover={hoverScale} whileTap={tapScale} />
+
+// Staggered lists
+import { staggerContainer, staggerItem } from '@/lib/animations';
+<motion.ul variants={staggerContainer} initial="hidden" animate="visible">
+  {items.map(item => (
+    <motion.li key={item.id} variants={staggerItem}>{item.name}</motion.li>
+  ))}
+</motion.ul>
+```
+
+---
+
+*Last Updated: December 13, 2025*
 *Maintainer: TACTMS Core Team*

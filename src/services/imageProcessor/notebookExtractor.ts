@@ -191,7 +191,6 @@ export async function processNotebookImage(
                 let finalName = cleanOCRName(item.name); // Default to clean OCR name
                 let memberDetails: MemberRecordA | undefined;
                 let matchConfidence = 0;
-                let matchMethod = "ocr";
 
                 // If we have match results, use them
                 if (matchedResults.length > index) {
@@ -201,7 +200,6 @@ export async function processNotebookImage(
                         finalName = `${match.matchedMember.Surname} ${match.matchedMember["First Name"]} ${match.matchedMember["Other Names"] || ""} (${match.matchedMember["Membership Number"]})`.trim();
                         memberDetails = match.matchedMember;
                         matchConfidence = match.confidence;
-                        matchMethod = "database_match";
                     }
                 }
 

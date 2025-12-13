@@ -20,6 +20,7 @@ import Button from "./Button";
 import PopoverProfile from "./PopoverProfile";
 import { GoogleUserProfile } from "../types";
 import { THEME_OPTIONS } from "../constants";
+import { springTransitions } from "@/lib/animations";
 
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 type ThemeOption = (typeof THEME_OPTIONS)[0];
@@ -48,13 +49,13 @@ interface SidebarProps {
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, x: -20, transition: { duration: 0.2 } },
-  visible: { opacity: 1, x: 0, transition: { delay: 0.1, duration: 0.2 } },
+  hidden: { opacity: 0, x: -20, transition: springTransitions.snappy },
+  visible: { opacity: 1, x: 0, transition: { ...springTransitions.snappy, delay: 0.1 } },
 };
 
 const logoVariants = {
-  collapsed: { height: "64px", transition: { duration: 0.3 } }, // h-16
-  expanded: { height: "96px", transition: { duration: 0.3 } }, // h-24
+  collapsed: { height: "64px", transition: springTransitions.gentle }, // h-16
+  expanded: { height: "96px", transition: springTransitions.gentle }, // h-24
 };
 
 const NavItem: React.FC<{
@@ -82,19 +83,21 @@ const NavItem: React.FC<{
         <motion.div
           layoutId="active-nav-indicator"
           className="absolute inset-0 bg-gradient-to-r from-[var(--primary-accent-start)] to-[var(--primary-accent-end)] text-white shadow-lg shadow-[var(--primary-accent-start)]/20 rounded-lg"
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          transition={springTransitions.panelExpand}
         />
       )}
-      {!isActive && isHovered && (
-        <motion.div
-          layoutId="hover-nav-indicator"
-          className="absolute inset-0 bg-white/5 rounded-lg"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 400, damping: 40 }}
-        />
-      )}
+      <AnimatePresence>
+        {!isActive && isHovered && (
+          <motion.div
+            key="hover-indicator"
+            className="absolute inset-0 bg-white/5 rounded-lg"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={springTransitions.snappy}
+          />
+        )}
+      </AnimatePresence>
       <Icon size={20} className="flex-shrink-0 relative z-10" />
       <AnimatePresence>
         {!isCollapsed && (
@@ -102,7 +105,7 @@ const NavItem: React.FC<{
             initial={{ opacity: 0, width: 0, marginLeft: 0 }}
             animate={{ opacity: 1, width: "auto", marginLeft: "0.75rem" }}
             exit={{ opacity: 0, width: 0, marginLeft: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            transition={springTransitions.snappy}
             className="whitespace-nowrap relative z-10"
           >
             {label}
@@ -249,8 +252,8 @@ const ThemeControl: React.FC<
   };
 
   const colorContainerVariants = {
-    closed: { height: "28px", transition: { duration: 0.4, ease: "easeInOut" } },
-    open: { height: `${5 * 28 + 4 * 8}px`, transition: { duration: 0.4, ease: "easeInOut" } },
+    closed: { height: "28px", transition: springTransitions.gentle },
+    open: { height: `${5 * 28 + 4 * 8}px`, transition: springTransitions.gentle },
   };
 
   return (
@@ -429,7 +432,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       animate={{
         width: isCollapsed ? "6.5rem" : "17rem",
       }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
+      transition={springTransitions.gentle}
       {...touchHandlers}
     >
       <div
@@ -448,7 +451,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
+              transition={springTransitions.snappy}
               className="text-xs text-[var(--text-muted)] text-center"
             >
               TACTMS - The Apostolic Church Tithe Made Simple

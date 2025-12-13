@@ -32,6 +32,7 @@ import BatchImageProcessor from "@/components/BatchImageProcessor";
 import { useBatchProcessor } from "@/hooks/useBatchProcessor";
 import { useModal } from "@/hooks/useModal";
 import { useWorkspaceContext, useDatabaseContext } from "@/context";
+import { springTransitions } from "@/lib/animations";
 
 interface ListOverviewActionsSectionProps {
   currentAssembly: string | null;
@@ -336,7 +337,7 @@ const ListOverviewActionsSection = React.memo(
         aria-labelledby="overview-actions-heading"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        transition={springTransitions.panelExpand}
       >
         <div className="flex justify-between items-center">
           <h2

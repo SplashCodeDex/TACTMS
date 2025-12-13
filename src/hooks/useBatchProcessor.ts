@@ -163,10 +163,6 @@ export const useBatchProcessor = ({ memberDatabase, transactionLog }: UseBatchPr
 
                     // Validate amount with learned corrections + anomaly detection (for both pre-matched and greedy-matched)
                     if (memberDetails) {
-                        const memberKey = memberDetails["Membership Number"]; // Use clean ID for history lookup needed? buildMemberHistory usually takes the full string or ID?
-                        // buildMemberHistory logic in amountValidator usually expects the full ID string or cleans it itself.
-                        // Let's rely on memberId which is formatted or from record.
-
                         // Ensure memberId is formatted if pre-matched
                         if (!memberId) memberId = record["Membership Number"];
 

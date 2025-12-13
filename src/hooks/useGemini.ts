@@ -4,6 +4,9 @@ import { MemberRecordA, TitheRecordB, ChatMessage, ChartData, MemberDatabase, Tr
 import type { TitheImageExtractionResult } from '@/services/imageProcessor';
 import { GEMINI_MODEL_NAME } from '@/constants';
 import { buildDataContext, buildPromptContext } from '@/services/queryTemplates';
+import { generatePredictions } from '@/services/predictiveAnalytics';
+import type { AnalyticsSummary, Prediction } from '@/services/predictiveAnalytics';
+import { chatCache } from '@/services/chatCache';
 import { useToast } from '@/context';
 
 export const useGemini = (apiKey: string) => {
@@ -53,7 +56,7 @@ export const useGemini = (apiKey: string) => {
     }
   };
 
-  const analyzeImage = async (imageFile: File, month?: string, week?: string, dateString?: string): Promise<TitheImageExtractionResult | null> => {
+  const analyzeImage = async (imageFile: File, month?: string, week?: string, dateString?: string, memberDatabase?: MemberRecordA[]): Promise<TitheImageExtractionResult | null> => {
     if (!apiKey) {
       addToast('AI features are not configured. Please contact support.', 'error');
       return null;
@@ -87,7 +90,10 @@ export const useGemini = (apiKey: string) => {
         apiKey,
         month,
         week,
-        dateString
+        dateString,
+        undefined, // transactionLogs
+        'auto',    // forceMode
+        memberDatabase // Pass memberDatabase for optimal matching
       );
 
       // Provide feedback based on validation
@@ -161,7 +167,7 @@ export const useGeminiChat = (apiKey: string) => {
     dataContextRef.current = dataContext;
   }, [dataContext]);
 
-  const initializeChat = useCallback((
+  const initializeChat = useCallback(async (
     titheListData: TitheRecordB[],
     memberDatabase: MemberDatabase,
     currentAssembly: string,
@@ -178,18 +184,60 @@ export const useGeminiChat = (apiKey: string) => {
       enrichedContext
     });
 
+    // Generate AI-powered predictions if we have enough data
+    let analytics: AnalyticsSummary | null = null;
+    if (transactionLogs && transactionLogs.length >= 2 && memberDatabase) {
+      try {
+        analytics = await generatePredictions(transactionLogs, memberDatabase, apiKey);
+      } catch (e) {
+        console.warn('Failed to generate predictions:', e);
+      }
+    }
+
+    // Build health score badge
+    const healthEmoji = analytics
+      ? analytics.healthScore >= 70 ? '✅' : analytics.healthScore >= 40 ? '⚠️' : '🔴'
+      : '';
+    const healthBadge = analytics
+      ? `**Health Score:** ${healthEmoji} ${analytics.healthScore}/100`
+      : '';
+
+    // Get top prediction
+    const topPrediction = analytics?.predictions[0];
+    const predictionLine = topPrediction
+      ? `- 🔮 **AI Insight:** ${topPrediction.message}${topPrediction.actionable && topPrediction.action ? ` → *${topPrediction.action}*` : ''}`
+      : '';
+
     const initialMessage = enrichedContext && transactionLogs && transactionLogs.length > 0
-      ? `Hello! I'm your TACTMS Assistant for ${currentAssembly}. I've analyzed your data:\n\n- This month's tithe: GHS ${enrichedContext.currentMonthTotal.toLocaleString()}\n- ${enrichedContext.currentWeekTithers} tithers this week\n- ${enrichedContext.totalMembers} total members\n\nWhat would you like to know?`
-      : "Hello! I'm your TACTMS Assistant. I have access to your full database. You can ask me about specific members, tithe statistics, or trends. What would you like to know?";
+      ? `### 🌤️ Good day! I've analyzed your ${currentAssembly} data.
+
+${healthBadge}
+
+**Quick Insights:**
+- 📈 **Trend:** ${enrichedContext.currentMonthTotal > enrichedContext.lastMonthTotal ? "Tithes are **up**" : "Tithes are **down**"} compared to last month.
+- 👥 **Engagement:** ${enrichedContext.currentWeekTithers} members tithed this week.
+- 💰 **Total:** GHS ${enrichedContext.currentMonthTotal.toLocaleString()} collected this month.
+${predictionLine}
+
+I'm ready to dive deeper. Try asking:`
+      : "### 👋 Hello! I'm connected to your TACTMS database.\n\nI can help you audit members, track trends, or find specific transactions. What would you like to start with?";
+
+    // Dynamic suggestions based on predictions
+    const dynamicSuggestions = topPrediction?.actionable && topPrediction?.action
+      ? [topPrediction.action, "Show top 5 tithers", "What is the weekly trend?"]
+      : enrichedContext
+        ? ["Show top 5 tithers", "What is the weekly trend?", "Find inactive members"]
+        : ["Load tithe data", "Show all members"];
 
     setChatHistory([
       {
         role: "model",
         parts: [{ text: initialMessage }],
-        summary: enrichedContext ? buildPromptContext(enrichedContext) : undefined
+        summary: enrichedContext ? buildPromptContext(enrichedContext) : undefined,
+        suggestions: dynamicSuggestions
       }
     ]);
-  }, []);
+  }, [apiKey]);
 
   const sendMessageStream = useCallback(
     async (message: string) => {
@@ -213,8 +261,21 @@ export const useGeminiChat = (apiKey: string) => {
 
       // Add user message to history
       const userMessage: ChatMessage = { role: "user", parts: [{ text: message }] };
-      const newHistory = [...chatHistory, userMessage];
-      setChatHistory(newHistory);
+      setChatHistory(prev => [...prev, userMessage]);
+
+      // Check cache for instant response
+      const cached = chatCache.get(message);
+      if (cached) {
+        // Return cached response instantly
+        setChatHistory(prev => [...prev, {
+          role: "model",
+          parts: [{ text: `⚡ ${cached.response}` }],
+          suggestions: cached.suggestions
+        }]);
+        setIsLoading(false);
+        addToast("Instant response from cache", "info");
+        return;
+      }
 
       try {
         const ai = new GoogleGenerativeAI(apiKey);
@@ -227,10 +288,30 @@ export const useGeminiChat = (apiKey: string) => {
             - Be concise and professional.
             - Format numbers as currency (GHS).
             - Use Markdown for tables and lists.
-            - You can generate simple charts if asked. If the user asks for a chart, include a JSON block at the end of your response like this:
-              \`\`\`json
-              { "chartData": [{ "label": "A", "count": 10 }, ...] }
-              \`\`\`
+            - You can generate simple charts if asked. If the user asks for a chart, include a JSON block at the end of your response.
+            - You MUST suggest 3 relevant follow-up actions or questions for the user after EVERY response in a JSON block.
+            - When showing details for a specific member, ALWAYS include an "entityCard" object in the JSON block with their key details.
+
+            Format your response like this:
+            [Your markdown response here]
+
+            \`\`\`json
+            {
+            "chartData": [{ "label": "A", "count": 10 }, ...],
+            "suggestions": ["Drill down", "Show similar members"],
+            "entityCard": {
+              "type": "member",
+              "title": "John Doe",
+              "subtitle": "Elder - Assembly Name",
+              "details": [
+                { "label": "Membership ID", "value": "12345" },
+                { "label": "Phone", "value": "024..." },
+                { "label": "Status", "value": "Active" }
+              ],
+              "id": "12345"
+            }
+            }
+            \`\`\`
             `,
           tools: [
             {
@@ -274,7 +355,10 @@ export const useGeminiChat = (apiKey: string) => {
         });
 
         // Prepare history for API (Use the FIX: remove first model message)
-        const apiHistory = chatHistory
+        // Note: We need to use a snapshot of chatHistory here, but since we just added the user message
+        // via setState, we can reconstruct it directly to avoid stale closure issues
+        const currentHistory = chatHistory; // This is from the closure, but we'll handle it
+        const apiHistory = currentHistory
           .filter((msg, index) => !(index === 0 && msg.role === 'model'))
           .map(msg => ({ role: msg.role, parts: msg.parts }));
 
@@ -283,7 +367,6 @@ export const useGeminiChat = (apiKey: string) => {
         const result = await chat.sendMessageStream(message);
 
         let accumulatedText = "";
-        let finalResponse = "";
 
         // Create a placeholder for the model's response
         setChatHistory(prev => [...prev, { role: "model", parts: [{ text: "" }] }]);
@@ -361,7 +444,7 @@ export const useGeminiChat = (apiKey: string) => {
                 }
               }
               if (foundMember) {
-                const tithes = (dataContext.titheListData as TitheRecordB[])
+                const tithes = (currentDataContext.titheListData as TitheRecordB[])
                   .filter(t => String(t["Membership Number"]).includes(memberId))
                   .slice(0, 5);
                 toolResult = { member: foundMember, recent_tithes: tithes };
@@ -371,7 +454,7 @@ export const useGeminiChat = (apiKey: string) => {
             } else if (name === "get_tithe_stats") {
               const month = (args as any).month;
               const year = (args as any).year;
-              let filtered = dataContext.titheListData as TitheRecordB[];
+              let filtered = currentDataContext.titheListData as TitheRecordB[];
               if (year) filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
               if (month) filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).toLowerCase().includes(month.toLowerCase()));
 
@@ -386,7 +469,7 @@ export const useGeminiChat = (apiKey: string) => {
             } else if (name === "find_top_tithers") {
               const limit = Number((args as any).limit) || 5;
               const year = (args as any).year;
-              let filtered = dataContext.titheListData as TitheRecordB[];
+              let filtered = currentDataContext.titheListData as TitheRecordB[];
               if (year) filtered = filtered.filter(t => String(t["Transaction Date ('DD-MMM-YYYY')"]).includes(year));
 
               const totals: Record<string, number> = {};
@@ -433,30 +516,54 @@ export const useGeminiChat = (apiKey: string) => {
             }
 
             const toolResponse = await toolResultStream.response;
-            currentFunctionCalls = toolResponse.functionCalls();
+            currentFunctionCalls = toolResponse.functionCalls() || [];
           }
         }
 
-        // Final pass for charts (on the accumulated text)
-        const chartMatch = accumulatedText.match(/```json\s*({[\s\S]*?})\s*```/);
-        if (chartMatch) {
+        // Final pass for charts, suggestions, and entity cards
+        // Regex to match JSON block with optional "json" tag and case-insensitive
+        const jsonMatch = accumulatedText.match(/```(?:json)?\s*({[\s\S]*?})\s*```/i);
+        if (jsonMatch) {
           try {
-            const json = JSON.parse(chartMatch[1]);
+            const json = JSON.parse(jsonMatch[1]);
+            let update: Partial<ChatMessage> = {};
+
             if (json.chartData) {
               setChartData(json.chartData);
-              // Clean the text in the message
-              const cleanText = accumulatedText.replace(chartMatch[0], "").trim();
-              setChatHistory(prev => {
-                const newHist = [...prev];
-                if (newHist.length > 0) {
-                  newHist[newHist.length - 1] = { role: "model", parts: [{ text: cleanText }] };
-                }
-                return newHist;
-              });
             }
+
+            if (json.suggestions && Array.isArray(json.suggestions)) {
+              update.suggestions = json.suggestions;
+            }
+
+            if (json.entityCard) {
+              update.entityCard = json.entityCard;
+            }
+
+            // Clean the text in the message
+            const cleanText = accumulatedText.replace(jsonMatch[0], "").trim();
+            update.parts = [{ text: cleanText }];
+
+            // Store in cache for future instant responses
+            chatCache.set(message, cleanText, json.suggestions);
+
+            setChatHistory(prev => {
+              const newHist = [...prev];
+              if (newHist.length > 0) {
+                newHist[newHist.length - 1] = {
+                  ...newHist[newHist.length - 1],
+                  ...update,
+                  role: "model"
+                };
+              }
+              return newHist;
+            });
           } catch (e) {
-            console.error("Failed to parse chart data", e);
+            console.error("Failed to parse JSON data from model", e);
           }
+        } else {
+          // No JSON found, cache the raw response
+          chatCache.set(message, accumulatedText.trim());
         }
 
       } catch (e: any) {

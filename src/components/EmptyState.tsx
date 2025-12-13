@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FilePlus2 } from 'lucide-react';
 import Button from './Button';
 import { useNavigate } from 'react-router-dom';
+import { springTransitions } from '@/lib/animations';
 
 interface EmptyStateProps {
   title: string;
@@ -28,7 +29,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ title, message, actionText, onA
       className="flex flex-col items-center justify-center text-center p-8 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] shadow-sm"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={springTransitions.panelExpand}
     >
       <div className="p-4 bg-[var(--bg-elevated)] rounded-full mb-4">
         {icon || <FilePlus2 size={32} className="text-[var(--primary-accent-start)]" />}

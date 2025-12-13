@@ -10,6 +10,7 @@ import { FavoriteConfig, ViewType } from "../types";
 import { Search, CornerDownLeft } from "lucide-react";
 import { buildCommandActions } from "../commands/index";
 import { useAppConfigContext } from "../context";
+import { springTransitions } from "@/lib/animations";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -126,7 +127,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+          transition={springTransitions.gentle}
           onClick={onClose}
         >
           <motion.div
@@ -134,7 +135,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             initial={{ scale: 0.95, y: -20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: -20, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={springTransitions.snappy}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={handleKeyDown}
           >
